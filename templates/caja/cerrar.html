@@ -1,0 +1,808 @@
+{% extends 'base.html' %}
+
+{% block title %}Cerrar Caja - Sistema POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Estilos personalizados para el modal de cierre */
+    #modalConfirmarCierre .modal-content {
+        border: none;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        border-radius: 15px;
+    }
+    
+    #modalConfirmarCierre .modal-header {
+        border-top-left-radius: 15px;
+        border-top-right-radius: 15px;
+        border-bottom: 3px solid rgba(255,255,255,0.3);
+    }
+    
+    #modal-icon {
+        animation: pulseIcon 2s infinite;
+    }
+    
+    @keyframes pulseIcon {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+    
+    .modal-body .card {
+        border: 2px solid #dee2e6;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    
+    .badge.fs-6 {
+        font-size: 1.1rem !important;
+        padding: 0.5rem 1rem;
+    }
+    
+    #modal-diferencia-badge {
+        min-width: 100px;
+        display: inline-block;
+    }
+    
+    /* Animación para el badge de diferencia */
+    @keyframes highlightBadge {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.1); }
+    }
+    
+    .highlight-diff {
+        animation: highlightBadge 0.5s ease;
+    }
+    
+    /* Estilos para inputs del arqueo */
+    .arqueo-input:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+    
+    .total-denominacion {
+        font-size: 0.9rem;
+        min-width: 70px;
+    }
+    
+    /* Efectos hover en botones */
+    #btn-cerrar:hover, #btn-confirmar-cierre:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+        transition: all 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header bg-danger text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-lock"></i> Cerrar Caja - {{ apertura.caja_nombre }}
+                </h5>
+                <small class="text-muted">
+                    Saldo inicial: $ {{ apertura.saldo_inicial|floatformat:2 }}
+                </small>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Información de la caja:</strong><br>
+                    <strong>Caja:</strong> {{ apertura.caja_nombre }}<br>
+                    <strong>Saldo Inicial:</strong> $ {{ apertura.saldoInicial|floatformat:2 }}<br>
+                    {% if nombre_usuario_apertura %}
+                    <strong>Abierta por:</strong> {{ nombre_usuario_apertura }}<br>
+                    <strong>Fecha de apertura:</strong> {{ caja_abierta.fechaApertura|date:"d/m/Y H:i" }}
+                    {% endif %}
+                </div>
+                
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    <strong>Importante:</strong> Solo el usuario que abrió la caja puede cerrarla. Verifica que todos los montos sean correctos antes de proceder.
+                </div>
+                
+                <!-- Resumen de totales -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h4>$ {{ total_ventas|default:"0"|floatformat:2 }}</h4>
+                                <small>Total en Ventas</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h4>$ {{ entradas|default:"0"|floatformat:2 }}</h4>
+                                <small>Otros Ingresos</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body text-center">
+                                <h4>$ {{ salidas|default:"0"|floatformat:2 }}</h4>
+                                <small>Egresos</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Detalle de ventas -->
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-receipt"></i> Ventas del Día
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                {% if ventas_del_dia %}
+                                    <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Factura</th>
+                                                    <th>Cliente</th>
+                                                    <th>Total</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for venta in ventas_del_dia %}
+                                                <tr>
+                                                    <td>{{ venta.numero_factura }}</td>
+                                                    <td>
+                                                        {% if venta.cliente %}
+                                                            {{ venta.cliente.nombre_completo|truncatechars:20 }}
+                                                        {% else %}
+                                                            <em>Cliente Genérico</em>
+                                                        {% endif %}
+                                                    </td>
+                                                    <td>$ {{ venta.total|floatformat:2 }}</td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                {% else %}
+                                    <p class="text-muted text-center">No se realizaron ventas hoy</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-calculator"></i> Cálculo de Saldo
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-sm">
+                                    <tr>
+                                        <td>Monto Inicial:</td>
+                                        <td class="text-end">$ {{ caja_abierta.monto_inicial|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Ventas en Efectivo:</td>
+                                        <td class="text-end text-success">+ $ {{ total_ventas|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Otros Ingresos:</td>
+                                        <td class="text-end text-success">+ $ {{ entradas|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Egresos:</td>
+                                        <td class="text-end text-danger">- $ {{ salidas|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr class="table-primary">
+                                        <th>Saldo Teórico:</th>
+                                        <th class="text-end">$ {{ saldo_teorico|floatformat:2 }}</th>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Formulario de cierre -->
+                <form method="post" class="mt-4">
+                    {% csrf_token %}
+                    
+                    <!-- Arqueo de Caja (Conteo Físico) -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0">
+                                <i class="fas fa-coins"></i> Arqueo de Caja (Conteo Físico)
+                            </h6>
+                            <small>Complete el conteo de billetes y monedas</small>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <!-- Billetes -->
+                                <div class="col-md-6 mb-4">
+                                    <h6 class="border-bottom pb-2 mb-3">
+                                        <i class="fas fa-money-bill-wave text-success"></i> Billetes
+                                    </h6>
+                                    
+                                    <!-- $100.00 -->
+                                    <div class="row mb-2 align-items-center">
+                                        <div class="col-5">
+                                            <label class="form-label mb-0">$100.00 x</label>
+                                        </div>
+                                        <div class="col-4">
+                                            <input type="number" class="form-control form-control-sm text-center arqueo-input" 
+                                                   id="billete_100" name="billete_100" min="0" value="0" data-valor="100">
+                                        </div>
+                                        <div class="col-3">
+                                            <span class="badge bg-success total-denominacion" id="total_billete_100">$0.00</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- $50.00 -->
+                                    <div class="row mb-2 align-items-center">
+                                        <div class="col-5">
+                                            <label class="form-label mb-0">$50.00 x</label>
+                                        </div>
+                                        <div class="col-4">
+                                            <input type="number" class="form-control form-control-sm text-center arqueo-input" 
+                                                   id="billete_50" name="billete_50" min="0" value="0" data-valor="50">
+                                        </div>
+                                        <div class="col-3">
+                                            <span class="badge bg-success total-denominacion" id="total_billete_50">$0.00</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- $20.00 -->
+                                    <div class="row mb-2 align-items-center">
+                                        <div class="col-5">
+                                            <label class="form-label mb-0">$20.00 x</label>
+                                        </div>
+                                        <div class="col-4">
+                                            <input type="number" class="form-control form-control-sm text-center arqueo-input" 
+                                                   id="billete_20" name="billete_20" min="0" value="0" data-valor="20">
+                                        </div>
+                                        <div class="col-3">
+                                            <span class="badge bg-success total-denominacion" id="total_billete_20">$0.00</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- $10.00 -->
+                                    <div class="row mb-2 align-items-center">
+                                        <div class="col-5">
+                                            <label class="form-label mb-0">$10.00 x</label>
+                                        </div>
+                                        <div class="col-4">
+                                            <input type="number" class="form-control form-control-sm text-center arqueo-input" 
+                                                   id="billete_10" name="billete_10" min="0" value="0" data-valor="10">
+                                        </div>
+                                        <div class="col-3">
+                                            <span class="badge bg-success total-denominacion" id="total_billete_10">$0.00</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- $5.00 -->
+                                    <div class="row mb-2 align-items-center">
+                                        <div class="col-5">
+                                            <label class="form-label mb-0">$5.00 x</label>
+                                        </div>
+                                        <div class="col-4">
+                                            <input type="number" class="form-control form-control-sm text-center arqueo-input" 
+                                                   id="billete_5" name="billete_5" min="0" value="0" data-valor="5">
+                                        </div>
+                                        <div class="col-3">
+                                            <span class="badge bg-success total-denominacion" id="total_billete_5">$0.00</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <hr>
+                                    <div class="row align-items-center">
+                                        <div class="col-9 text-end">
+                                            <strong>Total Billetes:</strong>
+                                        </div>
+                                        <div class="col-3">
+                                            <span class="badge bg-primary w-100" id="total_billetes">$0.00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Monedas -->
+                                <div class="col-md-6 mb-4">
+                                    <h6 class="border-bottom pb-2 mb-3">
+                                        <i class="fas fa-coins text-warning"></i> Monedas
+                                    </h6>
+                                    
+                                    <!-- $1.00 -->
+                                    <div class="row mb-2 align-items-center">
+                                        <div class="col-5">
+                                            <label class="form-label mb-0">$1.00 x</label>
+                                        </div>
+                                        <div class="col-4">
+                                            <input type="number" class="form-control form-control-sm text-center arqueo-input" 
+                                                   id="moneda_1" name="moneda_1" min="0" value="0" data-valor="1">
+                                        </div>
+                                        <div class="col-3">
+                                            <span class="badge bg-warning text-dark total-denominacion" id="total_moneda_1">$0.00</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- $0.50 -->
+                                    <div class="row mb-2 align-items-center">
+                                        <div class="col-5">
+                                            <label class="form-label mb-0">$0.50 x</label>
+                                        </div>
+                                        <div class="col-4">
+                                            <input type="number" class="form-control form-control-sm text-center arqueo-input" 
+                                                   id="moneda_050" name="moneda_050" min="0" value="0" data-valor="0.50">
+                                        </div>
+                                        <div class="col-3">
+                                            <span class="badge bg-warning text-dark total-denominacion" id="total_moneda_050">$0.00</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- $0.25 -->
+                                    <div class="row mb-2 align-items-center">
+                                        <div class="col-5">
+                                            <label class="form-label mb-0">$0.25 x</label>
+                                        </div>
+                                        <div class="col-4">
+                                            <input type="number" class="form-control form-control-sm text-center arqueo-input" 
+                                                   id="moneda_025" name="moneda_025" min="0" value="0" data-valor="0.25">
+                                        </div>
+                                        <div class="col-3">
+                                            <span class="badge bg-warning text-dark total-denominacion" id="total_moneda_025">$0.00</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- $0.10 -->
+                                    <div class="row mb-2 align-items-center">
+                                        <div class="col-5">
+                                            <label class="form-label mb-0">$0.10 x</label>
+                                        </div>
+                                        <div class="col-4">
+                                            <input type="number" class="form-control form-control-sm text-center arqueo-input" 
+                                                   id="moneda_010" name="moneda_010" min="0" value="0" data-valor="0.10">
+                                        </div>
+                                        <div class="col-3">
+                                            <span class="badge bg-warning text-dark total-denominacion" id="total_moneda_010">$0.00</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- $0.05 -->
+                                    <div class="row mb-2 align-items-center">
+                                        <div class="col-5">
+                                            <label class="form-label mb-0">$0.05 x</label>
+                                        </div>
+                                        <div class="col-4">
+                                            <input type="number" class="form-control form-control-sm text-center arqueo-input" 
+                                                   id="moneda_005" name="moneda_005" min="0" value="0" data-valor="0.05">
+                                        </div>
+                                        <div class="col-3">
+                                            <span class="badge bg-warning text-dark total-denominacion" id="total_moneda_005">$0.00</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <!-- $0.01 -->
+                                    <div class="row mb-2 align-items-center">
+                                        <div class="col-5">
+                                            <label class="form-label mb-0">$0.01 x</label>
+                                        </div>
+                                        <div class="col-4">
+                                            <input type="number" class="form-control form-control-sm text-center arqueo-input" 
+                                                   id="moneda_001" name="moneda_001" min="0" value="0" data-valor="0.01">
+                                        </div>
+                                        <div class="col-3">
+                                            <span class="badge bg-warning text-dark total-denominacion" id="total_moneda_001">$0.00</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <hr>
+                                    <div class="row align-items-center">
+                                        <div class="col-9 text-end">
+                                            <strong>Total Monedas:</strong>
+                                        </div>
+                                        <div class="col-3">
+                                            <span class="badge bg-primary w-100" id="total_monedas">$0.00</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Resumen del Conteo -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-calculator"></i> Resumen del Conteo
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <div class="card bg-light">
+                                        <div class="card-body text-center">
+                                            <h6 class="text-muted mb-2">Saldo Inicial</h6>
+                                            <h4>$ {{ saldo_inicial|default:"0"|floatformat:2 }}</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4 mb-3">
+                                    <div class="card bg-success text-white">
+                                        <div class="card-body text-center">
+                                            <h6 class="mb-2">Total Ingresos</h6>
+                                            <h4>$ {{ total_ingresos|default:"0"|floatformat:2 }}</h4>
+                                            <small>Ventas + Otros</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-4 mb-3">
+                                    <div class="card bg-danger text-white">
+                                        <div class="card-body text-center">
+                                            <h6 class="mb-2">Total Egresos</h6>
+                                            <h4>$ {{ salidas|default:"0"|floatformat:2 }}</h4>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="total_contado" class="form-label">
+                                            <strong>Total Contado (Arqueo)</strong>
+                                        </label>
+                                        <div class="input-group input-group-lg">
+                                            <span class="input-group-text">$</span>
+                                            <input type="number" class="form-control" 
+                                                   id="total_contado" name="total_contado" 
+                                                   step="0.01" min="0" required readonly
+                                                   value="0.00">
+                                        </div>
+                                        <div class="form-text">
+                                            Este monto se calcula automáticamente del arqueo
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label"><strong>Saldo Final Teórico</strong></label>
+                                        <div class="input-group input-group-lg">
+                                            <span class="input-group-text">$</span>
+                                            <input type="text" class="form-control bg-info text-white fw-bold" 
+                                                   id="saldo_teorico" readonly 
+                                                   value="{{ saldo_teorico|floatformat:2 }}">
+                                        </div>
+                                        <div class="form-text">
+                                            Saldo esperado según movimientos
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Diferencia -->
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="card" id="card-diferencia">
+                                        <div class="card-body text-center">
+                                            <h5 class="mb-3">Diferencia</h5>
+                                            <h2 class="mb-0">
+                                                <span id="diferencia-monto">$0.00</span>
+                                            </h2>
+                                            <p class="mb-0 mt-2">
+                                                <span id="diferencia-texto" class="badge bg-secondary">Sin diferencia</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Alerta de diferencia -->
+                            <div id="alerta-diferencia" class="alert alert-warning mt-3" style="display: none;">
+                                <h6><i class="fas fa-exclamation-triangle"></i> Diferencia Detectada</h6>
+                                <p class="mb-0">Se ha detectado una diferencia entre el saldo teórico y el efectivo contado. 
+                                   Por favor verifique el conteo y registre las observaciones correspondientes.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Observaciones -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-comment-alt"></i> Observaciones
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="observaciones" class="form-label">Observaciones del Cierre</label>
+                                <textarea class="form-control" id="observaciones" name="observaciones" 
+                                          rows="3" placeholder="Notas adicionales sobre el cierre (opcional)"></textarea>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="observaciones" class="form-label">Notas del Arqueo</label>
+                                <textarea class="form-control" id="notas_arqueo" name="notas_arqueo" 
+                                          rows="2" placeholder="Observaciones sobre el conteo físico (opcional)"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{% url 'caja:estado' %}" class="btn btn-secondary me-md-2">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                        <button type="button" class="btn btn-danger btn-lg" id="btn-cerrar">
+                            <i class="fas fa-lock"></i> Cerrar Caja
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación de Cierre -->
+<div class="modal fade" id="modalConfirmarCierre" tabindex="-1" aria-labelledby="modalConfirmarCierreLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalConfirmarCierreLabel">
+                    <i class="fas fa-lock"></i> Confirmar Cierre de Caja
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center mb-3">
+                    <i class="fas fa-question-circle fa-4x" id="modal-icon" style="color: #6c757d;"></i>
+                </div>
+                
+                <h5 class="text-center mb-4">¿Está seguro que desea cerrar la caja?</h5>
+                
+                <div class="card bg-light mb-3">
+                    <div class="card-body">
+                        <div class="row mb-2">
+                            <div class="col-6 text-end"><strong>Total Contado:</strong></div>
+                            <div class="col-6">
+                                <span class="badge bg-primary fs-6" id="modal-total-contado">$0.00</span>
+                            </div>
+                        </div>
+                        <div class="row mb-2">
+                            <div class="col-6 text-end"><strong>Saldo Teórico:</strong></div>
+                            <div class="col-6">
+                                <span class="badge bg-info fs-6" id="modal-saldo-teorico">$0.00</span>
+                            </div>
+                        </div>
+                        <hr>
+                        <div class="row">
+                            <div class="col-6 text-end"><strong>Diferencia:</strong></div>
+                            <div class="col-6">
+                                <span class="badge fs-6" id="modal-diferencia-badge">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="modal-mensaje-estado" class="alert" role="alert">
+                    <i class="fas fa-check-circle"></i> <strong id="modal-estado-texto">La caja está cuadrada.</strong>
+                </div>
+                
+                <div id="modal-alerta-diferencia" class="alert alert-warning" style="display: none;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Atención:</strong> Por favor verifique que el conteo del arqueo físico sea correcto antes de continuar.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-danger" id="btn-confirmar-cierre">
+                    <i class="fas fa-lock"></i> Confirmar Cierre
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const totalContado = document.getElementById('total_contado');
+    const diferenciaMontoElement = document.getElementById('diferencia-monto');
+    const diferenciaTexto = document.getElementById('diferencia-texto');
+    const alertaDiferencia = document.getElementById('alerta-diferencia');
+    const btnCerrar = document.getElementById('btn-cerrar');
+    const cardDiferencia = document.getElementById('card-diferencia');
+    const saldoTeorico = parseFloat('{{ saldo_teorico|default:"0"|floatformat:2 }}');
+    
+    // Obtener todos los inputs del arqueo
+    const arqueoInputs = document.querySelectorAll('.arqueo-input');
+    
+    // Función para calcular el total de una denominación
+    function calcularDenominacion(input) {
+        const cantidad = parseInt(input.value) || 0;
+        const valor = parseFloat(input.dataset.valor);
+        return cantidad * valor;
+    }
+    
+    // Función para actualizar todos los totales del arqueo
+    function actualizarArqueo() {
+        let totalBilletes = 0;
+        let totalMonedas = 0;
+        
+        arqueoInputs.forEach(input => {
+            const total = calcularDenominacion(input);
+            const totalElement = document.getElementById('total_' + input.id);
+            
+            if (totalElement) {
+                totalElement.textContent = '$' + total.toFixed(2);
+            }
+            
+            // Sumar a billetes o monedas
+            if (input.id.startsWith('billete_')) {
+                totalBilletes += total;
+            } else {
+                totalMonedas += total;
+            }
+        });
+        
+        // Actualizar totales
+        document.getElementById('total_billetes').textContent = '$' + totalBilletes.toFixed(2);
+        document.getElementById('total_monedas').textContent = '$' + totalMonedas.toFixed(2);
+        
+        // Actualizar total contado
+        const totalGeneral = totalBilletes + totalMonedas;
+        totalContado.value = totalGeneral.toFixed(2);
+        
+        // Calcular diferencia
+        calcularDiferencia();
+    }
+    
+    // Función para calcular la diferencia
+    function calcularDiferencia() {
+        const montoContado = parseFloat(totalContado.value) || 0;
+        const diff = montoContado - saldoTeorico;
+        
+        diferenciaMontoElement.textContent = '$' + diff.toFixed(2);
+        
+        // Cambiar colores según la diferencia
+        if (Math.abs(diff) > 0.01) {
+            if (diff > 0) {
+                // Sobrante
+                cardDiferencia.className = 'card border-success';
+                diferenciaMontoElement.className = 'text-success';
+                diferenciaTexto.innerHTML = '<i class="fas fa-arrow-up"></i> Sobrante';
+                diferenciaTexto.className = 'badge bg-success';
+            } else {
+                // Faltante
+                cardDiferencia.className = 'card border-danger';
+                diferenciaMontoElement.className = 'text-danger';
+                diferenciaTexto.innerHTML = '<i class="fas fa-arrow-down"></i> Faltante';
+                diferenciaTexto.className = 'badge bg-danger';
+            }
+            alertaDiferencia.style.display = 'block';
+            btnCerrar.className = 'btn btn-warning btn-lg';
+            btnCerrar.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Cerrar con Diferencia';
+        } else {
+            // Sin diferencia
+            cardDiferencia.className = 'card border-success';
+            diferenciaMontoElement.className = 'text-success';
+            diferenciaTexto.innerHTML = '<i class="fas fa-check"></i> Sin diferencia';
+            diferenciaTexto.className = 'badge bg-success';
+            alertaDiferencia.style.display = 'none';
+            btnCerrar.className = 'btn btn-danger btn-lg';
+            btnCerrar.innerHTML = '<i class="fas fa-lock"></i> Cerrar Caja';
+        }
+    }
+    
+    // Event listeners para todos los inputs del arqueo
+    arqueoInputs.forEach(input => {
+        input.addEventListener('input', actualizarArqueo);
+        
+        // Validar que solo se ingresen números positivos
+        input.addEventListener('change', function() {
+            if (this.value < 0 || isNaN(this.value)) {
+                this.value = 0;
+                actualizarArqueo();
+            }
+        });
+    });
+    
+    // Confirmación antes de cerrar con modal personalizado
+    const modalConfirmarCierre = new bootstrap.Modal(document.getElementById('modalConfirmarCierre'));
+    const btnCerrarCaja = document.getElementById('btn-cerrar');
+    const btnConfirmarCierre = document.getElementById('btn-confirmar-cierre');
+    const formularioCierre = document.querySelector('form');
+    
+    btnCerrarCaja.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        const montoContado = parseFloat(totalContado.value) || 0;
+        const diff = montoContado - saldoTeorico;
+        
+        // Actualizar valores en el modal
+        document.getElementById('modal-total-contado').textContent = '$' + montoContado.toFixed(2);
+        document.getElementById('modal-saldo-teorico').textContent = '$' + saldoTeorico.toFixed(2);
+        document.getElementById('modal-diferencia-badge').textContent = '$' + Math.abs(diff).toFixed(2);
+        
+        const modalIcon = document.getElementById('modal-icon');
+        const modalDiferenciaBadge = document.getElementById('modal-diferencia-badge');
+        const modalMensajeEstado = document.getElementById('modal-mensaje-estado');
+        const modalAlertaDiferencia = document.getElementById('modal-alerta-diferencia');
+        const modalEstadoTexto = document.getElementById('modal-estado-texto');
+        
+        // Configurar el modal según la diferencia
+        if (Math.abs(diff) > 0.01) {
+            if (diff > 0) {
+                // Sobrante
+                modalIcon.style.color = '#ffc107';
+                modalIcon.className = 'fas fa-exclamation-triangle fa-4x';
+                modalDiferenciaBadge.className = 'badge fs-6 bg-warning text-dark';
+                modalMensajeEstado.className = 'alert alert-warning';
+                modalEstadoTexto.innerHTML = `<strong>SOBRANTE de $${Math.abs(diff).toFixed(2)}</strong>`;
+                modalAlertaDiferencia.style.display = 'block';
+            } else {
+                // Faltante
+                modalIcon.style.color = '#dc3545';
+                modalIcon.className = 'fas fa-exclamation-circle fa-4x';
+                modalDiferenciaBadge.className = 'badge fs-6 bg-danger';
+                modalMensajeEstado.className = 'alert alert-danger';
+                modalEstadoTexto.innerHTML = `<strong>FALTANTE de $${Math.abs(diff).toFixed(2)}</strong>`;
+                modalAlertaDiferencia.style.display = 'block';
+            }
+        } else {
+            // Sin diferencia
+            modalIcon.style.color = '#28a745';
+            modalIcon.className = 'fas fa-check-circle fa-4x';
+            modalDiferenciaBadge.className = 'badge fs-6 bg-success';
+            modalMensajeEstado.className = 'alert alert-success';
+            modalEstadoTexto.innerHTML = '<strong>La caja está cuadrada.</strong>';
+            modalAlertaDiferencia.style.display = 'none';
+        }
+        
+        // Mostrar el modal
+        modalConfirmarCierre.show();
+    });
+    
+    // Confirmar y enviar el formulario
+    btnConfirmarCierre.addEventListener('click', function() {
+        modalConfirmarCierre.hide();
+        formularioCierre.submit();
+    });
+    
+    // Botón para limpiar arqueo
+    const btnLimpiarArqueo = document.createElement('button');
+    btnLimpiarArqueo.type = 'button';
+    btnLimpiarArqueo.className = 'btn btn-outline-secondary btn-sm';
+    btnLimpiarArqueo.innerHTML = '<i class="fas fa-eraser"></i> Limpiar Arqueo';
+    btnLimpiarArqueo.onclick = function() {
+        if (confirm('¿Desea limpiar todos los valores del arqueo?')) {
+            arqueoInputs.forEach(input => {
+                input.value = 0;
+            });
+            actualizarArqueo();
+        }
+    };
+    
+    // Agregar botón al header del arqueo
+    const arqueoHeader = document.querySelector('.card.mb-4 .card-header');
+    if (arqueoHeader) {
+        const headerContent = arqueoHeader.innerHTML;
+        arqueoHeader.innerHTML = '<div class="d-flex justify-content-between align-items-center">' +
+            '<div>' + headerContent + '</div>' +
+            '<div>' + btnLimpiarArqueo.outerHTML + '</div>' +
+            '</div>';
+        
+        // Re-asignar el evento al nuevo botón
+        arqueoHeader.querySelector('button').onclick = btnLimpiarArqueo.onclick;
+    }
+    
+    // Calcular inicial
+    actualizarArqueo();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,291 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.orden-card {
+    border: 1px solid #e3e6f0;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    transition: all 0.3s ease;
+}
+
+.orden-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    transform: translateY(-2px);
+}
+
+.estado-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 15px;
+}
+
+.estado-borrador { background-color: #6c757d; color: white; }
+.estado-enviada { background-color: #17a2b8; color: white; }
+.estado-confirmada { background-color: #ffc107; color: #212529; }
+.estado-recibida_parcial { background-color: #fd7e14; color: white; }
+.estado-recibida_completa { background-color: #28a745; color: white; }
+.estado-cancelada { background-color: #dc3545; color: white; }
+
+.prioridad-badge {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.5rem;
+    border-radius: 10px;
+}
+
+.prioridad-baja { background-color: #e9ecef; color: #495057; }
+.prioridad-normal { background-color: #007bff; color: white; }
+.prioridad-alta { background-color: #fd7e14; color: white; }
+.prioridad-urgente { background-color: #dc3545; color: white; }
+
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">{{ titulo }}</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'usuarios:dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="#">Inventario</a></li>
+                    <li class="breadcrumb-item active">Órdenes de Compra</li>
+                </ol>
+            </nav>
+        </div>
+        <div>
+            <a href="{% url 'inventario:crear_orden_compra' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nueva Orden
+            </a>
+            <a href="{% url 'inventario:generar_ordenes_automaticas' %}" class="btn btn-info ml-2" 
+               onclick="return confirm('¿Generar órdenes automáticas basadas en stock mínimo?')">
+                <i class="fas fa-magic"></i> Generar Automáticas
+            </a>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4>{{ page_obj.paginator.count }}</h4>
+                        <p class="mb-0">Total Órdenes</p>
+                    </div>
+                    <i class="fas fa-file-invoice fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h4>{{ page_obj.object_list|length }}</h4>
+                        <p class="mb-0">En Esta Página</p>
+                    </div>
+                    <i class="fas fa-list fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row">
+                <div class="col-md-3">
+                    <label class="form-label">Estado</label>
+                    <select name="estado" class="form-select">
+                        <option value="">Todos los estados</option>
+                        {% for value, label in estados %}
+                            <option value="{{ value }}" {% if filtro_estado == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Proveedor</label>
+                    <select name="proveedor" class="form-select">
+                        <option value="">Todos los proveedores</option>
+                        {% for proveedor in proveedores %}
+                            <option value="{{ proveedor.id }}" {% if filtro_proveedor == proveedor.id|stringformat:"s" %}selected{% endif %}>
+                                {{ proveedor.nombre_comercial }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                    <a href="{% url 'inventario:lista_ordenes_compra' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i> Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de Órdenes -->
+    <div class="card">
+        <div class="card-body">
+            {% if page_obj.object_list %}
+                {% for orden in page_obj %}
+                    <div class="orden-card p-3">
+                        <div class="row align-items-center">
+                            <div class="col-md-2">
+                                <h6 class="mb-1 text-primary">{{ orden.numero_orden }}</h6>
+                                <small class="text-muted">{{ orden.fecha_creacion|date:"d/m/Y H:i" }}</small>
+                            </div>
+                            <div class="col-md-3">
+                                <strong>{{ orden.proveedor.nombre_comercial }}</strong><br>
+                                <small class="text-muted">{{ orden.proveedor.telefono|default:"Sin teléfono" }}</small>
+                            </div>
+                            <div class="col-md-2">
+                                <span class="estado-badge estado-{{ orden.estado }}">
+                                    {{ orden.get_estado_display }}
+                                </span><br>
+                                <span class="prioridad-badge prioridad-{{ orden.prioridad }} mt-1">
+                                    {{ orden.get_prioridad_display }}
+                                </span>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <strong class="text-success">$ {{ orden.total|floatformat:2 }}</strong><br>
+                                <small class="text-muted">{{ orden.detalles.count }} productos</small>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                {% if orden.fecha_entrega_esperada %}
+                                    <small class="text-muted">Entrega esperada:</small><br>
+                                    <span class="text-info">{{ orden.fecha_entrega_esperada|date:"d/m/Y" }}</span>
+                                {% else %}
+                                    <span class="text-muted">Sin fecha definida</span>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-1">
+                                <div class="dropdown">
+                                    <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" 
+                                            data-bs-toggle="dropdown">
+                                        Acciones
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a class="dropdown-item" href="{% url 'inventario:detalle_orden_compra' orden.pk %}">
+                                                <i class="fas fa-eye"></i> Ver Detalle
+                                            </a>
+                                        </li>
+                                        {% if orden.puede_ser_enviada %}
+                                            <li>
+                                                <a class="dropdown-item" href="{% url 'inventario:enviar_orden_compra' orden.pk %}"
+                                                   onclick="return confirm('¿Enviar esta orden al proveedor?')">
+                                                    <i class="fas fa-paper-plane"></i> Enviar
+                                                </a>
+                                            </li>
+                                        {% endif %}
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li>
+                                            <a class="dropdown-item text-primary" href="#">
+                                                <i class="fas fa-print"></i> Imprimir
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item text-info" href="#">
+                                                <i class="fas fa-envelope"></i> Enviar por Email
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {% if orden.observaciones %}
+                            <div class="row mt-2">
+                                <div class="col-12">
+                                    <small class="text-muted">
+                                        <i class="fas fa-comment"></i> {{ orden.observaciones|truncatechars:100 }}
+                                    </small>
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+
+                <!-- Paginación -->
+                {% if page_obj.has_other_pages %}
+                    <div class="d-flex justify-content-center mt-4">
+                        <nav aria-label="Paginación">
+                            <ul class="pagination">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=1">Primera</a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                                    </li>
+                                {% endif %}
+
+                                <li class="page-item active">
+                                    <span class="page-link">
+                                        Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                                    </span>
+                                </li>
+
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última</a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                    </div>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-file-invoice fa-4x text-muted mb-3"></i>
+                    <h5 class="text-muted">No hay órdenes de compra</h5>
+                    <p class="text-muted">Comienza creando tu primera orden de compra</p>
+                    <a href="{% url 'inventario:crear_orden_compra' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Crear Primera Orden
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-submit de los filtros cuando cambian
+    const filtroEstado = document.querySelector('select[name="estado"]');
+    const filtroProveedor = document.querySelector('select[name="proveedor"]');
+    
+    if (filtroEstado) {
+        filtroEstado.addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+    
+    if (filtroProveedor) {
+        filtroProveedor.addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+});
+</script>
+{% endblock %}

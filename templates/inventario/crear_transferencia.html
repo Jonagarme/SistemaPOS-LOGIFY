@@ -1,0 +1,429 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Nueva Transferencia de Stock{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        transform: translateY(-1px);
+    }
+    .producto-item {
+        border: 1px solid #e9ecef;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 10px;
+        background: #f8f9fa;
+    }
+    .stock-badge {
+        font-size: 0.8em;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-exchange-alt"></i> Nueva Transferencia de Stock</h2>
+        <a href="{% url 'inventario:lista_transferencias' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Volver a Transferencias
+        </a>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <form method="POST" id="form-transferencia">
+        {% csrf_token %}
+        
+        <!-- Información General -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Información General</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Ubicación Origen *</label>
+                        <select class="form-select" name="ubicacion_origen" id="ubicacion-origen" required>
+                            <option value="">Seleccione ubicación origen...</option>
+                            {% for ubicacion in ubicaciones %}
+                                <option value="{{ ubicacion.id }}">{{ ubicacion.nombre }} - {{ ubicacion.tipo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Ubicación Destino *</label>
+                        <select class="form-select" name="ubicacion_destino" id="ubicacion-destino" required>
+                            <option value="">Seleccione ubicación destino...</option>
+                            {% for ubicacion in ubicaciones %}
+                                <option value="{{ ubicacion.id }}">{{ ubicacion.nombre }} - {{ ubicacion.tipo }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Fecha de Transferencia *</label>
+                        <input type="date" class="form-control" name="fecha_transferencia" 
+                               value="{{ today|date:'Y-m-d' }}" required>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Motivo de Transferencia *</label>
+                        <select class="form-select" name="motivo" required>
+                            <option value="">Seleccione un motivo...</option>
+                            <option value="reposicion">Reposición de Stock</option>
+                            <option value="reorganizacion">Reorganización</option>
+                            <option value="ajuste">Ajuste de Inventario</option>
+                            <option value="demanda">Alta Demanda</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+                    
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Observaciones</label>
+                        <textarea class="form-control" name="observaciones" rows="2" 
+                                  placeholder="Observaciones adicionales sobre la transferencia..."></textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Productos a Transferir -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-boxes"></i> Productos a Transferir</h5>
+                <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalAgregarProducto">
+                    <i class="fas fa-plus"></i> Agregar Producto
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="productos-transferencia">
+                    <div class="text-center py-4" id="no-productos">
+                        <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                        <h5>No hay productos agregados</h5>
+                        <p class="text-muted">Agregue productos para transferir usando el botón "Agregar Producto"</p>
+                    </div>
+                </div>
+                
+                <div class="row mt-3" id="totales" style="display: none;">
+                    <div class="col-md-6 offset-md-6">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6>Resumen de Transferencia</h6>
+                                <div class="d-flex justify-content-between">
+                                    <span>Total Productos:</span>
+                                    <span id="total-productos">0</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <span>Total Cantidad:</span>
+                                    <span id="total-cantidad">0</span>
+                                </div>
+                                <div class="d-flex justify-content-between">
+                                    <strong>Valor Total:</strong>
+                                    <strong id="total-valor">$0.00</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="card">
+            <div class="card-body text-end">
+                <a href="{% url 'inventario:lista_transferencias' %}" class="btn btn-secondary me-2">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+                <button type="submit" class="btn btn-primary" id="btn-guardar" disabled>
+                    <i class="fas fa-save"></i> Crear Transferencia
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Modal para agregar productos -->
+<div class="modal fade" id="modalAgregarProducto" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus"></i> Agregar Producto a Transferencia
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Búsqueda de productos -->
+                <div class="mb-3">
+                    <label class="form-label">Buscar Producto</label>
+                    <input type="text" class="form-control" id="buscar-producto" 
+                           placeholder="Escriba el nombre o código del producto...">
+                </div>
+                
+                <!-- Lista de productos -->
+                <div class="row" id="lista-productos">
+                    {% for producto in productos %}
+                        <div class="col-md-6 mb-2 producto-card" data-nombre="{{ producto.nombre|lower }}" data-codigo="{{ producto.codigo_principal|lower }}">
+                            <div class="producto-item">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ producto.nombre }}</h6>
+                                        <small class="text-muted">{{ producto.codigo_principal }}</small>
+                                        <div class="mt-1">
+                                            <span class="badge bg-info stock-badge">Stock: {{ producto.stock }}</span>
+                                            <span class="badge bg-success stock-badge">${{ producto.precio_venta|floatformat:2 }}</span>
+                                        </div>
+                                    </div>
+                                    <button type="button" class="btn btn-sm btn-primary" 
+                                            onclick="seleccionarProducto({{ producto.id }}, '{{ producto.nombre }}', '{{ producto.codigo_principal }}', {{ producto.stock }}, {{ producto.precio_venta }})">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para configurar cantidad -->
+<div class="modal fade" id="modalCantidad" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit"></i> Configurar Cantidad
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Producto</label>
+                    <input type="text" class="form-control" id="producto-seleccionado" readonly>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Stock Disponible</label>
+                    <input type="number" class="form-control" id="stock-disponible" readonly>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Cantidad a Transferir *</label>
+                    <input type="number" class="form-control" id="cantidad-transferir" 
+                           min="1" required placeholder="Ingrese la cantidad...">
+                    <div class="form-text">Máximo disponible: <span id="max-cantidad"></span></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="agregarProductoTransferencia()">
+                    <i class="fas fa-check"></i> Agregar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let productosTransferencia = [];
+let productoSeleccionado = null;
+
+// Filtro de búsqueda de productos
+document.getElementById('buscar-producto').addEventListener('input', function() {
+    const filtro = this.value.toLowerCase();
+    const productos = document.querySelectorAll('.producto-card');
+    
+    productos.forEach(producto => {
+        const nombre = producto.getAttribute('data-nombre');
+        const codigo = producto.getAttribute('data-codigo');
+        const coincide = nombre.includes(filtro) || codigo.includes(filtro);
+        producto.style.display = coincide ? 'block' : 'none';
+    });
+});
+
+// Validar ubicaciones diferentes
+document.getElementById('ubicacion-origen').addEventListener('change', validarUbicaciones);
+document.getElementById('ubicacion-destino').addEventListener('change', validarUbicaciones);
+
+function validarUbicaciones() {
+    const origen = document.getElementById('ubicacion-origen').value;
+    const destino = document.getElementById('ubicacion-destino').value;
+    
+    if (origen && destino && origen === destino) {
+        alert('La ubicación de origen y destino deben ser diferentes');
+        document.getElementById('ubicacion-destino').value = '';
+    }
+}
+
+// Seleccionar producto para agregar
+function seleccionarProducto(id, nombre, codigo, stock, precio) {
+    // Verificar si ya está agregado
+    if (productosTransferencia.find(p => p.id === id)) {
+        alert('Este producto ya ha sido agregado a la transferencia');
+        return;
+    }
+    
+    productoSeleccionado = {
+        id: id,
+        nombre: nombre,
+        codigo: codigo,
+        stock: stock,
+        precio: precio
+    };
+    
+    // Llenar modal de cantidad
+    document.getElementById('producto-seleccionado').value = `${nombre} (${codigo})`;
+    document.getElementById('stock-disponible').value = stock;
+    document.getElementById('max-cantidad').textContent = stock;
+    document.getElementById('cantidad-transferir').value = '';
+    document.getElementById('cantidad-transferir').max = stock;
+    
+    // Cerrar modal de productos y abrir modal de cantidad
+    bootstrap.Modal.getInstance(document.getElementById('modalAgregarProducto')).hide();
+    new bootstrap.Modal(document.getElementById('modalCantidad')).show();
+}
+
+// Agregar producto a la transferencia
+function agregarProductoTransferencia() {
+    const cantidad = parseInt(document.getElementById('cantidad-transferir').value);
+    
+    if (!cantidad || cantidad <= 0) {
+        alert('Ingrese una cantidad válida');
+        return;
+    }
+    
+    if (cantidad > productoSeleccionado.stock) {
+        alert('La cantidad no puede ser mayor al stock disponible');
+        return;
+    }
+    
+    // Agregar a la lista
+    productoSeleccionado.cantidad = cantidad;
+    productoSeleccionado.subtotal = cantidad * productoSeleccionado.precio;
+    productosTransferencia.push(productoSeleccionado);
+    
+    // Actualizar interfaz
+    actualizarListaProductos();
+    actualizarTotales();
+    
+    // Cerrar modal
+    bootstrap.Modal.getInstance(document.getElementById('modalCantidad')).hide();
+    
+    productoSeleccionado = null;
+}
+
+// Actualizar lista de productos en la interfaz
+function actualizarListaProductos() {
+    const container = document.getElementById('productos-transferencia');
+    const noProductos = document.getElementById('no-productos');
+    
+    if (productosTransferencia.length === 0) {
+        noProductos.style.display = 'block';
+        document.getElementById('totales').style.display = 'none';
+        document.getElementById('btn-guardar').disabled = true;
+        return;
+    }
+    
+    noProductos.style.display = 'none';
+    document.getElementById('totales').style.display = 'block';
+    document.getElementById('btn-guardar').disabled = false;
+    
+    container.innerHTML = productosTransferencia.map((producto, index) => `
+        <div class="producto-item">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">${producto.nombre}</h6>
+                    <small class="text-muted">${producto.codigo}</small>
+                    <div class="mt-1">
+                        <span class="badge bg-info">Cantidad: ${producto.cantidad}</span>
+                        <span class="badge bg-success">$${producto.precio.toFixed(2)} c/u</span>
+                        <span class="badge bg-primary">Subtotal: $${producto.subtotal.toFixed(2)}</span>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarProducto(${index})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+            <input type="hidden" name="productos[]" value="${producto.id}">
+            <input type="hidden" name="cantidades[]" value="${producto.cantidad}">
+        </div>
+    `).join('');
+}
+
+// Eliminar producto de la transferencia
+function eliminarProducto(index) {
+    if (confirm('¿Está seguro de eliminar este producto de la transferencia?')) {
+        productosTransferencia.splice(index, 1);
+        actualizarListaProductos();
+        actualizarTotales();
+    }
+}
+
+// Actualizar totales
+function actualizarTotales() {
+    const totalProductos = productosTransferencia.length;
+    const totalCantidad = productosTransferencia.reduce((sum, p) => sum + p.cantidad, 0);
+    const totalValor = productosTransferencia.reduce((sum, p) => sum + p.subtotal, 0);
+    
+    document.getElementById('total-productos').textContent = totalProductos;
+    document.getElementById('total-cantidad').textContent = totalCantidad;
+    document.getElementById('total-valor').textContent = `$${totalValor.toFixed(2)}`;
+}
+
+// Validar formulario antes de enviar
+document.getElementById('form-transferencia').addEventListener('submit', function(e) {
+    if (productosTransferencia.length === 0) {
+        e.preventDefault();
+        alert('Debe agregar al menos un producto a la transferencia');
+        return;
+    }
+    
+    const origen = document.getElementById('ubicacion-origen').value;
+    const destino = document.getElementById('ubicacion-destino').value;
+    
+    if (origen === destino) {
+        e.preventDefault();
+        alert('La ubicación de origen y destino deben ser diferentes');
+        return;
+    }
+});
+
+// Limpiar modales al cerrarlos
+document.getElementById('modalAgregarProducto').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('buscar-producto').value = '';
+    const productos = document.querySelectorAll('.producto-card');
+    productos.forEach(producto => {
+        producto.style.display = 'block';
+    });
+});
+
+document.getElementById('modalCantidad').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('cantidad-transferir').value = '';
+    productoSeleccionado = null;
+});
+</script>
+{% endblock %}

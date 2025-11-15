@@ -1,0 +1,392 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .header-facturacion {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem 0;
+        margin-bottom: 1.5rem;
+        border-radius: 0 0 15px 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .filtros-card {
+        background: white;
+        border-radius: 10px;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        margin-bottom: 1.5rem;
+    }
+    
+    .tabla-facturas {
+        background: white;
+        border-radius: 10px;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 15px;
+        font-weight: 600;
+    }
+    
+    .status-PAGADA {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .status-EMITIDA {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .status-ANULADA {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .btn-sm-custom {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        margin: 0 2px;
+    }
+    
+    .factura-row:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="header-facturacion">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h2 class="mb-0">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        Facturas Electrónicas
+                    </h2>
+                    <p class="mb-0 opacity-75">Gestión y consulta de facturas electrónicas</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <span class="badge bg-light text-dark">
+                        <i class="fas fa-calendar"></i>
+                        {{ facturas|length }} facturas encontradas
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros de Búsqueda -->
+    <div class="filtros-card">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
+                    <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" 
+                           value="{{ fecha_inicio }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="fecha_fin" class="form-label">Fecha Fin</label>
+                    <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" 
+                           value="{{ fecha_fin }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="busqueda" class="form-label">Buscar por Cliente, Número o Autorización</label>
+                    <input type="text" class="form-control" id="busqueda" name="busqueda" 
+                           value="{{ texto_busqueda }}" placeholder="Nombre del cliente, número de factura...">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Buscar
+                    </button>
+                </div>
+            </form>
+            
+            <!-- Búsqueda Rápida por Número -->
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label for="busquedaRapida" class="form-label">Búsqueda Rápida por Número</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="busquedaRapida" 
+                               placeholder="001-001-000000015 o últimos dígitos">
+                        <button class="btn btn-outline-secondary" type="button" id="btnBusquedaRapida">
+                            <i class="fas fa-bolt"></i> Buscar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Facturas -->
+    <div class="tabla-facturas">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Número Factura</th>
+                            <th>Cliente</th>
+                            <th>Fecha Emisión</th>
+                            <th>Total</th>
+                            <th>Estado</th>
+                            <th>Autorización</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for factura in facturas %}
+                        <tr class="factura-row" data-id="{{ factura.Id }}">
+                            <td>{{ factura.Id }}</td>
+                            <td>
+                                <strong class="text-primary">{{ factura.Factura }}</strong>
+                            </td>
+                            <td>{{ factura.Cliente|default:"Sin cliente" }}</td>
+                            <td>{{ factura.FechaEmision }}</td>
+                            <td>
+                                <strong>${{ factura.Total|floatformat:2 }}</strong>
+                            </td>
+                            <td>
+                                <span class="status-badge status-{{ factura.Estado }}">
+                                    {{ factura.Estado }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if factura.Autorizacion %}
+                                    <small class="text-muted">{{ factura.Autorizacion|truncatechars:15 }}</small>
+                                {% else %}
+                                    <span class="text-muted">Sin autorización</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-info btn-sm-custom" 
+                                            onclick="verDetalle({{ factura.Id }})" title="Ver Detalle">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <a href="{% url 'ventas:ticket_termico' factura.Id %}" 
+                                       class="btn btn-secondary btn-sm-custom" target="_blank" title="Ticket Térmico">
+                                        <i class="fas fa-print"></i>
+                                    </a>
+                                    <a href="{% url 'ventas:json_facturacion' factura.Id %}" 
+                                       class="btn btn-success btn-sm-custom" target="_blank" title="JSON SRI">
+                                        <i class="fas fa-file-code"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-4">
+                                <div class="text-muted">
+                                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                                    <p>No se encontraron facturas con los criterios especificados</p>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Ver Detalle de Factura -->
+<div class="modal fade" id="modalDetalleFactura" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-file-invoice"></i>
+                    Detalle de Factura
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="contenidoDetalleFactura">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Resultados de Búsqueda Rápida -->
+<div class="modal fade" id="modalBusquedaRapida" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-search"></i>
+                    Resultados de Búsqueda
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="resultadosBusquedaRapida">
+                <!-- Contenido dinámico -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Función para ver detalle de factura
+function verDetalle(facturaId) {
+    const modal = new bootstrap.Modal(document.getElementById('modalDetalleFactura'));
+    const contenido = document.getElementById('contenidoDetalleFactura');
+    
+    // Mostrar spinner
+    contenido.innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Cargando...</span></div></div>';
+    
+    modal.show();
+    
+    // Cargar datos
+    fetch('/ventas/facturas/' + facturaId + '/detalle/')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                contenido.innerHTML = '<div class="alert alert-danger">' + data.error + '</div>';
+                return;
+            }
+            
+            // Generar HTML del detalle
+            const html = generarHtmlDetalle(data);
+            contenido.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            contenido.innerHTML = '<div class="alert alert-danger">Error al cargar el detalle</div>';
+        });
+}
+
+// Función para generar HTML del detalle
+function generarHtmlDetalle(data) {
+    const encabezado = data.encabezado;
+    const detalle = data.detalle;
+    
+    let html = '<div class="row">';
+    html += '<div class="col-md-6">';
+    html += '<h6><i class="fas fa-file-invoice"></i> Información de la Factura</h6>';
+    html += '<table class="table table-sm">';
+    html += '<tr><td><strong>Número:</strong></td><td>' + encabezado.NumeroDocumento + '</td></tr>';
+    html += '<tr><td><strong>Fecha:</strong></td><td>' + encabezado.FechaEmision + '</td></tr>';
+    html += '<tr><td><strong>Estado:</strong></td><td><span class="status-badge status-' + encabezado.EstadoVenta + '">' + encabezado.EstadoVenta + '</span></td></tr>';
+    html += '<tr><td><strong>Autorización:</strong></td><td>' + (encabezado.Autorizacion || 'Sin autorización') + '</td></tr>';
+    html += '</table></div>';
+    
+    html += '<div class="col-md-6">';
+    html += '<h6><i class="fas fa-user"></i> Información del Cliente</h6>';
+    html += '<table class="table table-sm">';
+    html += '<tr><td><strong>Cliente:</strong></td><td>' + encabezado.RazonSocial + '</td></tr>';
+    html += '<tr><td><strong>Identificación:</strong></td><td>' + (encabezado.Identificacion || 'N/A') + '</td></tr>';
+    html += '<tr><td><strong>Dirección:</strong></td><td>' + (encabezado.Direccion || 'N/A') + '</td></tr>';
+    html += '<tr><td><strong>Teléfono:</strong></td><td>' + (encabezado.Telefono || 'N/A') + '</td></tr>';
+    html += '</table></div></div>';
+    
+    html += '<hr><h6><i class="fas fa-list"></i> Detalle de Productos</h6>';
+    html += '<div class="table-responsive">';
+    html += '<table class="table table-sm">';
+    html += '<thead class="table-light">';
+    html += '<tr><th>Código</th><th>Descripción</th><th>Cant.</th><th>P. Unit.</th><th>Descuento</th><th>Subtotal</th><th>IVA</th></tr>';
+    html += '</thead><tbody>';
+    
+    detalle.forEach(item => {
+        html += '<tr>';
+        html += '<td>' + item.Codigo + '</td>';
+        html += '<td>' + item.Descripcion + '</td>';
+        html += '<td>' + item.Cantidad + '</td>';
+        html += '<td>$' + parseFloat(item.PrecioUnitario).toFixed(2) + '</td>';
+        html += '<td>$' + parseFloat(item.Descuento).toFixed(2) + '</td>';
+        html += '<td>$' + parseFloat(item.Subtotal).toFixed(2) + '</td>';
+        html += '<td>$' + parseFloat(item.Iva).toFixed(2) + '</td>';
+        html += '</tr>';
+    });
+    
+    html += '</tbody></table></div>';
+    html += '<div class="row mt-3"><div class="col-md-8"></div><div class="col-md-4">';
+    html += '<table class="table table-sm">';
+    html += '<tr><td><strong>Subtotal:</strong></td><td>$' + parseFloat(encabezado.SubtotalFactura).toFixed(2) + '</td></tr>';
+    html += '<tr><td><strong>Descuento:</strong></td><td>$' + parseFloat(encabezado.DescuentoFactura).toFixed(2) + '</td></tr>';
+    html += '<tr><td><strong>IVA:</strong></td><td>$' + parseFloat(encabezado.IvaFactura).toFixed(2) + '</td></tr>';
+    html += '<tr class="table-primary"><td><strong>TOTAL:</strong></td><td><strong>$' + parseFloat(encabezado.TotalFactura).toFixed(2) + '</strong></td></tr>';
+    html += '</table></div></div>';
+    
+    return html;
+}
+
+// Búsqueda rápida
+document.getElementById('btnBusquedaRapida').addEventListener('click', function() {
+    const termino = document.getElementById('busquedaRapida').value.trim();
+    
+    if (!termino) {
+        alert('Por favor ingrese un término de búsqueda');
+        return;
+    }
+    
+    fetch('/ventas/facturas/buscar-numero/?termino=' + encodeURIComponent(termino))
+        .then(response => response.json())
+        .then(data => {
+            mostrarResultadosBusqueda(data.facturas);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error en la búsqueda');
+        });
+});
+
+// Mostrar resultados de búsqueda rápida
+function mostrarResultadosBusqueda(facturas) {
+    const modal = new bootstrap.Modal(document.getElementById('modalBusquedaRapida'));
+    const contenido = document.getElementById('resultadosBusquedaRapida');
+    
+    if (facturas.length === 0) {
+        contenido.innerHTML = '<div class="alert alert-warning">No se encontraron facturas</div>';
+    } else {
+        let html = '<div class="table-responsive"><table class="table table-hover">';
+        html += '<thead class="table-light"><tr><th>Factura</th><th>Cliente</th><th>Fecha</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>';
+        
+        facturas.forEach(factura => {
+            html += '<tr>';
+            html += '<td><strong>' + factura.Factura + '</strong></td>';
+            html += '<td>' + factura.Cliente + '</td>';
+            html += '<td>' + factura.FechaEmision + '</td>';
+            html += '<td>$' + parseFloat(factura.Total).toFixed(2) + '</td>';
+            html += '<td><span class="status-badge status-' + factura.Estado + '">' + factura.Estado + '</span></td>';
+            html += '<td><button class="btn btn-info btn-sm" onclick="verDetalle(' + factura.Id + ')"><i class="fas fa-eye"></i></button></td>';
+            html += '</tr>';
+        });
+        
+        html += '</tbody></table></div>';
+        contenido.innerHTML = html;
+    }
+    
+    modal.show();
+}
+
+// Permitir búsqueda con Enter
+document.getElementById('busquedaRapida').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        document.getElementById('btnBusquedaRapida').click();
+    }
+});
+</script>
+{% endblock %}

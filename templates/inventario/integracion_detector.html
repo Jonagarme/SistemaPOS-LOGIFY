@@ -1,0 +1,223 @@
+<!--
+    INTEGRACIÓN DEL DETECTOR DE DUPLICADOS
+    Agregar este código al template templates/inventario/nueva_compra.html
+-->
+
+<!-- 1. Incluir el modal de duplicados antes del cierre de </body> o en la sección de modals -->
+{% include 'inventario/modal_duplicados.html' %}
+
+<!-- 2. Agregar en la sección {% block extra_js %} -->
+{% block extra_js %}
+{{ block.super }}
+
+<!-- Incluir el detector de duplicados -->
+<script src="{% static 'js/detector_duplicados.js' %}"></script>
+
+<script>
+// Variables globales para el manejo de productos
+let productosCompra = [];
+let contadorProductos = 0;
+
+/**
+ * Función para agregar producto desde la factura
+ * Esta función ahora incluye detección de duplicados
+ */
+function agregarProductoDesdeFactura(codigo, nombre, cantidad, precio) {
+    // Crear objeto del producto de la factura
+    const productoFactura = {
+        codigo: codigo,
+        nombre: nombre,
+        cantidad: cantidad,
+        precio: precio
+    };
+    
+    // Verificar si hay duplicados usando el detector
+    detectorDuplicados.verificarProducto(productoFactura, function(accion, productoExistente) {
+        if (accion === 'crear_nuevo') {
+            // Usuario decidió crear un producto nuevo
+            agregarProductoNuevo(productoFactura);
+        } else if (accion === 'usar_existente') {
+            // Usuario decidió usar un producto existente
+            agregarProductoExistente(productoExistente, cantidad, precio);
+        }
+    });
+}
+
+/**
+ * Agregar como producto nuevo (no existe en el inventario)
+ */
+function agregarProductoNuevo(productoFactura) {
+    // Aquí deberías mostrar un formulario para crear el producto
+    // o agregarlo a una lista temporal para crearlo después
+    
+    const itemHtml = `
+        <div class="purchase-item" data-index="${contadorProductos}">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h6 class="mb-1">${productoFactura.nombre}</h6>
+                    <small class="text-muted">
+                        Código: ${productoFactura.codigo || 'Por asignar'} 
+                        <span class="badge bg-warning text-dark">NUEVO</span>
+                    </small>
+                    <input type="hidden" name="productos[${contadorProductos}][nuevo]" value="true">
+                    <input type="hidden" name="productos[${contadorProductos}][codigo]" value="${productoFactura.codigo}">
+                    <input type="hidden" name="productos[${contadorProductos}][nombre]" value="${productoFactura.nombre}">
+                </div>
+                <div class="col-md-2">
+                    <input type="number" class="form-control form-control-sm" 
+                           name="productos[${contadorProductos}][cantidad]" 
+                           value="${productoFactura.cantidad}" min="1" required>
+                </div>
+                <div class="col-md-2">
+                    <input type="number" class="form-control form-control-sm" 
+                           name="productos[${contadorProductos}][precio]" 
+                           value="${productoFactura.precio}" step="0.01" min="0" required>
+                </div>
+                <div class="col-md-1 text-end">
+                    <strong>$<span class="item-subtotal">${(productoFactura.cantidad * productoFactura.precio).toFixed(2)}</span></strong>
+                </div>
+                <div class="col-md-1 text-end">
+                    <button type="button" class="btn-remove-item" onclick="eliminarProducto(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    $('#lista-productos').append(itemHtml);
+    contadorProductos++;
+    calcularTotales();
+    
+    // Mostrar alerta informativa
+    mostrarAlerta('info', 'Producto nuevo agregado. Se creará al guardar la compra.');
+}
+
+/**
+ * Agregar usando un producto existente del inventario
+ */
+function agregarProductoExistente(producto, cantidad, precio) {
+    const itemHtml = `
+        <div class="purchase-item" data-index="${contadorProductos}">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h6 class="mb-1">${producto.nombre}</h6>
+                    <small class="text-muted">
+                        Código: ${producto.codigo_principal}
+                        <span class="badge bg-success">EXISTENTE - Stock: ${producto.stock}</span>
+                    </small>
+                    <input type="hidden" name="productos[${contadorProductos}][id]" value="${producto.id}">
+                </div>
+                <div class="col-md-2">
+                    <input type="number" class="form-control form-control-sm cantidad-input" 
+                           name="productos[${contadorProductos}][cantidad]" 
+                           value="${cantidad}" min="1" required 
+                           onchange="calcularTotales()">
+                </div>
+                <div class="col-md-2">
+                    <input type="number" class="form-control form-control-sm precio-input" 
+                           name="productos[${contadorProductos}][precio]" 
+                           value="${precio}" step="0.01" min="0" required
+                           onchange="calcularTotales()">
+                </div>
+                <div class="col-md-1 text-end">
+                    <strong>$<span class="item-subtotal">${(cantidad * precio).toFixed(2)}</span></strong>
+                </div>
+                <div class="col-md-1 text-end">
+                    <button type="button" class="btn-remove-item" onclick="eliminarProducto(this)">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    $('#lista-productos').append(itemHtml);
+    contadorProductos++;
+    calcularTotales();
+    
+    // Mostrar alerta de éxito
+    mostrarAlerta('success', `Producto vinculado: ${producto.nombre}. Stock se actualizará al guardar.`);
+}
+
+/**
+ * Eliminar producto de la lista
+ */
+function eliminarProducto(btn) {
+    $(btn).closest('.purchase-item').fadeOut(300, function() {
+        $(this).remove();
+        calcularTotales();
+    });
+}
+
+/**
+ * Calcular totales de la compra
+ */
+function calcularTotales() {
+    let subtotal = 0;
+    
+    $('.purchase-item').each(function() {
+        const cantidad = parseFloat($(this).find('.cantidad-input').val()) || 0;
+        const precio = parseFloat($(this).find('.precio-input').val()) || 0;
+        const itemTotal = cantidad * precio;
+        
+        $(this).find('.item-subtotal').text(itemTotal.toFixed(2));
+        subtotal += itemTotal;
+    });
+    
+    const descuento = parseFloat($('#input-descuento').val()) || 0;
+    const subtotalConDescuento = subtotal - descuento;
+    const impuesto = subtotalConDescuento * 0.15; // IVA 15%
+    const total = subtotalConDescuento + impuesto;
+    
+    $('#subtotal-compra').text('$' + subtotal.toFixed(2));
+    $('#descuento-compra').text('-$' + descuento.toFixed(2));
+    $('#impuesto-compra').text('$' + impuesto.toFixed(2));
+    $('#total-compra').text('$' + total.toFixed(2));
+}
+
+/**
+ * Mostrar alerta temporal
+ */
+function mostrarAlerta(tipo, mensaje) {
+    const alertaHtml = `
+        <div class="alert alert-${tipo} alert-dismissible fade show" role="alert">
+            <i class="fas fa-info-circle"></i> ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    $('#alertas-container').html(alertaHtml);
+    
+    // Auto-ocultar después de 5 segundos
+    setTimeout(() => {
+        $('.alert').fadeOut();
+    }, 5000);
+}
+
+/**
+ * Ejemplo de uso cuando se procesa un XML de factura
+ */
+function procesarFacturaXML(productosXML) {
+    productosXML.forEach(producto => {
+        agregarProductoDesdeFactura(
+            producto.codigo,
+            producto.descripcion,
+            producto.cantidad,
+            producto.precioUnitario
+        );
+    });
+}
+
+// Evento al cambiar cantidad o precio
+$(document).on('change', '.cantidad-input, .precio-input', function() {
+    calcularTotales();
+});
+
+// Evento al cambiar descuento
+$('#input-descuento').on('input', function() {
+    calcularTotales();
+});
+
+</script>
+{% endblock %}

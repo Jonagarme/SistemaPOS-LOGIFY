@@ -1,0 +1,431 @@
+{% extends 'base.html' %}
+
+{% block title %}Ajustes de Inventario - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="mb-0">
+                            <i class="fas fa-balance-scale"></i> Ajustes de Inventario
+                        </h5>
+                    </div>
+                    <div class="col-auto">
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoAjuste">
+                            <i class="fas fa-plus"></i> Nuevo Ajuste
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <!-- Filtros -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <label for="filtro_fecha_inicio" class="form-label">Fecha Inicio</label>
+                        <input type="date" class="form-control" id="filtro_fecha_inicio">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filtro_fecha_fin" class="form-label">Fecha Fin</label>
+                        <input type="date" class="form-control" id="filtro_fecha_fin">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filtro_tipo" class="form-label">Tipo de Ajuste</label>
+                        <select class="form-select" id="filtro_tipo">
+                            <option value="">Todos los tipos</option>
+                            <option value="ENTRADA">Entrada</option>
+                            <option value="SALIDA">Salida</option>
+                            <option value="CORRECCION">Corrección</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filtro_usuario" class="form-label">Usuario</label>
+                        <select class="form-select" id="filtro_usuario">
+                            <option value="">Todos los usuarios</option>
+                            {% for usuario in usuarios %}
+                            <option value="{{ usuario.id }}">{{ usuario.get_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Estadísticas -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="card-title mb-0">Total Ajustes</h6>
+                                        <h4 class="mb-0">{{ total_ajustes|default:0 }}</h4>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-balance-scale fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="card-title mb-0">Entradas</h6>
+                                        <h4 class="mb-0">{{ ajustes_entrada|default:0 }}</h4>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-arrow-up fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-danger text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="card-title mb-0">Salidas</h6>
+                                        <h4 class="mb-0">{{ ajustes_salida|default:0 }}</h4>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-arrow-down fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="card-title mb-0">Correcciones</h6>
+                                        <h4 class="mb-0">{{ ajustes_correccion|default:0 }}</h4>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-edit fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Lista de ajustes -->
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Producto</th>
+                                <th>Tipo</th>
+                                <th>Cantidad Anterior</th>
+                                <th>Cantidad Ajustada</th>
+                                <th>Diferencia</th>
+                                <th>Motivo</th>
+                                <th>Usuario</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for ajuste in ajustes %}
+                            <tr>
+                                <td>
+                                    {{ ajuste.fecha|date:"d/m/Y" }}
+                                    <br>
+                                    <small class="text-muted">{{ ajuste.fecha|date:"H:i" }}</small>
+                                </td>
+                                <td>
+                                    <strong>{{ ajuste.producto.nombre }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ ajuste.producto.codigo }}</small>
+                                </td>
+                                <td>
+                                    {% if ajuste.tipo == 'ENTRADA' %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-arrow-up"></i> Entrada
+                                        </span>
+                                    {% elif ajuste.tipo == 'SALIDA' %}
+                                        <span class="badge bg-danger">
+                                            <i class="fas fa-arrow-down"></i> Salida
+                                        </span>
+                                    {% elif ajuste.tipo == 'CORRECCION' %}
+                                        <span class="badge bg-warning">
+                                            <i class="fas fa-edit"></i> Corrección
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ ajuste.cantidad_anterior }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ ajuste.cantidad_nueva }}</span>
+                                </td>
+                                <td>
+                                    {% if ajuste.cantidad_nueva > ajuste.cantidad_anterior %}
+                                        <span class="text-success">
+                                            <i class="fas fa-plus"></i> Aumento
+                                        </span>
+                                    {% elif ajuste.cantidad_nueva < ajuste.cantidad_anterior %}
+                                        <span class="text-danger">
+                                            <i class="fas fa-minus"></i> Reducción
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">Sin cambio</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if ajuste.motivo %}
+                                        <span title="{{ ajuste.motivo }}">
+                                            {{ ajuste.motivo|truncatechars:30 }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">Sin motivo</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ ajuste.usuario.get_full_name }}
+                                    <br>
+                                    <small class="text-muted">{{ ajuste.usuario.username }}</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                onclick="verDetalleAjuste('{{ ajuste.id }}')" title="Ver detalles">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        {% if ajuste.puede_revertir %}
+                                        <button class="btn btn-sm btn-outline-warning" 
+                                                onclick="revertirAjuste('{{ ajuste.id }}')" title="Revertir ajuste">
+                                            <i class="fas fa-undo"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-center text-muted py-4">
+                                    <i class="fas fa-balance-scale fa-3x mb-3"></i>
+                                    <br>
+                                    No se encontraron ajustes de inventario
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Paginación -->
+                {% if is_paginated %}
+                <nav aria-label="Paginación de ajustes">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1">&laquo; Primera</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última &raquo;</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para nuevo ajuste -->
+<div class="modal fade" id="modalNuevoAjuste" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-balance-scale"></i> Nuevo Ajuste de Inventario
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNuevoAjuste">
+                    {% csrf_token %}
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="producto_ajuste" class="form-label">
+                                    Producto <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="producto_ajuste" name="producto" required>
+                                    <option value="">Seleccionar producto...</option>
+                                    {% for producto in productos %}
+                                    <option value="{{ producto.id }}" 
+                                            data-stock="{{ producto.stock_actual }}"
+                                            data-unidad="{{ producto.unidad_medida }}">
+                                        {{ producto.nombre }} ({{ producto.codigo }})
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="tipo_ajuste" class="form-label">
+                                    Tipo de Ajuste <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="tipo_ajuste" name="tipo" required>
+                                    <option value="">Seleccionar tipo...</option>
+                                    <option value="ENTRADA">Entrada (+)</option>
+                                    <option value="SALIDA">Salida (-)</option>
+                                    <option value="CORRECCION">Corrección</option>
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3" id="info_stock" style="display: none;">
+                                <div class="alert alert-info">
+                                    <strong>Stock actual:</strong> <span id="stock_actual">0</span> <span id="unidad_medida"></span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3" id="grupo_cantidad_entrada" style="display: none;">
+                                <label for="cantidad_entrada" class="form-label">
+                                    Cantidad a Agregar <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="cantidad_entrada" 
+                                       name="cantidad" min="1" step="0.01">
+                            </div>
+                            
+                            <div class="mb-3" id="grupo_cantidad_salida" style="display: none;">
+                                <label for="cantidad_salida" class="form-label">
+                                    Cantidad a Reducir <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="cantidad_salida" 
+                                       name="cantidad" min="1" step="0.01">
+                            </div>
+                            
+                            <div class="mb-3" id="grupo_cantidad_nueva" style="display: none;">
+                                <label for="cantidad_nueva" class="form-label">
+                                    Nueva Cantidad <span class="text-danger">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="cantidad_nueva" 
+                                       name="cantidad" min="0" step="0.01">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="motivo_ajuste" class="form-label">Motivo del Ajuste</label>
+                                <textarea class="form-control" id="motivo_ajuste" name="motivo" rows="3"
+                                          placeholder="Describe el motivo del ajuste..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarAjuste()">
+                    <i class="fas fa-save"></i> Guardar Ajuste
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Manejar cambio de producto
+    document.getElementById('producto_ajuste').addEventListener('change', function() {
+        const option = this.selectedOptions[0];
+        const infoStock = document.getElementById('info_stock');
+        
+        if (option.value) {
+            const stock = option.dataset.stock;
+            const unidad = option.dataset.unidad;
+            
+            document.getElementById('stock_actual').textContent = stock;
+            document.getElementById('unidad_medida').textContent = unidad;
+            infoStock.style.display = 'block';
+        } else {
+            infoStock.style.display = 'none';
+        }
+    });
+    
+    // Manejar cambio de tipo de ajuste
+    document.getElementById('tipo_ajuste').addEventListener('change', function() {
+        const tipo = this.value;
+        const grupoEntrada = document.getElementById('grupo_cantidad_entrada');
+        const grupoSalida = document.getElementById('grupo_cantidad_salida');
+        const grupoNueva = document.getElementById('grupo_cantidad_nueva');
+        
+        // Ocultar todos
+        grupoEntrada.style.display = 'none';
+        grupoSalida.style.display = 'none';
+        grupoNueva.style.display = 'none';
+        
+        // Mostrar el correspondiente
+        if (tipo === 'ENTRADA') {
+            grupoEntrada.style.display = 'block';
+        } else if (tipo === 'SALIDA') {
+            grupoSalida.style.display = 'block';
+        } else if (tipo === 'CORRECCION') {
+            grupoNueva.style.display = 'block';
+        }
+    });
+});
+
+function guardarAjuste() {
+    const form = document.getElementById('formNuevoAjuste');
+    const formData = new FormData(form);
+    
+    // Validar campos requeridos
+    const producto = document.getElementById('producto_ajuste').value;
+    const tipo = document.getElementById('tipo_ajuste').value;
+    
+    if (!producto || !tipo) {
+        alert('Por favor complete todos los campos requeridos');
+        return;
+    }
+    
+    // Aquí iría la lógica para enviar el ajuste
+    console.log('Guardando ajuste...');
+    // location.reload();
+}
+
+function verDetalleAjuste(ajusteId) {
+    // Mostrar modal con detalles del ajuste
+    console.log('Ver detalle del ajuste:', ajusteId);
+}
+
+function revertirAjuste(ajusteId) {
+    if (confirm('¿Está seguro de revertir este ajuste? Esta acción creará un ajuste contrario.')) {
+        // Lógica para revertir ajuste
+        console.log('Revertir ajuste:', ajusteId);
+    }
+}
+</script>
+{% endblock %}

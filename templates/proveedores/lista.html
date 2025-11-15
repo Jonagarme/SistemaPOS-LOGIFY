@@ -1,0 +1,191 @@
+{% extends 'base.html' %}
+
+{% block title %}Proveedores - Sistema POS{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'proveedores:crear' %}" class="btn btn-primary">
+    <i class="fas fa-plus"></i> Nuevo Proveedor
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-4">
+                <input type="text" name="search" class="form-control" 
+                       placeholder="Buscar por razón social, RUC, email..." value="{{ search }}">
+            </div>
+            <div class="col-md-3">
+                <select name="estado" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="true" {% if estado == 'true' %}selected{% endif %}>Activos</option>
+                    <option value="false" {% if estado == 'false' %}selected{% endif %}>Inactivos</option>
+                </select>
+            </div>
+            <div class="col-md-5">
+                <button type="submit" class="btn btn-outline-primary me-2">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+                <a href="{% url 'proveedores:lista' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times"></i> Limpiar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista de proveedores -->
+<div class="card">
+    <div class="card-body">
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Proveedor</th>
+                            <th>RUC</th>
+                            <th>Contacto</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for proveedor in page_obj %}
+                        <tr>
+                            <td>
+                                <div>
+                                    <strong>{{ proveedor.razon_social }}</strong>
+                                    {% if proveedor.nombre_comercial and proveedor.nombre_comercial != proveedor.razon_social %}
+                                        <br><small class="text-muted">{{ proveedor.nombre_comercial }}</small>
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>{{ proveedor.ruc }}</td>
+                            <td>
+                                <div>
+                                    {% if proveedor.telefono %}
+                                        <i class="fas fa-phone fa-sm"></i> {{ proveedor.telefono }}<br>
+                                    {% endif %}
+                                    {% if proveedor.email %}
+                                        <i class="fas fa-envelope fa-sm"></i> {{ proveedor.email }}
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                {% if proveedor.activo %}
+                                    <span class="badge bg-success">Activo</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactivo</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'proveedores:detalle' proveedor.pk %}" 
+                                       class="btn btn-outline-info" title="Ver detalles">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'proveedores:editar' proveedor.pk %}" 
+                                       class="btn btn-outline-primary" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'inventario:compras_por_proveedor' %}?proveedor={{ proveedor.pk }}" 
+                                       class="btn btn-outline-success" title="Ver compras">
+                                        <i class="fas fa-shopping-cart"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Paginación -->
+            {% if page_obj.has_other_pages %}
+                <nav aria-label="Paginación de proveedores">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}{% if activo %}&activo={{ activo }}{% endif %}">
+                                    Primera
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if activo %}&activo={{ activo }}{% endif %}">
+                                    Anterior
+                                </a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if activo %}&activo={{ activo }}{% endif %}">
+                                    Siguiente
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if activo %}&activo={{ activo }}{% endif %}">
+                                    Última
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+            
+            <!-- Estadísticas -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <h5>{{ page_obj.paginator.count }}</h5>
+                            <small>Total Proveedores</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <h5>{{ proveedores_activos|default:"0" }}</h5>
+                            <small>Activos</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <h5>{{ proveedores_credito|default:"0" }}</h5>
+                            <small>Con Crédito</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body text-center">
+                            <h5>{{ compras_mes|default:"0" }}</h5>
+                            <small>Compras Este Mes</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-truck fa-3x text-muted mb-3"></i>
+                <h5>No hay proveedores registrados</h5>
+                <p class="text-muted">Comience agregando su primer proveedor</p>
+                <a href="{% url 'proveedores:crear' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Crear Primer Proveedor
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

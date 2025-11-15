@@ -1,0 +1,170 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Órdenes de Compra a Proveedores{% endblock %}
+
+{% block extra_css %}
+<style>
+    .badge-BORRADOR { background-color: #6c757d; }
+    .badge-ENVIADA { background-color: #0dcaf0; }
+    .badge-CONFIRMADA { background-color: #198754; }
+    .badge-RECIBIDA { background-color: #20c997; }
+    .badge-CANCELADA { background-color: #dc3545; }
+    .whatsapp-icon { color: #25D366; }
+    .stats-card {
+        border-left: 4px solid;
+        transition: transform 0.2s;
+    }
+    .stats-card:hover {
+        transform: translateY(-5px);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-file-invoice"></i> Órdenes de Compra a Proveedores</h2>
+        <a href="{% url 'proveedores:crear_orden' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Nueva Orden
+        </a>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Estado</label>
+                    <select name="estado" class="form-select" onchange="this.form.submit()">
+                        <option value="">Todos los estados</option>
+                        <option value="BORRADOR" {% if estado_seleccionado == 'BORRADOR' %}selected{% endif %}>Borrador</option>
+                        <option value="ENVIADA" {% if estado_seleccionado == 'ENVIADA' %}selected{% endif %}>Enviada</option>
+                        <option value="CONFIRMADA" {% if estado_seleccionado == 'CONFIRMADA' %}selected{% endif %}>Confirmada</option>
+                        <option value="RECIBIDA" {% if estado_seleccionado == 'RECIBIDA' %}selected{% endif %}>Recibida</option>
+                        <option value="CANCELADA" {% if estado_seleccionado == 'CANCELADA' %}selected{% endif %}>Cancelada</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-4">
+                    <label class="form-label">Proveedor</label>
+                    <select name="proveedor" class="form-select" onchange="this.form.submit()">
+                        <option value="">Todos los proveedores</option>
+                        {% for proveedor in proveedores %}
+                        <option value="{{ proveedor.id }}" {% if proveedor_seleccionado == proveedor.id|stringformat:"s" %}selected{% endif %}>
+                            {{ proveedor.razon_social }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <div class="col-md-4">
+                    <label class="form-label">&nbsp;</label>
+                    <a href="{% url 'proveedores:lista_ordenes' %}" class="btn btn-secondary w-100">
+                        <i class="fas fa-times"></i> Limpiar Filtros
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Tabla de Órdenes -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>N° Orden</th>
+                            <th>Fecha</th>
+                            <th>Proveedor</th>
+                            <th>Productos</th>
+                            <th>Total</th>
+                            <th>Estado</th>
+                            <th>WhatsApp</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if ordenes %}
+                            {% for orden in ordenes %}
+                            <tr>
+                                <td>
+                                    <strong>{{ orden.numero_orden }}</strong>
+                                </td>
+                                <td>{{ orden.fecha_orden|date:"d/m/Y H:i" }}</td>
+                                <td>
+                                    <div>{{ orden.proveedor.razon_social }}</div>
+                                    <small class="text-muted">{{ orden.proveedor.ruc }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">
+                                        {{ orden.cantidad_productos }} producto{{ orden.cantidad_productos|pluralize }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <strong class="text-primary">${{ orden.total|floatformat:2 }}</strong>
+                                </td>
+                                <td>
+                                    <span class="badge badge-{{ orden.estado }}">
+                                        {{ orden.get_estado_display }}
+                                    </span>
+                                    {% if orden.enviada_whatsapp %}
+                                    <br><small class="text-success">
+                                        <i class="fab fa-whatsapp"></i> Enviada
+                                    </small>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center">
+                                    {% if orden.proveedor.tiene_whatsapp %}
+                                        <a href="https://wa.me/{{ orden.proveedor.whatsapp_formateado }}?text=Hola,%20referente%20a%20la%20orden%20{{ orden.numero_orden }}" 
+                                           target="_blank" 
+                                           class="btn btn-sm btn-success whatsapp-icon"
+                                           title="Enviar por WhatsApp">
+                                            <i class="fab fa-whatsapp"></i>
+                                        </a>
+                                    {% else %}
+                                        <small class="text-muted">No disponible</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <a href="{% url 'proveedores:detalle_orden_proveedor' orden.id %}" 
+                                           class="btn btn-sm btn-info" 
+                                           title="Ver detalle">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'proveedores:exportar_orden_pdf' orden.id %}" 
+                                           class="btn btn-sm btn-danger" 
+                                           title="Descargar PDF"
+                                           target="_blank">
+                                            <i class="fas fa-file-pdf"></i>
+                                        </a>
+                                        <a href="{% url 'proveedores:exportar_orden_excel' orden.id %}" 
+                                           class="btn btn-sm btn-success" 
+                                           title="Descargar Excel">
+                                            <i class="fas fa-file-excel"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="8" class="text-center text-muted py-4">
+                                    <i class="fas fa-inbox fa-3x mb-3"></i>
+                                    <p>No hay órdenes de compra registradas</p>
+                                    <a href="{% url 'proveedores:crear_orden' %}" class="btn btn-primary">
+                                        <i class="fas fa-plus"></i> Crear primera orden
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

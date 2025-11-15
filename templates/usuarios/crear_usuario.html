@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Crear Usuario{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-plus me-2"></i>Crear Nuevo Usuario
+                    </h5>
+                </div>
+
+                <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post">
+                        {% csrf_token %}
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="nombre_usuario" class="form-label">
+                                    Nombre de Usuario <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="nombre_usuario" 
+                                       name="nombre_usuario" required>
+                                <div class="form-text">Usuario único para iniciar sesión</div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="nombre_completo" class="form-label">
+                                    Nombre Completo <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="nombre_completo"
+                                       name="nombre_completo" required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">
+                                    Email <span class="text-danger">*</span>
+                                </label>
+                                <input type="email" class="form-control" id="email"
+                                       name="email" required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="password" class="form-label">
+                                    Contraseña <span class="text-danger">*</span>
+                                </label>
+                                <input type="password" class="form-control" id="password"
+                                       name="password" required>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="id_rol" class="form-label">
+                                    Rol
+                                </label>
+                                <select class="form-select" id="id_rol" name="id_rol">
+                                    <option value="">Sin rol asignado</option>
+                                    {% for rol in roles %}
+                                        <option value="{{ rol.id }}">{{ rol.nombre }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label for="tipo_menu" class="form-label">
+                                    <i class="fas fa-bars"></i> Tipo de Menú
+                                </label>
+                                <select class="form-select" id="tipo_menu" name="tipo_menu">
+                                    <option value="horizontal">Horizontal</option>
+                                    <option value="vertical">Vertical</option>
+                                </select>
+                                <div class="form-text">Estilo de navegación preferido</div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <div class="form-check mt-4">
+                                    <input class="form-check-input" type="checkbox" id="activo" 
+                                           name="activo" checked>
+                                    <label class="form-check-label" for="activo">
+                                        Usuario Activo
+                                    </label>
+                                    <div class="form-text">Usuario habilitado para iniciar sesión</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'usuarios:lista_usuarios' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Crear Usuario
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

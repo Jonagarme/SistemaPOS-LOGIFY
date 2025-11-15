@@ -1,0 +1,423 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Gestión de Productos{% endblock %}
+
+{% block extra_css %}
+<style>
+    .product-card {
+        transition: transform 0.2s;
+        border: 1px solid #e3e6f0;
+    }
+    .product-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .stock-badge {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+    }
+    .price-tag {
+        font-size: 1.2em;
+        font-weight: bold;
+        color: #28a745;
+    }
+    .search-filters {
+        background: #f8f9fc;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .product-image {
+        height: 150px;
+        object-fit: cover;
+        background: #f8f9fa;
+    }
+    .caracteristica-badge {
+        font-size: 0.75em;
+        margin: 1px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header con estadísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6>Total Productos</h6>
+                            <h3>{{ total_productos|default:0 }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-pills fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6>En Stock</h6>
+                            <h3>{{ productos_en_stock|default:0 }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-check-circle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6>Stock Bajo</h6>
+                            <h3>{{ productos_stock_bajo|default:0 }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6>Categorías</h6>
+                            <h3>{{ total_categorias|default:0 }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-tags fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros avanzados -->
+    <div class="search-filters">
+        <form method="get" id="filtros-form">
+            <div class="row">
+                <div class="col-md-4">
+                    <label for="search" class="form-label">Buscar Producto</label>
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control" id="search" name="search" 
+                               value="{{ request.GET.search }}" 
+                               placeholder="Nombre, código, descripción...">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <label for="categoria" class="form-label">Categoría</label>
+                    <select class="form-select" id="categoria" name="categoria">
+                        <option value="">Todas</option>
+                        {% for categoria in categorias %}
+                        <option value="{{ categoria.id_categoria }}" 
+                                {% if request.GET.categoria == categoria.id_categoria|stringformat:"s" %}selected{% endif %}>
+                            {{ categoria.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="marca" class="form-label">Marca</label>
+                    <select class="form-select" id="marca" name="marca">
+                        <option value="">Todas</option>
+                        {% for marca in marcas %}
+                        <option value="{{ marca.id_marca }}" 
+                                {% if request.GET.marca == marca.id_marca|stringformat:"s" %}selected{% endif %}>
+                            {{ marca.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="laboratorio" class="form-label">Laboratorio</label>
+                    <select class="form-select" id="laboratorio" name="laboratorio">
+                        <option value="">Todos</option>
+                        {% for laboratorio in laboratorios %}
+                        <option value="{{ laboratorio.id_laboratorio }}" 
+                                {% if request.GET.laboratorio == laboratorio.id_laboratorio|stringformat:"s" %}selected{% endif %}>
+                            {{ laboratorio.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="vista" class="form-label">Vista</label>
+                    <select class="form-select" id="vista" name="vista">
+                        <option value="cards" {% if request.GET.vista == "cards" or not request.GET.vista %}selected{% endif %}>Tarjetas</option>
+                        <option value="table" {% if request.GET.vista == "table" %}selected{% endif %}>Tabla</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-12">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-filter"></i> Filtrar
+                    </button>
+                    <a href="{% url 'productos:lista' %}" class="btn btn-secondary">
+                        <i class="fas fa-refresh"></i> Limpiar
+                    </a>
+                    <div class="float-end">
+                        <a href="{% url 'productos:crear' %}" class="btn btn-success">
+                            <i class="fas fa-plus"></i> Nuevo Producto
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Resultados -->
+    <div class="row">
+        <div class="col-12">
+            {% if productos %}
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5>
+                        Mostrando {{ productos|length }} productos
+                        {% if request.GET.search %}
+                            para "{{ request.GET.search }}"
+                        {% endif %}
+                    </h5>
+                    <div class="btn-group" role="group">
+                        <input type="radio" class="btn-check" name="vista-toggle" id="vista-cards" 
+                               {% if request.GET.vista == "cards" or not request.GET.vista %}checked{% endif %}>
+                        <label class="btn btn-outline-primary" for="vista-cards">
+                            <i class="fas fa-th-large"></i>
+                        </label>
+                        <input type="radio" class="btn-check" name="vista-toggle" id="vista-table"
+                               {% if request.GET.vista == "table" %}checked{% endif %}>
+                        <label class="btn btn-outline-primary" for="vista-table">
+                            <i class="fas fa-list"></i>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Vista de Tarjetas -->
+                <div id="vista-tarjetas" style="{% if request.GET.vista == 'table' %}display:none{% endif %}">
+                    <div class="row">
+                        {% for producto in productos %}
+                        <div class="col-xl-3 col-lg-4 col-md-6 mb-4">
+                            <div class="card product-card h-100">
+                                <div class="position-relative">
+                                    <!-- Badge de stock -->
+                                    {% if producto.stock > 10 %}
+                                        <span class="badge bg-success stock-badge">En Stock</span>
+                                    {% elif producto.stock > 0 %}
+                                        <span class="badge bg-warning stock-badge">Poco Stock</span>
+                                    {% else %}
+                                        <span class="badge bg-danger stock-badge">Sin Stock</span>
+                                    {% endif %}
+                                    
+                                    <!-- Imagen del producto -->
+                                    <div class="product-image w-100 d-flex align-items-center justify-content-center">
+                                        <i class="fas fa-pills fa-3x text-muted"></i>
+                                    </div>
+                                </div>
+                                
+                                <div class="card-body">
+                                    <h6 class="card-title text-truncate" title="{{ producto.nombre }}">
+                                        {{ producto.nombre }}
+                                    </h6>
+                                    <p class="card-text">
+                                        <small class="text-muted">{{ producto.codigo_principal }}</small><br>
+                                        <span class="price-tag">${{ producto.precio_venta|floatformat:2 }}</span>
+                                    </p>
+                                    
+                                    <!-- Información adicional -->
+                                    <div class="mb-2">
+                                        {% if producto.id_categoria %}
+                                            <span class="badge bg-primary caracteristica-badge">{{ producto.id_categoria.nombre }}</span>
+                                        {% endif %}
+                                        {% if producto.id_marca %}
+                                            <span class="badge bg-secondary caracteristica-badge">{{ producto.id_marca.nombre }}</span>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <!-- Características especiales -->
+                                    <div class="mb-2">
+                                        {% if producto.requiere_cadena_frio %}
+                                            <span class="badge bg-info caracteristica-badge">
+                                                <i class="fas fa-snowflake"></i> Refrigeración
+                                            </span>
+                                        {% endif %}
+                                        {% if producto.es_psicotropico %}
+                                            <span class="badge bg-danger caracteristica-badge">
+                                                <i class="fas fa-exclamation-triangle"></i> Psicotrópico
+                                            </span>
+                                        {% endif %}
+                                        {% if producto.requiere_seguimiento %}
+                                            <span class="badge bg-warning caracteristica-badge">
+                                                <i class="fas fa-prescription"></i> Seguimiento
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <div class="text-muted small">
+                                        <i class="fas fa-warehouse"></i> Stock: {{ producto.stock|default:0 }}
+                                        {% if producto.id_laboratorio %}
+                                            <br><i class="fas fa-industry"></i> {{ producto.id_laboratorio.nombre }}
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="card-footer bg-transparent">
+                                    <div class="btn-group w-100">
+                                        <a href="{% url 'productos:detalle' producto.id %}" class="btn btn-primary btn-sm" title="Ver detalles">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <button class="btn btn-success btn-sm" title="Agregar a venta">
+                                            <i class="fas fa-cart-plus"></i>
+                                        </button>
+                                        <a href="{% url 'productos:editar' producto.id %}" class="btn btn-info btn-sm" title="Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Vista de Tabla -->
+                <div id="vista-tabla" style="{% if request.GET.vista != 'table' %}display:none{% endif %}">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Producto</th>
+                                    <th>Categoría</th>
+                                    <th>Marca</th>
+                                    <th>Laboratorio</th>
+                                    <th>Precio</th>
+                                    <th>Stock</th>
+                                    <th>Características</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for producto in productos %}
+                                <tr>
+                                    <td>
+                                        <code>{{ producto.codigo_principal }}</code>
+                                    </td>
+                                    <td>
+                                        <strong>{{ producto.nombre }}</strong>
+                                        {% if producto.descripcion %}
+                                            <br><small class="text-muted">{{ producto.descripcion|truncatechars:50 }}</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ producto.id_categoria.nombre|default:"-" }}</td>
+                                    <td>{{ producto.id_marca.nombre|default:"-" }}</td>
+                                    <td>{{ producto.id_laboratorio.nombre|default:"-" }}</td>
+                                    <td>
+                                        <span class="price-tag">${{ producto.precio_venta|floatformat:2 }}</span>
+                                    </td>
+                                    <td>
+                                        {% if producto.stock > 10 %}
+                                            <span class="badge bg-success">{{ producto.stock|default:0 }}</span>
+                                        {% elif producto.stock > 0 %}
+                                            <span class="badge bg-warning">{{ producto.stock|default:0 }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ producto.stock|default:0 }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if producto.requiere_cadena_frio %}
+                                            <i class="fas fa-snowflake text-info" title="Requiere refrigeración"></i>
+                                        {% endif %}
+                                        {% if producto.es_psicotropico %}
+                                            <i class="fas fa-exclamation-triangle text-danger" title="Psicotrópico"></i>
+                                        {% endif %}
+                                        {% if producto.requiere_seguimiento %}
+                                            <i class="fas fa-prescription text-warning" title="Requiere seguimiento"></i>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'productos:detalle' producto.id %}" class="btn btn-outline-primary" title="Ver detalles">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <button class="btn btn-outline-success" title="Agregar a venta">
+                                                <i class="fas fa-cart-plus"></i>
+                                            </button>
+                                            <a href="{% url 'productos:editar' producto.id %}" class="btn btn-outline-info" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-pills fa-3x text-muted mb-3"></i>
+                    <h4 class="text-muted">No se encontraron productos</h4>
+                    <p class="text-muted">No hay productos que coincidan con los filtros seleccionados</p>
+                    <a href="{% url 'productos:crear' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Crear Primer Producto
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Toggle de vista
+    const vistaCards = document.getElementById('vista-cards');
+    const vistaTable = document.getElementById('vista-table');
+    const divTarjetas = document.getElementById('vista-tarjetas');
+    const divTabla = document.getElementById('vista-tabla');
+    
+    vistaCards.addEventListener('change', function() {
+        if (this.checked) {
+            divTarjetas.style.display = 'block';
+            divTabla.style.display = 'none';
+            // Actualizar URL
+            const url = new URL(window.location);
+            url.searchParams.set('vista', 'cards');
+            window.history.pushState(null, '', url);
+        }
+    });
+    
+    vistaTable.addEventListener('change', function() {
+        if (this.checked) {
+            divTarjetas.style.display = 'none';
+            divTabla.style.display = 'block';
+            // Actualizar URL
+            const url = new URL(window.location);
+            url.searchParams.set('vista', 'table');
+            window.history.pushState(null, '', url);
+        }
+    });
+    
+    // Auto-submit en cambio de filtros
+    document.getElementById('vista').addEventListener('change', function() {
+        document.getElementById('filtros-form').submit();
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,413 @@
+{% extends 'base.html' %}
+
+{% block title %}Configuración de Empresa - Sistema POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .empresa-container {
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+    
+    .info-box {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        max-width: 100%;
+    }
+    
+    @media (max-width: 768px) {
+        .card-body {
+            padding: 1rem !important;
+        }
+        
+        .form-control-plaintext {
+            font-size: 0.875rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid empresa-container">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-building"></i> Configuración de Empresa
+                    </h5>
+                </div>
+                <div class="card-body p-3">
+                    <!-- Información de la Empresa desde Base de Datos -->
+                    {% if empresa %}
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h6 class="text-success border-bottom pb-2 mb-3">
+                                <i class="fas fa-database"></i> Información de la Empresa
+                            </h6>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-12 col-sm-6 col-lg-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">RUC:</label>
+                                <div class="form-control-plaintext bg-light p-2 rounded small info-box">
+                                    {{ empresa.ruc|default:"No disponible" }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12 col-sm-6 col-lg-8">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Razón Social:</label>
+                                <div class="form-control-plaintext bg-light p-2 rounded small info-box">
+                                    {{ empresa.razon_social|default:"No disponible" }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Nombre Comercial:</label>
+                                <div class="form-control-plaintext bg-light p-2 rounded small info-box">
+                                    {{ empresa.nombre_comercial|default:"No disponible" }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12 col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Teléfono:</label>
+                                <div class="form-control-plaintext bg-light p-2 rounded small info-box">
+                                    {{ empresa.telefono|default:"No disponible" }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-12 col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Email:</label>
+                                <div class="form-control-plaintext bg-light p-2 rounded small info-box">
+                                    {{ empresa.email|default:"No disponible" }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12 col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Dirección:</label>
+                                <div class="form-control-plaintext bg-light p-2 rounded small info-box">
+                                    {{ empresa.direccion_matriz|default:"No disponible" }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-12 col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Contribuyente Especial:</label>
+                                <div class="form-control-plaintext bg-light p-2 rounded small info-box">
+                                    {{ empresa.contribuyente_especial|default:"No disponible" }}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12 col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Obligado a Contabilidad:</label>
+                                <div class="form-control-plaintext bg-light p-2 rounded small">
+                                    {% if empresa.obligado_contabilidad %}
+                                        <span class="badge bg-success">Sí</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">No</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12 col-md-4">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Estado:</label>
+                                <div class="form-control-plaintext bg-light p-2 rounded small">
+                                    {% if empresa.activo %}
+                                        <span class="badge bg-success">Activo</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactivo</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Última Actualización:</label>
+                                <div class="form-control-plaintext bg-light p-2 rounded small info-box">
+                                    {{ empresa.actualizado_en|date:"d/m/Y H:i"|default:"No disponible" }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <hr class="my-4">
+                    {% endif %}
+                
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    
+                    <!-- Información General -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="fas fa-info-circle"></i> Información General
+                            </h6>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="{{ form.nombre.id_for_label }}" class="form-label">
+                                    {{ form.nombre.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.nombre }}
+                                {% if form.nombre.errors %}
+                                    <div class="text-danger small">{{ form.nombre.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.rtn.id_for_label }}" class="form-label">
+                                    {{ form.rtn.label }}
+                                </label>
+                                {{ form.rtn }}
+                                {% if form.rtn.errors %}
+                                    <div class="text-danger small">{{ form.rtn.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.telefono.id_for_label }}" class="form-label">
+                                    {{ form.telefono.label }}
+                                </label>
+                                {{ form.telefono }}
+                                {% if form.telefono.errors %}
+                                    <div class="text-danger small">{{ form.telefono.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.email.id_for_label }}" class="form-label">
+                                    {{ form.email.label }}
+                                </label>
+                                {{ form.email }}
+                                {% if form.email.errors %}
+                                    <div class="text-danger small">{{ form.email.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="{{ form.direccion.id_for_label }}" class="form-label">
+                                    {{ form.direccion.label }}
+                                </label>
+                                {{ form.direccion }}
+                                {% if form.direccion.errors %}
+                                    <div class="text-danger small">{{ form.direccion.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.sitio_web.id_for_label }}" class="form-label">
+                                    {{ form.sitio_web.label }}
+                                </label>
+                                {{ form.sitio_web }}
+                                {% if form.sitio_web.errors %}
+                                    <div class="text-danger small">{{ form.sitio_web.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Configuración de Facturación -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="fas fa-file-invoice"></i> Configuración de Facturación
+                            </h6>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.cai.id_for_label }}" class="form-label">
+                                    {{ form.cai.label }}
+                                </label>
+                                {{ form.cai }}
+                                {% if form.cai.errors %}
+                                    <div class="text-danger small">{{ form.cai.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.rango_inicial.id_for_label }}" class="form-label">
+                                    {{ form.rango_inicial.label }}
+                                </label>
+                                {{ form.rango_inicial }}
+                                {% if form.rango_inicial.errors %}
+                                    <div class="text-danger small">{{ form.rango_inicial.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.rango_final.id_for_label }}" class="form-label">
+                                    {{ form.rango_final.label }}
+                                </label>
+                                {{ form.rango_final }}
+                                {% if form.rango_final.errors %}
+                                    <div class="text-danger small">{{ form.rango_final.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.fecha_limite_emision.id_for_label }}" class="form-label">
+                                    {{ form.fecha_limite_emision.label }}
+                                </label>
+                                {{ form.fecha_limite_emision }}
+                                {% if form.fecha_limite_emision.errors %}
+                                    <div class="text-danger small">{{ form.fecha_limite_emision.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Configuración del Sistema -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="fas fa-cogs"></i> Configuración del Sistema
+                            </h6>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.moneda.id_for_label }}" class="form-label">
+                                    {{ form.moneda.label }}
+                                </label>
+                                {{ form.moneda }}
+                                {% if form.moneda.errors %}
+                                    <div class="text-danger small">{{ form.moneda.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.simbolo_moneda.id_for_label }}" class="form-label">
+                                    {{ form.simbolo_moneda.label }}
+                                </label>
+                                {{ form.simbolo_moneda }}
+                                {% if form.simbolo_moneda.errors %}
+                                    <div class="text-danger small">{{ form.simbolo_moneda.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="{{ form.impuesto_defecto.id_for_label }}" class="form-label">
+                                    {{ form.impuesto_defecto.label }}
+                                </label>
+                                <div class="input-group">
+                                    {{ form.impuesto_defecto }}
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                {% if form.impuesto_defecto.errors %}
+                                    <div class="text-danger small">{{ form.impuesto_defecto.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Logo de la Empresa (Comentado temporalmente) -->
+                    <!--
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <h6 class="text-primary border-bottom pb-2 mb-3">
+                                <i class="fas fa-image"></i> Logo de la Empresa
+                            </h6>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="{{ form.logo.id_for_label }}" class="form-label">
+                                    {{ form.logo.label }}
+                                </label>
+                                {{ form.logo }}
+                                {% if form.logo.errors %}
+                                    <div class="text-danger small">{{ form.logo.errors }}</div>
+                                {% endif %}
+                                <div class="form-text">
+                                    Formatos permitidos: JPG, PNG, GIF. Tamaño máximo: 2MB
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            {% if config.logo %}
+                            <div class="text-center">
+                                <label class="form-label">Logo Actual:</label><br>
+                                <img src="{{ config.logo.url }}" alt="Logo actual" class="img-thumbnail" style="max-height: 150px;">
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    -->
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="{% url 'usuarios:dashboard' %}" class="btn btn-secondary me-md-2">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Guardar Configuración
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

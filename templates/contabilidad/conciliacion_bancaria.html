@@ -1,0 +1,377 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Conciliación Bancaria{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-university me-2"></i>Conciliación Bancaria
+                    </h2>
+                    <p class="text-muted mb-0">Conciliación de movimientos bancarios</p>
+                </div>
+                <div>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#importarExtractoModal">
+                        <i class="fas fa-upload me-1"></i>Importar Extracto
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Selección de Cuenta y Período</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-4">
+                    <label for="cuenta" class="form-label">Cuenta Bancaria *</label>
+                    <select name="cuenta" id="cuenta" class="form-select" required>
+                        <option value="">Seleccionar cuenta...</option>
+                        {% for cuenta in cuentas_bancarias %}
+                        <option value="{{ cuenta.id }}" {% if filtros.cuenta == cuenta.id|stringformat:"s" %}selected{% endif %}>
+                            {{ cuenta.banco }} - {{ cuenta.nombre }} ({{ cuenta.numero_cuenta }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="fecha_desde" class="form-label">Fecha Desde</label>
+                    <input type="date" name="fecha_desde" id="fecha_desde" class="form-control" value="{{ filtros.fecha_desde }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="fecha_hasta" class="form-label">Fecha Hasta</label>
+                    <input type="date" name="fecha_hasta" id="fecha_hasta" class="form-control" value="{{ filtros.fecha_hasta }}">
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-sync-alt me-1"></i>Cargar Movimientos
+                    </button>
+                    <a href="{% url 'contabilidad:conciliacion_bancaria' %}" class="btn btn-secondary">
+                        <i class="fas fa-times me-1"></i>Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if cuenta_seleccionada %}
+    <!-- Resumen de conciliación -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Saldo Según Libros
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ${{ saldo_libro|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-book fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Saldo Conciliado
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ${{ saldo_conciliado|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-double fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-{% if diferencia == 0 %}success{% else %}warning{% endif %} shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-{% if diferencia == 0 %}success{% else %}warning{% endif %} text-uppercase mb-1">
+                                Diferencia
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% if diferencia >= 0 %}
+                                    ${{ diferencia|floatformat:2 }}
+                                {% else %}
+                                    (${{ diferencia|add:"-1"|floatformat:2 }})
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-{% if diferencia == 0 %}equals{% else %}exclamation-triangle{% endif %} fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Pendientes
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ no_conciliados.count }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-clock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabs de movimientos -->
+    <div class="card shadow">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" id="conciliacionTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="pendientes-tab" data-bs-toggle="tab" data-bs-target="#pendientes" type="button" role="tab">
+                        <i class="fas fa-clock me-1"></i>Pendientes de Conciliar ({{ no_conciliados.count }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="conciliados-tab" data-bs-toggle="tab" data-bs-target="#conciliados" type="button" role="tab">
+                        <i class="fas fa-check me-1"></i>Conciliados ({{ conciliados.count }})
+                    </button>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content" id="conciliacionTabsContent">
+                <!-- Movimientos pendientes -->
+                <div class="tab-pane fade show active" id="pendientes" role="tabpanel">
+                    {% if no_conciliados %}
+                        <div class="mb-3">
+                            <button class="btn btn-success btn-sm" onclick="conciliarTodos()">
+                                <i class="fas fa-check-double me-1"></i>Conciliar Todos
+                            </button>
+                        </div>
+                        
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th width="40">
+                                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll()">
+                                        </th>
+                                        <th>Fecha</th>
+                                        <th>Tipo</th>
+                                        <th>Concepto</th>
+                                        <th>Referencia</th>
+                                        <th class="text-end">Monto</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for movimiento in no_conciliados %}
+                                    <tr>
+                                        <td>
+                                            <input type="checkbox" class="movimiento-check" value="{{ movimiento.id }}">
+                                        </td>
+                                        <td>{{ movimiento.fecha|date:"d/m/Y" }}</td>
+                                        <td>
+                                            {% if movimiento.tipo == 'ingreso' %}
+                                                <span class="badge bg-success">Ingreso</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Egreso</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ movimiento.concepto|truncatechars:40 }}</td>
+                                        <td>{{ movimiento.referencia|default:"N/A" }}</td>
+                                        <td class="text-end">
+                                            {% if movimiento.tipo == 'ingreso' %}
+                                                <span class="text-success">+${{ movimiento.monto|floatformat:2 }}</span>
+                                            {% else %}
+                                                <span class="text-danger">-${{ movimiento.monto|floatformat:2 }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-success" 
+                                                    onclick="conciliarMovimiento({{ movimiento.id }})" 
+                                                    title="Conciliar">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <p class="text-muted">No hay movimientos pendientes de conciliar</p>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Movimientos conciliados -->
+                <div class="tab-pane fade" id="conciliados" role="tabpanel">
+                    {% if conciliados %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Tipo</th>
+                                        <th>Concepto</th>
+                                        <th>Referencia</th>
+                                        <th class="text-end">Monto</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for movimiento in conciliados %}
+                                    <tr>
+                                        <td>{{ movimiento.fecha|date:"d/m/Y" }}</td>
+                                        <td>
+                                            {% if movimiento.tipo == 'ingreso' %}
+                                                <span class="badge bg-success">Ingreso</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Egreso</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ movimiento.concepto|truncatechars:40 }}</td>
+                                        <td>{{ movimiento.referencia|default:"N/A" }}</td>
+                                        <td class="text-end">
+                                            {% if movimiento.tipo == 'ingreso' %}
+                                                <span class="text-success">+${{ movimiento.monto|floatformat:2 }}</span>
+                                            {% else %}
+                                                <span class="text-danger">-${{ movimiento.monto|floatformat:2 }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-warning" 
+                                                    onclick="desconciliarMovimiento({{ movimiento.id }})" 
+                                                    title="Desconciliar">
+                                                <i class="fas fa-undo"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-gray-300 mb-3"></i>
+                            <p class="text-muted">No hay movimientos conciliados en este período</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+        <div class="card shadow">
+            <div class="card-body">
+                <div class="text-center py-5">
+                    <i class="fas fa-university fa-3x text-gray-300 mb-3"></i>
+                    <p class="text-muted">Seleccione una cuenta bancaria para comenzar la conciliación</p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+function conciliarMovimiento(movimientoId) {
+    actualizarConciliacion(movimientoId, true);
+}
+
+function desconciliarMovimiento(movimientoId) {
+    actualizarConciliacion(movimientoId, false);
+}
+
+function actualizarConciliacion(movimientoId, conciliado) {
+    const data = {
+        movimiento_id: movimientoId,
+        conciliado: conciliado
+    };
+    
+    fetch('{% url "contabilidad:marcar_conciliado" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al actualizar el estado de conciliación');
+    });
+}
+
+function toggleSelectAll() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.movimiento-check');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+}
+
+function conciliarTodos() {
+    const checkboxes = document.querySelectorAll('.movimiento-check:checked');
+    
+    if (checkboxes.length === 0) {
+        alert('Seleccione al menos un movimiento para conciliar');
+        return;
+    }
+    
+    if (!confirm(`¿Está seguro de conciliar ${checkboxes.length} movimiento(s)?`)) {
+        return;
+    }
+    
+    let completados = 0;
+    const total = checkboxes.length;
+    
+    checkboxes.forEach(checkbox => {
+        actualizarConciliacion(checkbox.value, true);
+        completados++;
+        
+        if (completados === total) {
+            setTimeout(() => location.reload(), 1000);
+        }
+    });
+}
+</script>
+
+{% csrf_token %}
+{% endblock %}

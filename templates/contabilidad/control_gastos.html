@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Control de Gastos{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-shopping-cart me-2"></i>Control de Gastos
+                    </h2>
+                    <p class="text-muted mb-0">Gestión y aprobación de gastos empresariales</p>
+                </div>
+                <div>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#nuevoGastoModal">
+                        <i class="fas fa-plus me-1"></i>Nuevo Gasto
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen por estados -->
+    <div class="row mb-4">
+        {% for resumen in resumen_estados %}
+        <div class="col-md-3 mb-4">
+            <div class="card border-left-{% if resumen.estado == 'pendiente' %}warning{% elif resumen.estado == 'aprobado' %}success{% elif resumen.estado == 'rechazado' %}danger{% else %}primary{% endif %} shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-{% if resumen.estado == 'pendiente' %}warning{% elif resumen.estado == 'aprobado' %}success{% elif resumen.estado == 'rechazado' %}danger{% else %}primary{% endif %} text-uppercase mb-1">
+                                {{ resumen.estado|capfirst }}
+                            </div>
+                            <div class="h6 mb-0 font-weight-bold text-gray-800">
+                                {{ resumen.cantidad }} gasto{{ resumen.cantidad|pluralize }}
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ${{ resumen.total|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-{% if resumen.estado == 'pendiente' %}clock{% elif resumen.estado == 'aprobado' %}check{% elif resumen.estado == 'rechazado' %}times{% else %}money-bill{% endif %} fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filtros de Búsqueda</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="categoria" class="form-label">Categoría</label>
+                    <select name="categoria" id="categoria" class="form-select">
+                        <option value="">Todas las categorías</option>
+                        {% for categoria in categorias %}
+                        <option value="{{ categoria.id }}" {% if filtros.categoria_id == categoria.id|stringformat:"s" %}selected{% endif %}>
+                            {{ categoria.nombre }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="estado" class="form-label">Estado</label>
+                    <select name="estado" id="estado" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="pendiente" {% if filtros.estado == "pendiente" %}selected{% endif %}>Pendiente</option>
+                        <option value="aprobado" {% if filtros.estado == "aprobado" %}selected{% endif %}>Aprobado</option>
+                        <option value="rechazado" {% if filtros.estado == "rechazado" %}selected{% endif %}>Rechazado</option>
+                        <option value="pagado" {% if filtros.estado == "pagado" %}selected{% endif %}>Pagado</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="fecha_desde" class="form-label">Fecha Desde</label>
+                    <input type="date" name="fecha_desde" id="fecha_desde" class="form-control" value="{{ filtros.fecha_desde }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="fecha_hasta" class="form-label">Fecha Hasta</label>
+                    <input type="date" name="fecha_hasta" id="fecha_hasta" class="form-control" value="{{ filtros.fecha_hasta }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search me-1"></i>Filtrar
+                    </button>
+                    <a href="{% url 'contabilidad:control_gastos' %}" class="btn btn-secondary">
+                        <i class="fas fa-times me-1"></i>Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de gastos -->
+    <div class="card shadow">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Listado de Gastos</h6>
+        </div>
+        <div class="card-body">
+            {% if gastos %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Número</th>
+                                <th>Fecha</th>
+                                <th>Categoría</th>
+                                <th>Concepto</th>
+                                <th>Proveedor</th>
+                                <th class="text-end">Monto</th>
+                                <th>Estado</th>
+                                <th>Solicitado por</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for gasto in gastos %}
+                            <tr>
+                                <td>
+                                    <strong>{{ gasto.numero }}</strong>
+                                    {% if gasto.factura_numero %}
+                                    <br><small class="text-muted">Fact: {{ gasto.factura_numero }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>{{ gasto.fecha|date:"d/m/Y" }}</td>
+                                <td>
+                                    <span class="badge bg-info">{{ gasto.categoria.nombre }}</span>
+                                </td>
+                                <td>{{ gasto.concepto|truncatechars:50 }}</td>
+                                <td>
+                                    {% if gasto.proveedor %}
+                                        {{ gasto.proveedor.nombres|truncatechars:20 }}
+                                    {% else %}
+                                        <span class="text-muted">N/A</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <strong>${{ gasto.monto|floatformat:2 }}</strong>
+                                </td>
+                                <td>
+                                    {% if gasto.estado == 'pendiente' %}
+                                        <span class="badge bg-warning">Pendiente Aprobación</span>
+                                    {% elif gasto.estado == 'aprobado' %}
+                                        <span class="badge bg-success">Aprobado</span>
+                                    {% elif gasto.estado == 'rechazado' %}
+                                        <span class="badge bg-danger">Rechazado</span>
+                                    {% elif gasto.estado == 'pagado' %}
+                                        <span class="badge bg-primary">Pagado</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ gasto.usuario_solicita.get_full_name|default:gasto.usuario_solicita.username }}
+                                    <br><small class="text-muted">{{ gasto.fecha_creacion|date:"d/m/Y H:i" }}</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        {% if gasto.estado == 'pendiente' %}
+                                        <button type="button" class="btn btn-sm btn-success" 
+                                                onclick="aprobarGasto({{ gasto.id }}, 'aprobar')" 
+                                                title="Aprobar">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-danger" 
+                                                onclick="aprobarGasto({{ gasto.id }}, 'rechazar')" 
+                                                title="Rechazar">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button type="button" class="btn btn-sm btn-info" 
+                                                onclick="verDetalle({{ gasto.id }})" 
+                                                title="Ver detalle">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                {% if gastos.has_other_pages %}
+                <nav aria-label="Paginación">
+                    <ul class="pagination justify-content-center">
+                        {% if gastos.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ gastos.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Anterior</a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for num in gastos.paginator.page_range %}
+                            {% if gastos.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% else %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if gastos.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ gastos.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Siguiente</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-shopping-cart fa-3x text-gray-300 mb-3"></i>
+                    <p class="text-muted">No se encontraron gastos con los filtros aplicados</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal para aprobar/rechazar -->
+<div class="modal fade" id="aprobacionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Aprobar/Rechazar Gasto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="gasto_id">
+                <input type="hidden" id="accion">
+                
+                <div class="mb-3">
+                    <label class="form-label">Acción:</label>
+                    <p id="accion_texto" class="text-muted"></p>
+                </div>
+                
+                <div class="mb-3">
+                    <label for="observaciones_aprobacion" class="form-label">Observaciones</label>
+                    <textarea id="observaciones_aprobacion" class="form-control" rows="3" 
+                              placeholder="Ingrese observaciones sobre la aprobación/rechazo..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="confirmarAprobacion()">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function aprobarGasto(gastoId, accion) {
+    document.getElementById('gasto_id').value = gastoId;
+    document.getElementById('accion').value = accion;
+    document.getElementById('accion_texto').textContent = accion === 'aprobar' ? 'Aprobar el gasto' : 'Rechazar el gasto';
+    document.getElementById('observaciones_aprobacion').value = '';
+    
+    new bootstrap.Modal(document.getElementById('aprobacionModal')).show();
+}
+
+function confirmarAprobacion() {
+    const gastoId = document.getElementById('gasto_id').value;
+    const accion = document.getElementById('accion').value;
+    const observaciones = document.getElementById('observaciones_aprobacion').value;
+    
+    const data = {
+        gasto_id: gastoId,
+        accion: accion,
+        observaciones: observaciones
+    };
+    
+    fetch('{% url "contabilidad:aprobar_gasto" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al procesar la solicitud');
+    });
+    
+    bootstrap.Modal.getInstance(document.getElementById('aprobacionModal')).hide();
+}
+
+function verDetalle(gastoId) {
+    // TODO: Implementar modal de detalle del gasto
+    alert('Función de detalle en desarrollo');
+}
+</script>
+
+{% csrf_token %}
+{% endblock %}

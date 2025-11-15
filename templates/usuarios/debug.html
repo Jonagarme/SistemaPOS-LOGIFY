@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Debug Usuarios{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Debug - Lista de Usuarios</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5>Información de Debug</h5>
+        </div>
+        <div class="card-body">
+            <ul>
+                <li><strong>Tabla usuarios existe:</strong> {{ debug_info.usuarios_table }}</li>
+                <li><strong>Tabla roles existe:</strong> {{ debug_info.roles_table }}</li>
+                <li><strong>Total en DB:</strong> {{ debug_info.total_db }}</li>
+                <li><strong>Total cargados:</strong> {{ total_usuarios }}</li>
+            </ul>
+        </div>
+    </div>
+    
+    {% if usuarios %}
+        <div class="card">
+            <div class="card-header">
+                <h5>Usuarios (primeros {{ usuarios|length }})</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Usuario</th>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Activo</th>
+                                <th>Fecha Creación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for usuario in usuarios %}
+                            <tr>
+                                <td>{{ usuario.id }}</td>
+                                <td>{{ usuario.nombre_usuario }}</td>
+                                <td>{{ usuario.nombre_completo }}</td>
+                                <td>{{ usuario.email }}</td>
+                                <td>
+                                    {% if usuario.activo %}
+                                        <span class="badge bg-success">Activo</span>
+                                    {% else %}
+                                        <span class="badge bg-danger">Inactivo</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ usuario.fecha_creacion|date:"d/m/Y H:i" }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% else %}
+        <div class="alert alert-warning">
+            No se encontraron usuarios en la consulta.
+        </div>
+    {% endif %}
+    
+    <div class="mt-4">
+        <a href="{% url 'usuarios:dashboard' %}" class="btn btn-secondary">Volver al Dashboard</a>
+        <a href="{% url 'usuarios:lista_usuarios' %}" class="btn btn-primary">Ir a Lista Original</a>
+    </div>
+</div>
+{% endblock %}

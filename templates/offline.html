@@ -1,0 +1,193 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sistema POS - Modo Offline{% endblock %}
+
+{% block extra_css %}
+<style>
+    .offline-container {
+        text-align: center;
+        padding: 60px 20px;
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .offline-icon {
+        font-size: 120px;
+        color: #dc3545;
+        margin-bottom: 30px;
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { opacity: 1; }
+        50% { opacity: 0.5; }
+        100% { opacity: 1; }
+    }
+    
+    .offline-card {
+        background: #f8f9fa;
+        border: 2px dashed #dee2e6;
+        border-radius: 15px;
+        padding: 40px;
+        margin: 30px 0;
+    }
+    
+    .feature-item {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin: 15px 0;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    
+    .feature-item:hover {
+        transform: translateY(-2px);
+    }
+    
+    .status-indicator {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 10px 15px;
+        background: #dc3545;
+        color: white;
+        border-radius: 25px;
+        font-weight: bold;
+        z-index: 1000;
+    }
+    
+    .retry-button {
+        font-size: 18px;
+        padding: 12px 30px;
+        margin: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="status-indicator">
+    <i class="fas fa-wifi"></i> Sin Conexión
+</div>
+
+<div class="offline-container">
+    <div class="offline-icon">
+        <i class="fas fa-wifi"></i>
+    </div>
+    
+    <h1 class="display-4 text-danger mb-4">
+        <strong>Modo Offline</strong>
+    </h1>
+    
+    <div class="offline-card">
+        <h3 class="text-primary mb-4">
+            <i class="fas fa-info-circle"></i>
+            Sin conexión a internet
+        </h3>
+        
+        <p class="lead text-muted mb-4">
+            No te preocupes, el sistema puede seguir funcionando en modo offline.
+            Puedes continuar realizando ventas y cuando se restaure la conexión,
+            todo se sincronizará automáticamente.
+        </p>
+        
+        <button class="btn btn-primary retry-button" onclick="window.location.reload()">
+            <i class="fas fa-refresh"></i>
+            Intentar Reconectar
+        </button>
+    </div>
+    
+    <div class="row mt-5">
+        <div class="col-md-6">
+            <div class="feature-item">
+                <i class="fas fa-shopping-cart text-success fa-2x mb-3"></i>
+                <h5>Ventas Offline</h5>
+                <p class="text-muted">
+                    Registra ventas normalmente. Se guardarán localmente y se 
+                    sincronizarán automáticamente cuando recuperes la conexión.
+                </p>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="feature-item">
+                <i class="fas fa-database text-info fa-2x mb-3"></i>
+                <h5>Datos en Cache</h5>
+                <p class="text-muted">
+                    Los productos, precios y información de clientes están 
+                    disponibles desde el cache local del navegador.
+                </p>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="feature-item">
+                <i class="fas fa-sync text-warning fa-2x mb-3"></i>
+                <h5>Sincronización Automática</h5>
+                <p class="text-muted">
+                    Cuando se restaure la conexión, todas las ventas offline 
+                    se sincronizarán automáticamente con el servidor.
+                </p>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="feature-item">
+                <i class="fas fa-shield-alt text-success fa-2x mb-3"></i>
+                <h5>Datos Seguros</h5>
+                <p class="text-muted">
+                    Toda la información se guarda de forma segura en tu 
+                    dispositivo hasta que pueda enviarse al servidor.
+                </p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="alert alert-info mt-5">
+        <i class="fas fa-lightbulb"></i>
+        <strong>Consejo:</strong> 
+        Puedes seguir usando el sistema normalmente. El indicador de conexión en la esquina 
+        superior derecha te mostrará cuando se restaure la conexión a internet.
+    </div>
+    
+    <div class="mt-4">
+        <a href="{% url 'usuarios:dashboard' %}" class="btn btn-outline-primary me-3">
+            <i class="fas fa-tachometer-alt"></i>
+            Ir al Dashboard
+        </a>
+        
+        <a href="{% url 'ventas:nueva' %}" class="btn btn-success">
+            <i class="fas fa-plus"></i>
+            Nueva Venta
+        </a>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Verificar conectividad cada 5 segundos
+    setInterval(function() {
+        if (navigator.onLine) {
+            // Si hay conexión, redirigir al dashboard
+            window.location.href = "{% url 'usuarios:dashboard' %}";
+        }
+    }, 5000);
+    
+    // Escuchar evento online
+    window.addEventListener('online', function() {
+        // Mostrar mensaje de reconexión
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-success position-fixed';
+        alert.style.cssText = 'top: 100px; right: 20px; z-index: 10000;';
+        alert.innerHTML = '<i class="fas fa-wifi"></i> Conexión restaurada. Redirigiendo...';
+        document.body.appendChild(alert);
+        
+        // Redirigir después de 2 segundos
+        setTimeout(function() {
+            window.location.href = "{% url 'usuarios:dashboard' %}";
+        }, 2000);
+    });
+});
+</script>
+{% endblock %}

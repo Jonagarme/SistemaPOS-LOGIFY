@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Test Usuarios{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>Test de Usuarios</h1>
+    
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5>Estado de Autenticación:</h5>
+            <ul>
+                <li><strong>Usuario autenticado:</strong> {{ usuario_autenticado }}</li>
+                <li><strong>Usuario ID:</strong> {{ usuario_id }}</li>
+                <li><strong>Usuario nombre:</strong> {{ usuario_nombre }}</li>
+            </ul>
+        </div>
+    </div>
+    
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5>Base de Datos:</h5>
+            {% if error %}
+                <div class="alert alert-danger">
+                    <strong>Error:</strong> {{ error }}
+                </div>
+            {% else %}
+                <ul>
+                    <li><strong>Total usuarios en BD:</strong> {{ total_usuarios_db }}</li>
+                    <li><strong>Usuarios de muestra:</strong></li>
+                </ul>
+                
+                {% if usuarios_muestra %}
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Usuario</th>
+                                <th>Nombre</th>
+                                <th>Email</th>
+                                <th>Rol</th>
+                                <th>Activo</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for usuario in usuarios_muestra %}
+                            <tr>
+                                <td>{{ usuario.id }}</td>
+                                <td>{{ usuario.nombre_usuario }}</td>
+                                <td>{{ usuario.nombre_completo }}</td>
+                                <td>{{ usuario.email }}</td>
+                                <td>{{ usuario.rol }}</td>
+                                <td>{{ usuario.activo }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% else %}
+                    <p class="text-warning">No se encontraron usuarios.</p>
+                {% endif %}
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-4">
+            <a href="{% url 'usuarios:lista_usuarios' %}" class="btn btn-primary btn-block w-100">
+                Ir a Lista de Usuarios
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="{% url 'usuarios:dashboard' %}" class="btn btn-secondary btn-block w-100">
+                Ir a Dashboard
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="{% url 'usuarios:login' %}" class="btn btn-info btn-block w-100">
+                Ir a Login
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

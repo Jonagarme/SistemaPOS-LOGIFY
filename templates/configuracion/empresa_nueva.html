@@ -1,0 +1,400 @@
+{% extends 'base.html' %}
+
+{% block title %}Configuración de Empresa - Sistema POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .empresa-container {
+        max-width: 1200px;
+    }
+    
+    .form-section {
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        background-color: #f8f9fa;
+    }
+    
+    .form-section h6 {
+        color: #495057;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 0.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .logo-preview {
+        max-width: 200px;
+        max-height: 150px;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+    }
+    
+    @media (max-width: 768px) {
+        .form-section {
+            padding: 1rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10 empresa-container">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-building"></i> Configuración de Empresa
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Información Actual -->
+                    {% if config %}
+                    <div class="form-section">
+                        <h6><i class="fas fa-info-circle"></i> Información Actual de la Empresa</h6>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Nombre:</label>
+                                    <div class="p-2 bg-white border rounded">
+                                        {{ config.nombre|default:"No configurado" }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">RUC:</label>
+                                    <div class="p-2 bg-white border rounded">
+                                        {{ config.ruc|default:"No configurado" }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Teléfono:</label>
+                                    <div class="p-2 bg-white border rounded">
+                                        {{ config.telefono|default:"No configurado" }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Email:</label>
+                                    <div class="p-2 bg-white border rounded">
+                                        {{ config.email|default:"No configurado" }}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Moneda:</label>
+                                    <div class="p-2 bg-white border rounded">
+                                        {{ config.simbolo_moneda }} {{ config.moneda }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Dirección:</label>
+                                    <div class="p-2 bg-white border rounded">
+                                        {{ config.direccion|default:"No configurada" }}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% if config.logo %}
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Logo Actual:</label>
+                                    <div>
+                                        <img src="{{ config.logo.url }}" alt="Logo" class="logo-preview">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    <!-- Formulario de Edición -->
+                    <div class="form-section">
+                        <h6><i class="fas fa-edit"></i> Actualizar Configuración</h6>
+                        
+                        <form method="post" enctype="multipart/form-data">
+                            {% csrf_token %}
+                            
+                            <!-- Información Básica -->
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.nombre.id_for_label }}" class="form-label">
+                                            <i class="fas fa-building"></i> Nombre de la Empresa *
+                                        </label>
+                                        {{ form.nombre }}
+                                        {% if form.nombre.errors %}
+                                            <div class="text-danger small">
+                                                {% for error in form.nombre.errors %}
+                                                    <div>{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.ruc.id_for_label }}" class="form-label">
+                                            <i class="fas fa-id-card"></i> RUC *
+                                        </label>
+                                        {{ form.ruc }}
+                                        {% if form.ruc.errors %}
+                                            <div class="text-danger small">
+                                                {% for error in form.ruc.errors %}
+                                                    <div>{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.telefono.id_for_label }}" class="form-label">
+                                            <i class="fas fa-phone"></i> Teléfono
+                                        </label>
+                                        {{ form.telefono }}
+                                        {% if form.telefono.errors %}
+                                            <div class="text-danger small">
+                                                {% for error in form.telefono.errors %}
+                                                    <div>{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="{{ form.email.id_for_label }}" class="form-label">
+                                            <i class="fas fa-envelope"></i> Email
+                                        </label>
+                                        {{ form.email }}
+                                        {% if form.email.errors %}
+                                            <div class="text-danger small">
+                                                {% for error in form.email.errors %}
+                                                    <div>{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="mb-3">
+                                        <label for="{{ form.direccion.id_for_label }}" class="form-label">
+                                            <i class="fas fa-map-marker-alt"></i> Dirección
+                                        </label>
+                                        {{ form.direccion }}
+                                        {% if form.direccion.errors %}
+                                            <div class="text-danger small">
+                                                {% for error in form.direccion.errors %}
+                                                    <div>{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Logo -->
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="mb-3">
+                                        <label for="{{ form.logo.id_for_label }}" class="form-label">
+                                            <i class="fas fa-image"></i> Logo de la Empresa
+                                        </label>
+                                        {{ form.logo }}
+                                        <div class="form-text">
+                                            Formatos permitidos: JPG, PNG, GIF. Tamaño máximo: 2MB
+                                        </div>
+                                        {% if form.logo.errors %}
+                                            <div class="text-danger small">
+                                                {% for error in form.logo.errors %}
+                                                    <div>{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Configuración Monetaria -->
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="{{ form.moneda.id_for_label }}" class="form-label">
+                                            <i class="fas fa-money-bill"></i> Moneda
+                                        </label>
+                                        {{ form.moneda }}
+                                        {% if form.moneda.errors %}
+                                            <div class="text-danger small">
+                                                {% for error in form.moneda.errors %}
+                                                    <div>{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="{{ form.simbolo_moneda.id_for_label }}" class="form-label">
+                                            <i class="fas fa-dollar-sign"></i> Símbolo
+                                        </label>
+                                        {{ form.simbolo_moneda }}
+                                        {% if form.simbolo_moneda.errors %}
+                                            <div class="text-danger small">
+                                                {% for error in form.simbolo_moneda.errors %}
+                                                    <div>{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="mb-3">
+                                        <label for="{{ form.igv.id_for_label }}" class="form-label">
+                                            <i class="fas fa-percent"></i> IGV (%)
+                                        </label>
+                                        {{ form.igv }}
+                                        {% if form.igv.errors %}
+                                            <div class="text-danger small">
+                                                {% for error in form.igv.errors %}
+                                                    <div>{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Configuración de Facturación -->
+                            <div class="row">
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="{{ form.serie_factura.id_for_label }}" class="form-label">
+                                            <i class="fas fa-file-invoice"></i> Serie Factura
+                                        </label>
+                                        {{ form.serie_factura }}
+                                        {% if form.serie_factura.errors %}
+                                            <div class="text-danger small">
+                                                {% for error in form.serie_factura.errors %}
+                                                    <div>{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="{{ form.serie_boleta.id_for_label }}" class="form-label">
+                                            <i class="fas fa-receipt"></i> Serie Boleta
+                                        </label>
+                                        {{ form.serie_boleta }}
+                                        {% if form.serie_boleta.errors %}
+                                            <div class="text-danger small">
+                                                {% for error in form.serie_boleta.errors %}
+                                                    <div>{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="{{ form.correlativo_factura.id_for_label }}" class="form-label">
+                                            <i class="fas fa-hashtag"></i> Correlativo Factura
+                                        </label>
+                                        {{ form.correlativo_factura }}
+                                        {% if form.correlativo_factura.errors %}
+                                            <div class="text-danger small">
+                                                {% for error in form.correlativo_factura.errors %}
+                                                    <div>{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-3">
+                                    <div class="mb-3">
+                                        <label for="{{ form.correlativo_boleta.id_for_label }}" class="form-label">
+                                            <i class="fas fa-hashtag"></i> Correlativo Boleta
+                                        </label>
+                                        {{ form.correlativo_boleta }}
+                                        {% if form.correlativo_boleta.errors %}
+                                            <div class="text-danger small">
+                                                {% for error in form.correlativo_boleta.errors %}
+                                                    <div>{{ error }}</div>
+                                                {% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Botones -->
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-save"></i> Guardar Configuración
+                                        </button>
+                                        <a href="{% url 'usuarios:dashboard' %}" class="btn btn-secondary">
+                                            <i class="fas fa-arrow-left"></i> Volver al Dashboard
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Preview de imagen cuando se selecciona un archivo
+    const logoInput = document.getElementById('{{ form.logo.id_for_label }}');
+    if (logoInput) {
+        logoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // Crear o actualizar preview
+                    let preview = document.getElementById('logo-preview');
+                    if (!preview) {
+                        preview = document.createElement('img');
+                        preview.id = 'logo-preview';
+                        preview.className = 'logo-preview mt-2';
+                        logoInput.parentNode.appendChild(preview);
+                    }
+                    preview.src = e.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

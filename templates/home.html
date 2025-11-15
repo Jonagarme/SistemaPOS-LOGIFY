@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Bienvenido - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body text-center">
+                <h1 class="card-title">
+                    <i class="fas fa-cash-register fa-3x text-primary mb-3"></i>
+                    <br>
+                    Sistema POS
+                </h1>
+                <p class="card-text lead">
+                    Sistema completo de Punto de Venta para la gestión de tu negocio
+                </p>
+                <div class="d-grid gap-2">
+                    <a href="{% url 'usuarios:login' %}" class="btn btn-primary btn-lg">
+                        <i class="fas fa-sign-in-alt"></i> Iniciar Sesión
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mt-5">
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-shopping-cart fa-2x text-success mb-3"></i>
+                <h5 class="card-title">Ventas</h5>
+                <p class="card-text">Gestión completa de ventas con facturación y control de inventario</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-warehouse fa-2x text-warning mb-3"></i>
+                <h5 class="card-title">Inventario</h5>
+                <p class="card-text">Control de stock, kardex y gestión de productos y proveedores</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <i class="fas fa-chart-bar fa-2x text-info mb-3"></i>
+                <h5 class="card-title">Reportes</h5>
+                <p class="card-text">Reportes detallados de ventas, inventario y análisis financiero</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

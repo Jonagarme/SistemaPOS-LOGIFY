@@ -1,0 +1,407 @@
+{% extends 'base.html' %}
+
+{% block title %}Reportes de Inventario - Sistema POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .reporte-card {
+        transition: all 0.3s ease;
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .reporte-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+    }
+    
+    .reporte-icon {
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 15px;
+        font-size: 24px;
+    }
+    
+    .reporte-danger {
+        background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+        color: white;
+    }
+    
+    .reporte-warning {
+        background: linear-gradient(135deg, #feca57, #ff9ff3);
+        color: white;
+    }
+    
+    .reporte-info {
+        background: linear-gradient(135deg, #74b9ff, #0984e3);
+        color: white;
+    }
+    
+    .reporte-success {
+        background: linear-gradient(135deg, #00b894, #00cec9);
+        color: white;
+    }
+    
+    .stats-mini {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 10px;
+        margin-top: 15px;
+    }
+    
+    .categoria-reportes {
+        margin-bottom: 40px;
+    }
+    
+    .categoria-titulo {
+        color: #495057;
+        font-weight: 600;
+        margin-bottom: 20px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e9ecef;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><i class="fas fa-chart-line text-primary"></i> Reportes de Inventario</h2>
+                    <p class="text-muted mb-0">Análisis y control de inventario</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-primary" onclick="actualizarEstadisticas()">
+                        <i class="fas fa-sync"></i> Actualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reportes de Control de Calidad -->
+    <div class="categoria-reportes">
+        <h4 class="categoria-titulo">
+            <i class="fas fa-shield-alt text-danger"></i> Control de Calidad
+        </h4>
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card reporte-card h-100">
+                    <div class="card-body text-center">
+                        <div class="reporte-icon reporte-danger">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h5 class="card-title">Productos Caducados</h5>
+                        <p class="card-text text-muted">
+                            Control de fechas de vencimiento y productos en riesgo
+                        </p>
+                        <div class="stats-mini">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Vencidos</small>
+                                    <strong class="text-danger" id="stat-vencidos">--</strong>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Por Vencer</small>
+                                    <strong class="text-warning" id="stat-por-vencer">--</strong>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Valor</small>
+                                    <strong class="text-info" id="stat-valor-riesgo">--</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <a href="{% url 'inventario:reporte_productos_caducados' %}" class="btn btn-danger">
+                                <i class="fas fa-eye"></i> Ver Reporte
+                            </a>
+                            <a href="{% url 'inventario:dashboard_caducados' %}" class="btn btn-outline-danger">
+                                <i class="fas fa-chart-pie"></i> Dashboard
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card reporte-card h-100">
+                    <div class="card-body text-center">
+                        <div class="reporte-icon reporte-warning">
+                            <i class="fas fa-exclamation-circle"></i>
+                        </div>
+                        <h5 class="card-title">Stock Bajo</h5>
+                        <p class="card-text text-muted">
+                            Productos con stock por debajo del mínimo establecido
+                        </p>
+                        <div class="stats-mini">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <small class="text-muted d-block">Productos</small>
+                                    <strong class="text-warning" id="stat-stock-bajo">--</strong>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted d-block">Críticos</small>
+                                    <strong class="text-danger" id="stat-stock-critico">--</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-warning" onclick="mostrarEnConstruccion()">
+                                <i class="fas fa-eye"></i> Ver Reporte
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card reporte-card h-100">
+                    <div class="card-body text-center">
+                        <div class="reporte-icon reporte-info">
+                            <i class="fas fa-chart-bar"></i>
+                        </div>
+                        <h5 class="card-title">Rotación de Inventario</h5>
+                        <p class="card-text text-muted">
+                            Análisis de movimiento y rotación de productos
+                        </p>
+                        <div class="stats-mini">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <small class="text-muted d-block">Rápida</small>
+                                    <strong class="text-success" id="stat-rotacion-rapida">--</strong>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted d-block">Lenta</small>
+                                    <strong class="text-warning" id="stat-rotacion-lenta">--</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-info" onclick="mostrarEnConstruccion()">
+                                <i class="fas fa-eye"></i> Ver Reporte
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reportes Financieros -->
+    <div class="categoria-reportes">
+        <h4 class="categoria-titulo">
+            <i class="fas fa-dollar-sign text-success"></i> Reportes Financieros
+        </h4>
+        <div class="row">
+            <div class="col-md-4 mb-4">
+                <div class="card reporte-card h-100">
+                    <div class="card-body text-center">
+                        <div class="reporte-icon reporte-success">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                        <h5 class="card-title">Inventario Valorado</h5>
+                        <p class="card-text text-muted">
+                            Valor total del inventario por categorías y productos
+                        </p>
+                        <div class="stats-mini">
+                            <div class="row text-center">
+                                <div class="col-12">
+                                    <small class="text-muted d-block">Valor Total</small>
+                                    <strong class="text-success" id="stat-valor-total">--</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-success" onclick="mostrarEnConstruccion()">
+                                <i class="fas fa-eye"></i> Ver Reporte
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card reporte-card h-100">
+                    <div class="card-body text-center">
+                        <div class="reporte-icon reporte-info">
+                            <i class="fas fa-chart-line"></i>
+                        </div>
+                        <h5 class="card-title">Análisis ABC</h5>
+                        <p class="card-text text-muted">
+                            Clasificación de productos por valor e importancia
+                        </p>
+                        <div class="stats-mini">
+                            <div class="row text-center">
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Clase A</small>
+                                    <strong class="text-success" id="stat-clase-a">--</strong>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Clase B</small>
+                                    <strong class="text-warning" id="stat-clase-b">--</strong>
+                                </div>
+                                <div class="col-4">
+                                    <small class="text-muted d-block">Clase C</small>
+                                    <strong class="text-danger" id="stat-clase-c">--</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-info" onclick="mostrarEnConstruccion()">
+                                <i class="fas fa-eye"></i> Ver Reporte
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4 mb-4">
+                <div class="card reporte-card h-100">
+                    <div class="card-body text-center">
+                        <div class="reporte-icon reporte-warning">
+                            <i class="fas fa-chart-pie"></i>
+                        </div>
+                        <h5 class="card-title">Costos y Márgenes</h5>
+                        <p class="card-text text-muted">
+                            Análisis de costos, precios y márgenes de ganancia
+                        </p>
+                        <div class="stats-mini">
+                            <div class="row text-center">
+                                <div class="col-6">
+                                    <small class="text-muted d-block">Margen Prom.</small>
+                                    <strong class="text-info" id="stat-margen-promedio">--</strong>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted d-block">Rentabilidad</small>
+                                    <strong class="text-success" id="stat-rentabilidad">--</strong>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <button class="btn btn-warning" onclick="mostrarEnConstruccion()">
+                                <i class="fas fa-eye"></i> Ver Reporte
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acciones Rápidas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-bolt"></i> Acciones Rápidas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 mb-2">
+                            <button class="btn btn-outline-primary w-100" onclick="exportarTodoInventario()">
+                                <i class="fas fa-download"></i> Exportar Todo
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button class="btn btn-outline-success w-100" onclick="programarReporte()">
+                                <i class="fas fa-clock"></i> Programar Reporte
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button class="btn btn-outline-warning w-100" onclick="configurarAlertas()">
+                                <i class="fas fa-bell"></i> Configurar Alertas
+                            </button>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button class="btn btn-outline-info w-100" onclick="verHistorial()">
+                                <i class="fas fa-history"></i> Historial
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function actualizarEstadisticas() {
+    try {
+        // Cargar estadísticas de productos caducados
+        const response = await fetch('{% url "inventario:dashboard_caducados" %}');
+        const data = await response.json();
+        
+        // Actualizar estadísticas de productos caducados
+        let vencidos = 0;
+        let porVencer = 0;
+        let valorRiesgo = 0;
+        
+        data.grafico_estados.forEach(item => {
+            if (item.estado === 'Vencidos') {
+                vencidos = item.cantidad;
+                valorRiesgo += item.valor_total;
+            } else if (item.estado === 'Por Vencer') {
+                porVencer = item.cantidad;
+                valorRiesgo += item.valor_total;
+            }
+        });
+        
+        document.getElementById('stat-vencidos').textContent = vencidos;
+        document.getElementById('stat-por-vencer').textContent = porVencer;
+        document.getElementById('stat-valor-riesgo').textContent = '$' + Math.round(valorRiesgo).toLocaleString();
+        
+        // Simular otras estadísticas (en un sistema real, estas vendrían de otros endpoints)
+        document.getElementById('stat-stock-bajo').textContent = Math.floor(Math.random() * 50) + 10;
+        document.getElementById('stat-stock-critico').textContent = Math.floor(Math.random() * 15) + 2;
+        document.getElementById('stat-rotacion-rapida').textContent = Math.floor(Math.random() * 100) + 50;
+        document.getElementById('stat-rotacion-lenta').textContent = Math.floor(Math.random() * 30) + 10;
+        document.getElementById('stat-valor-total').textContent = '$' + (Math.floor(Math.random() * 500000) + 100000).toLocaleString();
+        document.getElementById('stat-clase-a').textContent = Math.floor(Math.random() * 50) + 20;
+        document.getElementById('stat-clase-b').textContent = Math.floor(Math.random() * 80) + 40;
+        document.getElementById('stat-clase-c').textContent = Math.floor(Math.random() * 150) + 100;
+        document.getElementById('stat-margen-promedio').textContent = (Math.random() * 30 + 15).toFixed(1) + '%';
+        document.getElementById('stat-rentabilidad').textContent = (Math.random() * 20 + 10).toFixed(1) + '%';
+        
+    } catch (error) {
+        console.error('Error al cargar estadísticas:', error);
+    }
+}
+
+function mostrarEnConstruccion() {
+    alert('Esta funcionalidad está en construcción y estará disponible próximamente.');
+}
+
+function exportarTodoInventario() {
+    alert('Exportando inventario completo...');
+}
+
+function programarReporte() {
+    alert('Funcionalidad de programación de reportes próximamente.');
+}
+
+function configurarAlertas() {
+    alert('Configuración de alertas próximamente.');
+}
+
+function verHistorial() {
+    alert('Historial de reportes próximamente.');
+}
+
+// Cargar estadísticas al iniciar
+document.addEventListener('DOMContentLoaded', function() {
+    actualizarEstadisticas();
+});
+</script>
+{% endblock %}

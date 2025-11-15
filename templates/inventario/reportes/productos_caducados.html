@@ -1,0 +1,700 @@
+{% extends 'base.html' %}
+
+{% block title %}Reporte de Productos Caducados - Sistema POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-stats {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+        transition: transform 0.3s ease;
+    }
+    
+    .card-stats:hover {
+        transform: translateY(-5px);
+    }
+    
+    .stat-number {
+        font-size: 2rem;
+        font-weight: bold;
+        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    }
+    
+    .stat-label {
+        opacity: 0.9;
+        font-size: 0.9em;
+    }
+    
+    .card-danger {
+        border-left: 4px solid #dc3545;
+    }
+    
+    .card-warning {
+        border-left: 4px solid #ffc107;
+    }
+    
+    .card-info {
+        border-left: 4px solid #17a2b8;
+    }
+    
+    .card-success {
+        border-left: 4px solid #28a745;
+    }
+    
+    .prioridad-alta {
+        background-color: #f8d7da;
+    }
+    
+    .prioridad-media {
+        background-color: #fff3cd;
+    }
+    
+    .prioridad-baja {
+        background-color: #d1ecf1;
+    }
+    
+    .table-productos {
+        font-size: 0.9em;
+    }
+    
+    .filtros-panel {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    
+    .badge-estado {
+        font-size: 0.8em;
+        padding: 4px 8px;
+    }
+    
+    .dias-restantes {
+        font-weight: bold;
+    }
+    
+    .dias-negativos {
+        color: #dc3545;
+    }
+    
+    .dias-criticos {
+        color: #fd7e14;
+    }
+    
+    .dias-normales {
+        color: #28a745;
+    }
+    
+    .loading-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    
+    /* Estilos mejorados para el grid */
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    }
+    
+    .table-productos thead th {
+        border: none;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
+    
+    .table-productos tbody tr {
+        transition: all 0.2s ease;
+    }
+    
+    .table-productos tbody tr:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .table-productos code {
+        font-size: 0.85rem;
+        font-weight: 600;
+    }
+    
+    .btn-group-sm .btn {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .sticky-top {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .pagination .page-link {
+        color: #667eea;
+        border: 1px solid #dee2e6;
+    }
+    
+    .pagination .page-item.active .page-link {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+    
+    .pagination .page-link:hover {
+        color: #5a67d8;
+        background-color: #f8f9fc;
+    }
+    
+    .badge {
+        font-size: 0.75rem;
+        font-weight: 600;
+    }
+    
+    .text-truncate {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        
+        .card {
+            border: 1px solid #ddd !important;
+            page-break-inside: avoid;
+        }
+        
+        .table {
+            font-size: 0.8em;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><i class="fas fa-exclamation-triangle text-warning"></i> Reporte de Productos Caducados</h2>
+                    <p class="text-muted mb-0">Control de vencimientos y gestión de pérdidas</p>
+                </div>
+                <div class="no-print">
+                    <button class="btn btn-success" onclick="exportarReporte()">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </button>
+                    <button class="btn btn-secondary" onclick="window.print()">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Filtros -->
+    <div class="row no-print">
+        <div class="col-12">
+            <div class="filtros-panel">
+                <h5><i class="fas fa-filter"></i> Filtros de Búsqueda</h5>
+                <form id="form-filtros" method="GET">
+                    <div class="row">
+                        <div class="col-md-2">
+                            <label for="dias" class="form-label">Días de Anticipación</label>
+                            <select class="form-select" id="dias" name="dias">
+                                <option value="7" {% if dias_anticipacion == 7 %}selected{% endif %}>7 días</option>
+                                <option value="15" {% if dias_anticipacion == 15 %}selected{% endif %}>15 días</option>
+                                <option value="30" {% if dias_anticipacion == 30 %}selected{% endif %}>30 días</option>
+                                <option value="60" {% if dias_anticipacion == 60 %}selected{% endif %}>60 días</option>
+                                <option value="90" {% if dias_anticipacion == 90 %}selected{% endif %}>90 días</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="estado" class="form-label">Estado del Producto</label>
+                            <select class="form-select" id="estado" name="estado">
+                                <option value="todos" {% if filtro_estado == 'todos' %}selected{% endif %}>Todos</option>
+                                <option value="vencidos" {% if filtro_estado == 'vencidos' %}selected{% endif %}>Solo Vencidos</option>
+                                <option value="por_vencer" {% if filtro_estado == 'por_vencer' %}selected{% endif %}>Por Vencer</option>
+                                <option value="vigentes" {% if filtro_estado == 'vigentes' %}selected{% endif %}>Vigentes</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="laboratorio" class="form-label">Laboratorio/Marca</label>
+                            <select class="form-select" id="laboratorio" name="laboratorio">
+                                <option value="todos" {% if filtro_laboratorio == 'todos' %}selected{% endif %}>Todos los laboratorios</option>
+                                {% for lab_id, lab_nombre in laboratorios_disponibles %}
+                                    <option value="{{ lab_id }}" {% if filtro_laboratorio == lab_id|stringformat:"s" %}selected{% endif %}>
+                                        {{ lab_nombre }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Opciones</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="sin_fecha" name="sin_fecha" value="si" {% if incluir_sin_fecha %}checked{% endif %}>
+                                <label class="form-check-label" for="sin_fecha">
+                                    Incluir productos sin fecha
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <div>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i> Filtrar
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="limpiarFiltros()">
+                                    <i class="fas fa-times"></i> Limpiar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card card-stats card-danger">
+                <div class="card-body text-center">
+                    <div class="stat-number">{{ estadisticas.productos_vencidos }}</div>
+                    <div class="stat-label">Productos Vencidos</div>
+                    <small>Valor: ${{ estadisticas.valor_total_vencidos|floatformat:2 }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-stats card-warning">
+                <div class="card-body text-center">
+                    <div class="stat-number">{{ estadisticas.productos_por_vencer }}</div>
+                    <div class="stat-label">Por Vencer</div>
+                    <small>Valor: ${{ estadisticas.valor_total_por_vencer|floatformat:2 }}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-stats card-info">
+                <div class="card-body text-center">
+                    <div class="stat-number">{{ estadisticas.total_productos }}</div>
+                    <div class="stat-label">Total Productos</div>
+                    <small>En el reporte</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card card-stats card-success">
+                <div class="card-body text-center">
+                    <div class="stat-number">${{ estadisticas.perdida_total_estimada|floatformat:2 }}</div>
+                    <div class="stat-label">Pérdida Estimada</div>
+                    <small>Total en riesgo</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alertas -->
+    {% if estadisticas.productos_vencidos > 0 %}
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="alert alert-danger" role="alert">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>¡Atención!</strong> Tienes {{ estadisticas.productos_vencidos }} producto{{ estadisticas.productos_vencidos|pluralize }} vencido{{ estadisticas.productos_vencidos|pluralize }} con un valor de ${{ estadisticas.valor_total_vencidos|floatformat:2 }}.
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Tabla de Productos -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-gradient-primary text-white d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-0">
+                            <i class="fas fa-table"></i> 
+                            Detalle de Productos
+                            <span class="badge bg-light text-dark ms-2">{{ productos.paginator.count }} producto{{ productos.paginator.count|pluralize }}</span>
+                        </h5>
+                        <small class="opacity-75">
+                            Mostrando {{ productos.start_index }} - {{ productos.end_index }} de {{ productos.paginator.count }} productos
+                        </small>
+                    </div>
+                    <div class="no-print">
+                        <div class="btn-group">
+                            <button class="btn btn-light btn-sm" onclick="toggleDetalles()">
+                                <i class="fas fa-eye"></i> Detalles
+                            </button>
+                            <button class="btn btn-light btn-sm" onclick="exportarExcel()">
+                                <i class="fas fa-file-excel"></i> Excel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Controles de Paginación Superior -->
+                <div class="card-body p-3 border-bottom no-print">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <div class="d-flex align-items-center">
+                                <label class="form-label me-2 mb-0">Mostrar:</label>
+                                <select class="form-select form-select-sm" style="width: auto;" onchange="cambiarItemsPorPagina(this.value)">
+                                    <option value="10" {% if items_per_page == 10 %}selected{% endif %}>10</option>
+                                    <option value="25" {% if items_per_page == 25 %}selected{% endif %}>25</option>
+                                    <option value="50" {% if items_per_page == 50 %}selected{% endif %}>50</option>
+                                    <option value="100" {% if items_per_page == 100 %}selected{% endif %}>100</option>
+                                </select>
+                                <span class="ms-2 text-muted">elementos por página</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="d-flex justify-content-end">
+                                <div class="input-group" style="max-width: 300px;">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    <input type="text" class="form-control" placeholder="Buscar en tabla..." id="search-table" onkeyup="filtrarTabla()">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body p-0 position-relative">
+                    <div class="loading-overlay" id="loading-overlay">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                    </div>
+                    
+                    {% if productos %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover mb-0 table-productos" id="tabla-productos">
+                            <thead class="table-dark sticky-top">
+                                <tr>
+                                    <th class="text-center" style="width: 50px;">
+                                        <i class="fas fa-exclamation-circle" title="Prioridad"></i>
+                                    </th>
+                                    <th style="min-width: 100px;">Código</th>
+                                    <th style="min-width: 200px;">Producto</th>
+                                    <th style="min-width: 120px;">Categoría</th>
+                                    <th class="text-center" style="width: 80px;">Stock</th>
+                                    <th class="text-center" style="min-width: 110px;">F. Vencimiento</th>
+                                    <th class="text-center" style="min-width: 120px;">Días Restantes</th>
+                                    <th class="text-center" style="width: 100px;">Estado</th>
+                                    <th class="detalles-col text-end" style="min-width: 100px;">Costo Unit.</th>
+                                    <th class="detalles-col text-end" style="min-width: 100px;">Precio Unit.</th>
+                                    <th class="detalles-col text-end" style="min-width: 120px;">Valor Total</th>
+                                    <th class="detalles-col text-end" style="min-width: 120px;">Pérdida Pot.</th>
+                                    <th class="no-print text-center" style="width: 120px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for producto in productos %}
+                                <tr class="{{ producto.clase_css }} align-middle">
+                                    <td class="text-center">
+                                        <i class="{{ producto.icono }}" title="{{ producto.prioridad }} prioridad"></i>
+                                    </td>
+                                    <td>
+                                        <code class="bg-light p-1 rounded">{{ producto.codigo }}</code>
+                                    </td>
+                                    <td>
+                                        <div class="d-flex flex-column">
+                                            <span class="fw-bold text-truncate" style="max-width: 200px;" title="{{ producto.nombre }}">
+                                                {{ producto.nombre }}
+                                            </span>
+                                            <small class="text-muted">
+                                                <i class="fas fa-flask"></i> {{ producto.laboratorio }}
+                                            </small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary bg-opacity-25 text-dark">{{ producto.categoria }}</span>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge {% if producto.stock < 10 %}bg-danger{% elif producto.stock < 50 %}bg-warning{% else %}bg-success{% endif %}">
+                                            {{ producto.stock|floatformat:0 }}
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        {% if producto.fecha_vencimiento %}
+                                            <span class="fw-bold">{{ producto.fecha_vencimiento|date:"d/m/Y" }}</span>
+                                        {% else %}
+                                            <span class="text-muted">Sin fecha</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if producto.dias_restantes is not None %}
+                                            <span class="badge {% if producto.dias_restantes < 0 %}bg-danger{% elif producto.dias_restantes <= 7 %}bg-warning{% else %}bg-success{% endif %}">
+                                                {% if producto.dias_restantes < 0 %}
+                                                    <i class="fas fa-exclamation-triangle"></i> {{ producto.dias_restantes_abs }} días vencido
+                                                {% elif producto.dias_restantes == 0 %}
+                                                    <i class="fas fa-clock"></i> Vence hoy
+                                                {% else %}
+                                                    <i class="fas fa-calendar-alt"></i> {{ producto.dias_restantes }} días
+                                                {% endif %}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if producto.estado == 'vencido' %}
+                                            <span class="badge bg-danger">
+                                                <i class="fas fa-times-circle"></i> Vencido
+                                            </span>
+                                        {% elif producto.estado == 'por_vencer' %}
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fas fa-exclamation-triangle"></i> Por Vencer
+                                            </span>
+                                        {% elif producto.estado == 'vigente' %}
+                                            <span class="badge bg-success">
+                                                <i class="fas fa-check-circle"></i> Vigente
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Sin Fecha</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="detalles-col text-end">
+                                        <span class="fw-bold">${{ producto.costo_unitario|floatformat:2 }}</span>
+                                    </td>
+                                    <td class="detalles-col text-end">
+                                        <span class="fw-bold text-success">${{ producto.precio_unitario|floatformat:2 }}</span>
+                                    </td>
+                                    <td class="detalles-col text-end">
+                                        <span class="fw-bold text-primary">${{ producto.costo_total|floatformat:2 }}</span>
+                                    </td>
+                                    <td class="detalles-col text-end">
+                                        <span class="fw-bold text-danger">-${{ producto.perdida_potencial|floatformat:2 }}</span>
+                                    </td>
+                                    <td class="no-print text-center">
+                                        <div class="btn-group btn-group-sm">
+                                            <button class="btn btn-outline-primary" onclick="verProducto({{ producto.id }})" title="Ver Producto">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                            <button class="btn btn-outline-warning" onclick="editarProducto({{ producto.id }})" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">No se encontraron productos</h5>
+                        <p class="text-muted">Intenta ajustar los filtros de búsqueda</p>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Paginación Inferior -->
+                {% if productos.has_other_pages %}
+                <div class="card-footer bg-light">
+                    <nav aria-label="Paginación de productos">
+                        <ul class="pagination pagination-sm justify-content-center mb-0">
+                            {% if productos.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if request.GET.dias %}dias={{ request.GET.dias }}&{% endif %}{% if request.GET.estado %}estado={{ request.GET.estado }}&{% endif %}{% if request.GET.laboratorio %}laboratorio={{ request.GET.laboratorio }}&{% endif %}{% if request.GET.sin_fecha %}sin_fecha={{ request.GET.sin_fecha }}&{% endif %}items={{ items_per_page }}&page=1">
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if request.GET.dias %}dias={{ request.GET.dias }}&{% endif %}{% if request.GET.estado %}estado={{ request.GET.estado }}&{% endif %}{% if request.GET.laboratorio %}laboratorio={{ request.GET.laboratorio }}&{% endif %}{% if request.GET.sin_fecha %}sin_fecha={{ request.GET.sin_fecha }}&{% endif %}items={{ items_per_page }}&page={{ productos.previous_page_number }}">
+                                        <i class="fas fa-angle-left"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for num in productos.paginator.page_range %}
+                                {% if productos.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > productos.number|add:'-3' and num < productos.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?{% if request.GET.dias %}dias={{ request.GET.dias }}&{% endif %}{% if request.GET.estado %}estado={{ request.GET.estado }}&{% endif %}{% if request.GET.laboratorio %}laboratorio={{ request.GET.laboratorio }}&{% endif %}{% if request.GET.sin_fecha %}sin_fecha={{ request.GET.sin_fecha }}&{% endif %}items={{ items_per_page }}&page={{ num }}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if productos.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if request.GET.dias %}dias={{ request.GET.dias }}&{% endif %}{% if request.GET.estado %}estado={{ request.GET.estado }}&{% endif %}{% if request.GET.laboratorio %}laboratorio={{ request.GET.laboratorio }}&{% endif %}{% if request.GET.sin_fecha %}sin_fecha={{ request.GET.sin_fecha }}&{% endif %}items={{ items_per_page }}&page={{ productos.next_page_number }}">
+                                        <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?{% if request.GET.dias %}dias={{ request.GET.dias }}&{% endif %}{% if request.GET.estado %}estado={{ request.GET.estado }}&{% endif %}{% if request.GET.laboratorio %}laboratorio={{ request.GET.laboratorio }}&{% endif %}{% if request.GET.sin_fecha %}sin_fecha={{ request.GET.sin_fecha }}&{% endif %}items={{ items_per_page }}&page={{ productos.paginator.num_pages }}">
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                        
+                        <div class="d-flex justify-content-between align-items-center mt-2">
+                            <small class="text-muted">
+                                Página {{ productos.number }} de {{ productos.paginator.num_pages }} 
+                                ({{ productos.paginator.count }} productos total)
+                            </small>
+                            <div class="no-print">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="irAPagina()">
+                                    <i class="fas fa-search"></i> Ir a página
+                                </button>
+                            </div>
+                        </div>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen Final -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body">
+                    <h6><i class="fas fa-info-circle"></i> Resumen del Reporte</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><strong>Fecha de generación:</strong> {{ fecha_actual_con_hora|date:"d/m/Y H:i" }}</li>
+                                <li><strong>Criterio de búsqueda:</strong> {{ dias_anticipacion }} días de anticipación</li>
+                                {% if filtro_laboratorio != 'todos' %}
+                                    <li><strong>Laboratorio filtrado:</strong> 
+                                        {% for lab_id, lab_nombre in laboratorios_disponibles %}
+                                            {% if lab_id|stringformat:"s" == filtro_laboratorio %}
+                                                {{ lab_nombre }}
+                                            {% endif %}
+                                        {% endfor %}
+                                    </li>
+                                {% endif %}
+                                <li><strong>Total de productos revisados:</strong> {{ estadisticas.total_productos }}</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="list-unstyled">
+                                <li><strong>Productos vencidos:</strong> {{ estadisticas.productos_vencidos }}</li>
+                                <li><strong>Productos por vencer:</strong> {{ estadisticas.productos_por_vencer }}</li>
+                                <li><strong>Pérdida estimada total:</strong> ${{ estadisticas.perdida_total_estimada|floatformat:2 }}</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function exportarReporte() {
+    const params = new URLSearchParams(window.location.search);
+    params.set('export', 'csv');
+    window.location.href = '{% url "inventario:export_productos_caducados" %}?' + params.toString();
+}
+
+function limpiarFiltros() {
+    window.location.href = '{% url "inventario:reporte_productos_caducados" %}';
+}
+
+function toggleDetalles() {
+    const cols = document.querySelectorAll('.detalles-col');
+    cols.forEach(col => {
+        col.style.display = col.style.display === 'none' ? '' : 'none';
+    });
+}
+
+function verProducto(id) {
+    // Aquí puedes implementar la lógica para ver detalles del producto
+    alert('Ver producto ID: ' + id);
+}
+
+function editarProducto(id) {
+    // Aquí puedes implementar la lógica para editar el producto
+    window.open('/productos/editar/' + id + '/', '_blank');
+}
+
+function marcarDescarte(id) {
+    if (confirm('¿Estás seguro de marcar este producto para descarte?')) {
+        // Aquí puedes implementar la lógica para marcar descarte
+        alert('Producto marcado para descarte');
+    }
+}
+
+function cambiarItemsPorPagina(items) {
+    const url = new URL(window.location);
+    url.searchParams.set('items', items);
+    url.searchParams.set('page', 1); // Resetear a la primera página
+    window.location.href = url.toString();
+}
+
+function filtrarTabla() {
+    const input = document.getElementById('search-table');
+    const filter = input.value.toLowerCase();
+    const table = document.getElementById('tabla-productos');
+    const rows = table.getElementsByTagName('tbody')[0].getElementsByTagName('tr');
+
+    for (let i = 0; i < rows.length; i++) {
+        const cells = rows[i].getElementsByTagName('td');
+        let found = false;
+        
+        for (let j = 0; j < cells.length; j++) {
+            const cell = cells[j];
+            if (cell.textContent.toLowerCase().indexOf(filter) > -1) {
+                found = true;
+                break;
+            }
+        }
+        
+        rows[i].style.display = found ? '' : 'none';
+    }
+}
+
+function irAPagina() {
+    const totalPages = {{ productos.paginator.num_pages }};
+    const page = prompt(`Ir a página (1-${totalPages}):`);
+    
+    if (page && !isNaN(page) && page >= 1 && page <= totalPages) {
+        const url = new URL(window.location);
+        url.searchParams.set('page', page);
+        window.location.href = url.toString();
+    }
+}
+
+function exportarExcel() {
+    const url = new URL(window.location);
+    url.pathname = '/inventario/reportes/productos-caducados/export/';
+    window.open(url.toString(), '_blank');
+}
+
+// Auto-submit del formulario cuando cambian los filtros
+document.getElementById('form-filtros').addEventListener('change', function() {
+    const loadingOverlay = document.getElementById('loading-overlay');
+    if (loadingOverlay) {
+        loadingOverlay.style.display = 'flex';
+    }
+    this.submit();
+});
+
+// Ocultar columnas de detalles en móviles
+if (window.innerWidth < 768) {
+    toggleDetalles();
+}
+</script>
+{% endblock %}

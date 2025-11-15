@@ -1,0 +1,196 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso prohibido - Sistema POS</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .error-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 3rem;
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+        }
+        .error-code {
+            font-size: 8rem;
+            font-weight: bold;
+            color: #fd7e14;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+            margin: 0;
+            line-height: 1;
+        }
+        .error-icon {
+            font-size: 4rem;
+            color: #fd7e14;
+            margin-bottom: 1rem;
+        }
+        .error-title {
+            font-size: 2rem;
+            color: #333;
+            margin: 1rem 0;
+            font-weight: 600;
+        }
+        .error-message {
+            color: #666;
+            font-size: 1.1rem;
+            margin-bottom: 2rem;
+            line-height: 1.6;
+        }
+        .btn-home {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.3s ease;
+            margin: 0 10px;
+        }
+        .btn-home:hover {
+            transform: translateY(-2px);
+            color: white;
+            text-decoration: none;
+        }
+        .btn-back {
+            background: #6c757d;
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.3s ease;
+            margin: 0 10px;
+        }
+        .btn-back:hover {
+            transform: translateY(-2px);
+            color: white;
+            text-decoration: none;
+            background: #5a6268;
+        }
+        .suggestions {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin: 2rem 0;
+            text-align: left;
+        }
+        .suggestions h5 {
+            color: #333;
+            margin-bottom: 1rem;
+            font-weight: 600;
+        }
+        .suggestions ul {
+            margin: 0;
+            padding-left: 1.5rem;
+        }
+        .suggestions li {
+            margin-bottom: 0.5rem;
+            color: #666;
+        }
+        .floating-shapes {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        .shape {
+            position: absolute;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            animation: float 6s ease-in-out infinite;
+        }
+        .shape:nth-child(1) {
+            width: 60px;
+            height: 60px;
+            top: 20%;
+            left: 10%;
+            animation-delay: 0s;
+        }
+        .shape:nth-child(2) {
+            width: 40px;
+            height: 40px;
+            top: 60%;
+            right: 15%;
+            animation-delay: 2s;
+        }
+        .shape:nth-child(3) {
+            width: 80px;
+            height: 80px;
+            bottom: 20%;
+            left: 20%;
+            animation-delay: 4s;
+        }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="floating-shapes">
+        <div class="shape"></div>
+        <div class="shape"></div>
+        <div class="shape"></div>
+    </div>
+
+    <div class="error-container">
+        <div class="error-icon">
+            <i class="fas fa-ban"></i>
+        </div>
+        <h1 class="error-code">403</h1>
+        <h2 class="error-title">Acceso prohibido</h2>
+        <p class="error-message">
+            No tienes permisos para acceder a esta página o recurso. 
+            Contacta al administrador si crees que deberías tener acceso.
+        </p>
+
+        <div class="suggestions">
+            <h5><i class="fas fa-key text-warning"></i> Posibles causas:</h5>
+            <ul>
+                <li>No tienes los permisos necesarios para esta sección</li>
+                <li>Tu sesión de usuario ha expirado</li>
+                <li>Estás intentando acceder a una área restringida</li>
+                <li>Necesitas autenticarte con credenciales válidas</li>
+            </ul>
+        </div>
+
+        <div class="mt-4">
+            <a href="/" class="btn-home">
+                <i class="fas fa-home"></i> Ir al Inicio
+            </a>
+            <a href="javascript:history.back()" class="btn-back">
+                <i class="fas fa-arrow-left"></i> Regresar
+            </a>
+        </div>
+
+        <div class="mt-4">
+            <small class="text-muted">
+                <i class="fas fa-shield-alt"></i> Sistema POS - Error 403
+            </small>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

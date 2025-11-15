@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Estadísticas del Sistema{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<style>
+    .stat-card {
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+    }
+    .stat-number {
+        font-size: 2.5rem;
+        font-weight: bold;
+        color: #5a5c69;
+    }
+    .stat-label {
+        font-size: 0.875rem;
+        color: #858796;
+        text-transform: uppercase;
+        font-weight: 600;
+    }
+    .stat-icon {
+        font-size: 2rem;
+        opacity: 0.7;
+    }
+    .bg-gradient-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    }
+    .bg-gradient-success {
+        background: linear-gradient(135deg, #56ab2f 0%, #a8e6cf 100%);
+    }
+    .bg-gradient-warning {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    }
+    .bg-gradient-info {
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-chart-line text-primary"></i>
+                        {{ titulo }}
+                    </h1>
+                    <p class="text-muted">Resumen estadístico del sistema - {{ fecha_reporte|date:"d/m/Y H:i" }}</p>
+                </div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'usuarios:dashboard' %}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'reportes:dashboard' %}">Reportes</a></li>
+                        <li class="breadcrumb-item active">Estadísticas</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas principales -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card bg-gradient-primary text-white">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="stat-label text-white-50 mb-1">
+                                Total Productos
+                            </div>
+                            <div class="stat-number text-white">{{ total_productos|default:0 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-pills stat-icon text-white-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card bg-gradient-success text-white">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="stat-label text-white-50 mb-1">
+                                Total Clientes
+                            </div>
+                            <div class="stat-number text-white">{{ total_clientes|default:0 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users stat-icon text-white-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card bg-gradient-warning text-white">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="stat-label text-white-50 mb-1">
+                                Total Proveedores
+                            </div>
+                            <div class="stat-number text-white">{{ total_proveedores|default:0 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-truck stat-icon text-white-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card bg-gradient-info text-white">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="stat-label text-white-50 mb-1">
+                                Stock Bajo
+                            </div>
+                            <div class="stat-number text-white">{{ productos_stock_bajo|default:0 }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-exclamation-triangle stat-icon text-white-50"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información detallada -->
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Resumen del Sistema
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-borderless">
+                            <tbody>
+                                <tr>
+                                    <td><i class="fas fa-pills text-primary me-2"></i>Productos Activos:</td>
+                                    <td class="text-end"><strong>{{ total_productos|default:0 }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-users text-success me-2"></i>Clientes Registrados:</td>
+                                    <td class="text-end"><strong>{{ total_clientes|default:0 }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-truck text-warning me-2"></i>Proveedores Activos:</td>
+                                    <td class="text-end"><strong>{{ total_proveedores|default:0 }}</strong></td>
+                                </tr>
+                                <tr class="border-top">
+                                    <td><i class="fas fa-exclamation-triangle text-danger me-2"></i>Productos con Stock Bajo:</td>
+                                    <td class="text-end"><strong class="text-danger">{{ productos_stock_bajo|default:0 }}</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-download me-2"></i>
+                        Acciones Rápidas
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'reportes:exportar_productos' %}?formato=csv" class="btn btn-outline-primary">
+                            <i class="fas fa-file-csv me-2"></i>
+                            Exportar Productos (CSV)
+                        </a>
+                        <a href="{% url 'reportes:exportar_clientes' %}?formato=csv" class="btn btn-outline-success">
+                            <i class="fas fa-file-csv me-2"></i>
+                            Exportar Clientes (CSV)
+                        </a>
+                        <a href="{% url 'reportes:exportar_proveedores' %}?formato=csv" class="btn btn-outline-warning">
+                            <i class="fas fa-file-csv me-2"></i>
+                            Exportar Proveedores (CSV)
+                        </a>
+                        <hr>
+                        <a href="{% url 'reportes:dashboard' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>
+                            Volver a Reportes
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alertas -->
+    {% if productos_stock_bajo > 0 %}
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-warning" role="alert">
+                <h5 class="alert-heading">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Atención: Stock Bajo
+                </h5>
+                <p>Tienes <strong>{{ productos_stock_bajo }}</strong> producto{{ productos_stock_bajo|pluralize }} con stock por debajo del mínimo establecido.</p>
+                <hr>
+                <p class="mb-0">
+                    Se recomienda revisar el inventario y realizar pedidos a proveedores.
+                </p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Información de generación -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-1"></i>
+                        Reporte generado el {{ fecha_reporte|date:"d/m/Y" }} a las {{ fecha_reporte|date:"H:i:s" }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh cada 5 minutos (opcional)
+// setTimeout(() => {
+//     location.reload();
+// }, 300000);
+
+// Animación de números
+document.addEventListener('DOMContentLoaded', function() {
+    const numbers = document.querySelectorAll('.stat-number');
+    numbers.forEach(num => {
+        const value = parseInt(num.textContent);
+        if (value > 0) {
+            animateNumber(num, 0, value, 1000);
+        }
+    });
+});
+
+function animateNumber(element, start, end, duration) {
+    const range = end - start;
+    const increment = range / (duration / 16);
+    let current = start;
+    
+    const timer = setInterval(() => {
+        current += increment;
+        if (current >= end) {
+            current = end;
+            clearInterval(timer);
+        }
+        element.textContent = Math.floor(current);
+    }, 16);
+}
+</script>
+{% endblock %}

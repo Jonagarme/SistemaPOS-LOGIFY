@@ -1,0 +1,460 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Cotizaciones{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+    .estado-badge {
+        font-size: 0.8rem;
+        padding: 0.3rem 0.6rem;
+    }
+    .table-actions {
+        width: 200px;
+    }
+    .search-form {
+        background: #f8f9fa;
+        border-radius: 10px;
+        border: 1px solid #dee2e6;
+    }
+    .cotizacion-card {
+        transition: transform 0.2s ease-in-out;
+        border: 1px solid #dee2e6;
+    }
+    .cotizacion-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+    }
+    .btn-floating {
+        position: fixed;
+        bottom: 30px;
+        right: 30px;
+        width: 60px;
+        height: 60px;
+        border-radius: 50%;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        z-index: 1000;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2 class="mb-0">
+                <i class="bi bi-file-earmark-text me-2"></i>
+                Gestión de Cotizaciones
+            </h2>
+            <p class="text-muted">Administra todas las cotizaciones del sistema</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'cotizaciones:crear' %}" class="btn btn-primary">
+                <i class="bi bi-plus-circle me-2"></i>Nueva Cotización
+            </a>
+        </div>
+    </div>
+
+    <!-- Estadísticas rápidas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">{{ stats.total }}</h3>
+                    <small>Total Cotizaciones</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">{{ stats.borradores }}</h3>
+                    <small>Borradores</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">{{ stats.enviadas }}</h3>
+                    <small>Enviadas</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card">
+                <div class="card-body text-center">
+                    <h3 class="mb-0">{{ stats.aceptadas }}</h3>
+                    <small>Aceptadas</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros de búsqueda -->
+    <div class="card search-form mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Buscar</label>
+                    <input type="text" class="form-control" name="q" value="{{ request.GET.q }}" 
+                           placeholder="Número, cliente...">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Estado</label>
+                    <select class="form-select" name="estado">
+                        <option value="">Todos</option>
+                        <option value="borrador" {% if request.GET.estado == 'borrador' %}selected{% endif %}>Borrador</option>
+                        <option value="enviada" {% if request.GET.estado == 'enviada' %}selected{% endif %}>Enviada</option>
+                        <option value="aceptada" {% if request.GET.estado == 'aceptada' %}selected{% endif %}>Aceptada</option>
+                        <option value="rechazada" {% if request.GET.estado == 'rechazada' %}selected{% endif %}>Rechazada</option>
+                        <option value="vencida" {% if request.GET.estado == 'vencida' %}selected{% endif %}>Vencida</option>
+                        <option value="convertida" {% if request.GET.estado == 'convertida' %}selected{% endif %}>Convertida</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Cliente</label>
+                    <select class="form-select" name="cliente">
+                        <option value="">Todos los clientes</option>
+                        {% for cliente in clientes %}
+                        <option value="{{ cliente.id }}" {% if request.GET.cliente == cliente.id|stringformat:"s" %}selected{% endif %}>
+                            {{ cliente.nombre_completo }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Fecha desde</label>
+                    <input type="date" class="form-control" name="fecha_desde" value="{{ request.GET.fecha_desde }}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Fecha hasta</label>
+                    <input type="date" class="form-control" name="fecha_hasta" value="{{ request.GET.fecha_hasta }}">
+                </div>
+                <div class="col-12">
+                    <button type="submit" class="btn btn-outline-primary me-2">
+                        <i class="bi bi-search me-1"></i>Buscar
+                    </button>
+                    <a href="{% url 'cotizaciones:lista' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle me-1"></i>Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Lista de cotizaciones -->
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Cotizaciones ({{ cotizaciones.count }} resultados)</h5>
+            <div class="btn-group btn-group-sm">
+                <button type="button" class="btn btn-outline-secondary active" id="vista-tabla">
+                    <i class="bi bi-table"></i>
+                </button>
+                <button type="button" class="btn btn-outline-secondary" id="vista-tarjetas">
+                    <i class="bi bi-grid-3x3-gap"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <!-- Vista de tabla -->
+            <div id="tabla-cotizaciones">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Número</th>
+                                <th>Cliente</th>
+                                <th>Fecha</th>
+                                <th>Válida hasta</th>
+                                <th>Total</th>
+                                <th>Estado</th>
+                                <th class="table-actions">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cotizacion in cotizaciones %}
+                            <tr>
+                                <td>
+                                    <strong>{{ cotizacion.numero }}</strong>
+                                    {% if cotizacion.referencia_cliente %}
+                                    <br><small class="text-muted">Ref: {{ cotizacion.referencia_cliente }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ cotizacion.cliente.nombre_completo }}</strong>
+                                    {% if cotizacion.cliente.email %}
+                                    <br><small class="text-muted">{{ cotizacion.cliente.email }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>{{ cotizacion.fecha|date:"d/m/Y" }}</td>
+                                <td>
+                                    {{ cotizacion.valida_hasta|date:"d/m/Y" }}
+                                    {% if cotizacion.esta_vencida %}
+                                    <br><small class="text-danger">Vencida</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>$ {{ cotizacion.total|floatformat:2 }}</strong>
+                                    {% if cotizacion.descuento_global > 0 %}
+                                    <br><small class="text-success">Desc: {{ cotizacion.descuento_global }}%</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if cotizacion.estado == 'borrador' %}
+                                    <span class="badge bg-secondary estado-badge">Borrador</span>
+                                    {% elif cotizacion.estado == 'enviada' %}
+                                    <span class="badge bg-primary estado-badge">Enviada</span>
+                                    {% elif cotizacion.estado == 'aceptada' %}
+                                    <span class="badge bg-success estado-badge">Aceptada</span>
+                                    {% elif cotizacion.estado == 'rechazada' %}
+                                    <span class="badge bg-danger estado-badge">Rechazada</span>
+                                    {% elif cotizacion.estado == 'vencida' %}
+                                    <span class="badge bg-warning estado-badge">Vencida</span>
+                                    {% elif cotizacion.estado == 'convertida' %}
+                                    <span class="badge bg-info estado-badge">Convertida</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}" 
+                                           class="btn btn-outline-primary" title="Ver detalle">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        {% if cotizacion.estado == 'borrador' %}
+                                        <a href="{% url 'cotizaciones:editar' cotizacion.pk %}" 
+                                           class="btn btn-outline-warning" title="Editar">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        {% endif %}
+                                        <div class="btn-group btn-group-sm">
+                                            <button type="button" class="btn btn-outline-secondary dropdown-toggle" 
+                                                    data-bs-toggle="dropdown" title="Más acciones">
+                                                <i class="bi bi-three-dots"></i>
+                                            </button>
+                                            <ul class="dropdown-menu">
+                                                <li><a class="dropdown-item" href="{% url 'cotizaciones:duplicar' cotizacion.pk %}">
+                                                    <i class="bi bi-files me-2"></i>Duplicar
+                                                </a></li>
+                                                {% if cotizacion.estado == 'aceptada' and not cotizacion.venta_generada %}
+                                                <li><a class="dropdown-item" href="{% url 'cotizaciones:convertir_venta' cotizacion.pk %}">
+                                                    <i class="bi bi-arrow-right-circle me-2"></i>Convertir a Venta
+                                                </a></li>
+                                                {% endif %}
+                                                {% if cotizacion.estado != 'convertida' %}
+                                                <li><hr class="dropdown-divider"></li>
+                                                <li><a class="dropdown-item cambiar-estado" 
+                                                       href="#" data-cotizacion="{{ cotizacion.pk }}" data-estado="enviada">
+                                                    <i class="bi bi-send me-2"></i>Marcar como Enviada
+                                                </a></li>
+                                                <li><a class="dropdown-item cambiar-estado" 
+                                                       href="#" data-cotizacion="{{ cotizacion.pk }}" data-estado="aceptada">
+                                                    <i class="bi bi-check-circle me-2"></i>Marcar como Aceptada
+                                                </a></li>
+                                                <li><a class="dropdown-item cambiar-estado" 
+                                                       href="#" data-cotizacion="{{ cotizacion.pk }}" data-estado="rechazada">
+                                                    <i class="bi bi-x-circle me-2"></i>Marcar como Rechazada
+                                                </a></li>
+                                                {% endif %}
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <i class="bi bi-file-earmark-text display-4 text-muted"></i>
+                                    <p class="text-muted mt-2">No se encontraron cotizaciones</p>
+                                    <a href="{% url 'cotizaciones:crear' %}" class="btn btn-primary">
+                                        <i class="bi bi-plus-circle me-2"></i>Crear primera cotización
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Vista de tarjetas (oculta por defecto) -->
+            <div id="tarjetas-cotizaciones" style="display: none;">
+                <div class="row p-3">
+                    {% for cotizacion in cotizaciones %}
+                    <div class="col-md-6 col-lg-4 mb-3">
+                        <div class="card cotizacion-card h-100">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <strong>{{ cotizacion.numero }}</strong>
+                                {% if cotizacion.estado == 'borrador' %}
+                                <span class="badge bg-secondary">Borrador</span>
+                                {% elif cotizacion.estado == 'enviada' %}
+                                <span class="badge bg-primary">Enviada</span>
+                                {% elif cotizacion.estado == 'aceptada' %}
+                                <span class="badge bg-success">Aceptada</span>
+                                {% elif cotizacion.estado == 'rechazada' %}
+                                <span class="badge bg-danger">Rechazada</span>
+                                {% elif cotizacion.estado == 'vencida' %}
+                                <span class="badge bg-warning">Vencida</span>
+                                {% elif cotizacion.estado == 'convertida' %}
+                                <span class="badge bg-info">Convertida</span>
+                                {% endif %}
+                            </div>
+                            <div class="card-body">
+                                <h6 class="card-title">{{ cotizacion.cliente.nombre_completo }}</h6>
+                                <p class="card-text">
+                                    <small class="text-muted">
+                                        {{ cotizacion.fecha|date:"d/m/Y" }} - Válida hasta {{ cotizacion.valida_hasta|date:"d/m/Y" }}
+                                    </small>
+                                </p>
+                                <h5 class="text-primary">$ {{ cotizacion.total|floatformat:2 }}</h5>
+                            </div>
+                            <div class="card-footer">
+                                <div class="btn-group w-100">
+                                    <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}" class="btn btn-outline-primary btn-sm">
+                                        <i class="bi bi-eye me-1"></i>Ver
+                                    </a>
+                                    {% if cotizacion.estado == 'borrador' %}
+                                    <a href="{% url 'cotizaciones:editar' cotizacion.pk %}" class="btn btn-outline-warning btn-sm">
+                                        <i class="bi bi-pencil me-1"></i>Editar
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Paginación -->
+    {% if cotizaciones.has_other_pages %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if cotizaciones.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.estado %}estado={{ request.GET.estado }}&{% endif %}page={{ cotizaciones.previous_page_number }}">Anterior</a>
+            </li>
+            {% endif %}
+            
+            {% for num in cotizaciones.paginator.page_range %}
+            {% if cotizaciones.number == num %}
+            <li class="page-item active">
+                <span class="page-link">{{ num }}</span>
+            </li>
+            {% elif num > cotizaciones.number|add:'-3' and num < cotizaciones.number|add:'3' %}
+            <li class="page-item">
+                <a class="page-link" href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.estado %}estado={{ request.GET.estado }}&{% endif %}page={{ num }}">{{ num }}</a>
+            </li>
+            {% endif %}
+            {% endfor %}
+            
+            {% if cotizaciones.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?{% if request.GET.q %}q={{ request.GET.q }}&{% endif %}{% if request.GET.estado %}estado={{ request.GET.estado }}&{% endif %}page={{ cotizaciones.next_page_number }}">Siguiente</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+
+<!-- Botón flotante para nueva cotización -->
+<a href="{% url 'cotizaciones:crear' %}" class="btn btn-primary btn-floating">
+    <i class="bi bi-plus fs-4"></i>
+</a>
+
+<!-- Modal de confirmación para cambio de estado -->
+<div class="modal fade" id="modalCambiarEstado" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cambiar Estado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea cambiar el estado de esta cotización?</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmarCambioEstado">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Cambio de vista tabla/tarjetas
+    const vistaTabla = document.getElementById('vista-tabla');
+    const vistaTarjetas = document.getElementById('vista-tarjetas');
+    const tablaContainer = document.getElementById('tabla-cotizaciones');
+    const tarjetasContainer = document.getElementById('tarjetas-cotizaciones');
+
+    vistaTabla.addEventListener('click', function() {
+        vistaTabla.classList.add('active');
+        vistaTarjetas.classList.remove('active');
+        tablaContainer.style.display = 'block';
+        tarjetasContainer.style.display = 'none';
+    });
+
+    vistaTarjetas.addEventListener('click', function() {
+        vistaTarjetas.classList.add('active');
+        vistaTabla.classList.remove('active');
+        tablaContainer.style.display = 'none';
+        tarjetasContainer.style.display = 'block';
+    });
+
+    // Cambio de estado con AJAX
+    let cotizacionSeleccionada = null;
+    let estadoSeleccionado = null;
+    const modal = new bootstrap.Modal(document.getElementById('modalCambiarEstado'));
+
+    document.querySelectorAll('.cambiar-estado').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            cotizacionSeleccionada = this.dataset.cotizacion;
+            estadoSeleccionado = this.dataset.estado;
+            modal.show();
+        });
+    });
+
+    document.getElementById('confirmarCambioEstado').addEventListener('click', function() {
+        if (cotizacionSeleccionada && estadoSeleccionado) {
+            // Crear formulario para envío CSRF
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = `/cotizaciones/${cotizacionSeleccionada}/cambiar-estado/`;
+            
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = csrfToken.value;
+                form.appendChild(csrfInput);
+            }
+            
+            const estadoInput = document.createElement('input');
+            estadoInput.type = 'hidden';
+            estadoInput.name = 'estado';
+            estadoInput.value = estadoSeleccionado;
+            form.appendChild(estadoInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+});
+</script>
+{% endblock %}

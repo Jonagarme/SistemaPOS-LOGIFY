@@ -1,0 +1,311 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .user-avatar-large {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(45deg, #007bff, #6610f2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 32px;
+        margin: 0 auto 1rem;
+    }
+    
+    .info-card {
+        border-left: 4px solid #007bff;
+        background-color: #f8f9fa;
+    }
+    
+    .timeline-item {
+        border-left: 2px solid #e9ecef;
+        padding-left: 1rem;
+        margin-bottom: 1rem;
+        position: relative;
+    }
+    
+    .timeline-item::before {
+        content: '';
+        position: absolute;
+        left: -5px;
+        top: 0.5rem;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background-color: #007bff;
+    }
+    
+    .timeline-item.warning::before {
+        background-color: #ffc107;
+    }
+    
+    .timeline-item.danger::before {
+        background-color: #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5 class="mb-0">
+                                <i class="fas fa-user"></i> {{ titulo }}
+                            </h5>
+                        </div>
+                        <div class="col-auto">
+                            {% if not usuario.anulado %}
+                                <a href="{% url 'usuarios:editar_usuario' usuario.id %}" class="btn btn-primary">
+                                    <i class="fas fa-edit"></i> Editar
+                                </a>
+                            {% endif %}
+                            <a href="{% url 'usuarios:lista_usuarios' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Volver
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Información Principal -->
+                        <div class="col-md-8">
+                            <div class="row">
+                                <!-- Avatar y nombre -->
+                                <div class="col-md-3 text-center">
+                                    <div class="user-avatar-large">
+                                        {{ usuario.nombre_completo|first|upper }}
+                                    </div>
+                                    {% if usuario.anulado %}
+                                        <span class="badge bg-dark mb-2">Anulado</span>
+                                    {% elif usuario.activo %}
+                                        <span class="badge bg-success mb-2">Activo</span>
+                                    {% else %}
+                                        <span class="badge bg-warning mb-2">Inactivo</span>
+                                    {% endif %}
+                                </div>
+                                
+                                <!-- Información básica -->
+                                <div class="col-md-9">
+                                    <h4 class="mb-1">{{ usuario.nombre_completo }}</h4>
+                                    <p class="text-muted mb-3">@{{ usuario.nombre_usuario }}</p>
+                                    
+                                    <div class="row g-3">
+                                        <div class="col-sm-6">
+                                            <label class="form-label fw-bold">Email:</label>
+                                            <div>
+                                                <a href="mailto:{{ usuario.email }}">{{ usuario.email }}</a>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-sm-6">
+                                            <label class="form-label fw-bold">Rol:</label>
+                                            <div>
+                                                <span class="badge bg-info">{{ usuario.rol_nombre }}</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-sm-6">
+                                            <label class="form-label fw-bold">Estado:</label>
+                                            <div>{{ usuario.estado_display }}</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Información adicional -->
+                            <hr class="my-4">
+                            
+                            <div class="row g-4">
+                                <div class="col-md-6">
+                                    <div class="info-card p-3 rounded">
+                                        <h6 class="mb-3">
+                                            <i class="fas fa-clock text-primary"></i> Fechas Importantes
+                                        </h6>
+                                        
+                                        <div class="mb-2">
+                                            <strong>Creado:</strong> {{ usuario.creado_date|date:"d/m/Y H:i" }}
+                                        </div>
+                                        
+                                        {% if usuario.editado_date %}
+                                        <div class="mb-2">
+                                            <strong>Última edición:</strong> {{ usuario.editado_date|date:"d/m/Y H:i" }}
+                                        </div>
+                                        {% endif %}
+                                        
+                                        {% if usuario.anulado_date %}
+                                        <div class="mb-2">
+                                            <strong>Anulado:</strong> {{ usuario.anulado_date|date:"d/m/Y H:i" }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <div class="info-card p-3 rounded">
+                                        <h6 class="mb-3">
+                                            <i class="fas fa-shield-alt text-primary"></i> Información de Seguridad
+                                        </h6>
+                                        
+                                        <div class="mb-2">
+                                            <strong>Usuario único:</strong> {{ usuario.nombre_usuario }}
+                                        </div>
+                                        
+                                        <div class="mb-2">
+                                            <strong>Acceso al sistema:</strong>
+                                            {% if usuario.anulado %}
+                                                <span class="text-danger">Denegado (Anulado)</span>
+                                            {% elif usuario.activo %}
+                                                <span class="text-success">Permitido</span>
+                                            {% else %}
+                                                <span class="text-warning">Denegado (Inactivo)</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Línea de tiempo / Auditoría -->
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-history"></i> Historial de Cambios
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    {% if usuario.anulado %}
+                                    <div class="timeline-item danger">
+                                        <h6 class="mb-1">Usuario Anulado</h6>
+                                        <small class="text-muted">
+                                            {{ usuario.anulado_date|date:"d/m/Y H:i" }}
+                                        </small>
+                                        {% if usuario.anulado_por %}
+                                        <div class="small text-muted">
+                                            Por usuario ID: {{ usuario.anulado_por }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    {% if usuario.editado_date %}
+                                    <div class="timeline-item warning">
+                                        <h6 class="mb-1">Última Edición</h6>
+                                        <small class="text-muted">
+                                            {{ usuario.editado_date|date:"d/m/Y H:i" }}
+                                        </small>
+                                        {% if usuario.editado_por %}
+                                        <div class="small text-muted">
+                                            Por usuario ID: {{ usuario.editado_por }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+                                    
+                                    <div class="timeline-item">
+                                        <h6 class="mb-1">Usuario Creado</h6>
+                                        <small class="text-muted">
+                                            {{ usuario.creado_date|date:"d/m/Y H:i" }}
+                                        </small>
+                                        {% if usuario.creado_por %}
+                                        <div class="small text-muted">
+                                            Por usuario ID: {{ usuario.creado_por }}
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Acciones rápidas -->
+                            {% if not usuario.anulado %}
+                            <div class="card mt-3">
+                                <div class="card-header">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-tools"></i> Acciones Rápidas
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="d-grid gap-2">
+                                        <button type="button" 
+                                                class="btn btn-outline-{% if usuario.activo %}warning{% else %}success{% endif %}"
+                                                onclick="cambiarEstadoUsuario({{ usuario.id }}, {{ usuario.activo|yesno:'true,false' }})">
+                                            <i class="fas fa-{% if usuario.activo %}pause{% else %}play{% endif %}"></i>
+                                            {% if usuario.activo %}Desactivar{% else %}Activar{% endif %} Usuario
+                                        </button>
+                                        
+                                        <button type="button" 
+                                                class="btn btn-outline-danger"
+                                                onclick="anularUsuario({{ usuario.id }}, '{{ usuario.nombre_usuario }}')">
+                                            <i class="fas fa-ban"></i> Anular Usuario
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function cambiarEstadoUsuario(usuarioId, estadoActual) {
+    const accion = estadoActual ? 'desactivar' : 'activar';
+    
+    if (confirm(`¿Está seguro de ${accion} este usuario?`)) {
+        fetch(`/usuarios/cambiar-estado/${usuarioId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Ocurrió un error inesperado');
+        });
+    }
+}
+
+function anularUsuario(usuarioId, nombreUsuario) {
+    if (confirm(`¿Está seguro de anular al usuario "${nombreUsuario}"?\n\nEsta acción no se puede deshacer.`)) {
+        // Crear formulario y enviarlo
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/usuarios/anular/${usuarioId}/`;
+        
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = 'csrfmiddlewaretoken';
+        csrfToken.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        form.appendChild(csrfToken);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

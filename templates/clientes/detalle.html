@@ -1,0 +1,223 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block page_actions %}
+<div class="d-flex gap-2">
+    <a href="{% url 'clientes:editar' cliente.pk %}" class="btn btn-primary">
+        <i class="fas fa-edit"></i> Editar
+    </a>
+    <a href="{% url 'clientes:lista' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Volver
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Información del Cliente -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-user"></i> Información del Cliente
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-5">Tipo de ID:</dt>
+                            <dd class="col-7">
+                                {% if cliente.tipo_identificacion == 'RUC' %}
+                                    <span class="badge bg-info">RUC</span>
+                                {% elif cliente.tipo_identificacion == 'CEDULA' %}
+                                    <span class="badge bg-success">Cédula</span>
+                                {% else %}
+                                    <span class="badge bg-warning">{{ cliente.tipo_identificacion }}</span>
+                                {% endif %}
+                            </dd>
+                            
+                            <dt class="col-5">Cédula/RUC:</dt>
+                            <dd class="col-7"><strong>{{ cliente.cedula_ruc }}</strong></dd>
+                            
+                            {% if cliente.razon_social %}
+                            <dt class="col-5">Razón Social:</dt>
+                            <dd class="col-7">{{ cliente.razon_social }}</dd>
+                            {% endif %}
+                            
+                            {% if cliente.nombres %}
+                            <dt class="col-5">Nombres:</dt>
+                            <dd class="col-7">{{ cliente.nombres }}</dd>
+                            {% endif %}
+                            
+                            {% if cliente.apellidos %}
+                            <dt class="col-5">Apellidos:</dt>
+                            <dd class="col-7">{{ cliente.apellidos }}</dd>
+                            {% endif %}
+                            
+                            {% if cliente.fecha_nacimiento %}
+                            <dt class="col-5">Fecha Nacimiento:</dt>
+                            <dd class="col-7">{{ cliente.fecha_nacimiento|date:"d/m/Y" }}</dd>
+                            {% endif %}
+                        </dl>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <dl class="row">
+                            {% if cliente.telefono %}
+                            <dt class="col-5">Teléfono:</dt>
+                            <dd class="col-7">
+                                <i class="fas fa-phone text-primary"></i> {{ cliente.telefono }}
+                            </dd>
+                            {% endif %}
+                            
+                            {% if cliente.celular %}
+                            <dt class="col-5">Celular:</dt>
+                            <dd class="col-7">
+                                <i class="fas fa-mobile-alt text-success"></i> {{ cliente.celular }}
+                            </dd>
+                            {% endif %}
+                            
+                            {% if cliente.email %}
+                            <dt class="col-5">Email:</dt>
+                            <dd class="col-7">
+                                <i class="fas fa-envelope text-info"></i> 
+                                <a href="mailto:{{ cliente.email }}">{{ cliente.email }}</a>
+                            </dd>
+                            {% endif %}
+                            
+                            {% if cliente.tipo_cliente %}
+                            <dt class="col-5">Tipo Cliente:</dt>
+                            <dd class="col-7">{{ cliente.tipo_cliente }}</dd>
+                            {% endif %}
+                            
+                            <dt class="col-5">Estado:</dt>
+                            <dd class="col-7">
+                                {% if cliente.activo %}
+                                    <span class="badge bg-success">Activo</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactivo</span>
+                                {% endif %}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+                
+                {% if cliente.direccion %}
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <dl class="row">
+                            <dt class="col-2">Dirección:</dt>
+                            <dd class="col-10">
+                                <i class="fas fa-map-marker-alt text-danger"></i> 
+                                {{ cliente.direccion }}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Panel Lateral -->
+    <div class="col-md-4">
+        <!-- Estado del Cliente -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Estado del Cliente</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>Estado:</span>
+                    {% if cliente.activo %}
+                        <span class="badge bg-success">Activo</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inactivo</span>
+                    {% endif %}
+                </div>
+                
+                {% if cliente.creado_date %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>Creado:</span>
+                    <small class="text-muted">{{ cliente.creado_date|date:"d/m/Y H:i" }}</small>
+                </div>
+                {% endif %}
+                
+                {% if cliente.editado_date %}
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>Última edición:</span>
+                    <small class="text-muted">{{ cliente.editado_date|date:"d/m/Y H:i" }}</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Acciones Rápidas -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Acciones</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'clientes:editar' cliente.pk %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-edit"></i> Editar Cliente
+                    </a>
+                    <a href="{% url 'ventas:crear' %}?cliente={{ cliente.pk }}" class="btn btn-success btn-sm">
+                        <i class="fas fa-shopping-cart"></i> Nueva Venta
+                    </a>
+                    <a href="{% url 'clientes:historial' cliente.pk %}" class="btn btn-info btn-sm">
+                        <i class="fas fa-history"></i> Ver Historial
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Historial de Ventas -->
+{% comment %}
+{% if ventas %}
+<div class="card mt-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-shopping-cart"></i> Últimas Ventas
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Número</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for venta in ventas %}
+                    <tr>
+                        <td>{{ venta.fecha|date:"d/m/Y" }}</td>
+                        <td>{{ venta.numero }}</td>
+                        <td>${{ venta.total|floatformat:2 }}</td>
+                        <td>
+                            <span class="badge bg-success">{{ venta.estado|title }}</span>
+                        </td>
+                        <td>
+                            <a href="{% url 'ventas:detalle' venta.pk %}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endcomment %}
+{% endblock %}

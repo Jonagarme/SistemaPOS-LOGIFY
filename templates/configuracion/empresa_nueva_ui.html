@@ -1,0 +1,700 @@
+{% extends 'base.html' %}
+{% load empresa_tags %}
+
+{% block title %}Configuración de Empresa - Sistema POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .config-container {
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    /* Tabs personalizados */
+    .nav-pills-custom .nav-link {
+        border-radius: 10px;
+        padding: 12px 24px;
+        color: #6c757d;
+        font-weight: 500;
+        transition: all 0.3s;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .nav-pills-custom .nav-link:hover {
+        background-color: #e9ecef;
+        color: #495057;
+    }
+    
+    .nav-pills-custom .nav-link.active {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    
+    .nav-pills-custom .nav-link i {
+        font-size: 1.2rem;
+    }
+    
+    /* Cards de sección */
+    .section-card {
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        margin-bottom: 24px;
+        overflow: hidden;
+        transition: transform 0.3s, box-shadow 0.3s;
+    }
+    
+    .section-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    }
+    
+    .section-card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 16px 24px;
+        font-weight: 600;
+        font-size: 1.1rem;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    
+    .section-card-header i {
+        font-size: 1.3rem;
+    }
+    
+    .section-card-body {
+        padding: 24px;
+        background: white;
+    }
+    
+    /* Info boxes para lectura */
+    .info-display {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        border-left: 4px solid #667eea;
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+    }
+    
+    .info-display-label {
+        font-size: 0.85rem;
+        color: #6c757d;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+    
+    .info-display-value {
+        font-size: 1rem;
+        color: #2d3748;
+        font-weight: 500;
+    }
+    
+    /* Form inputs mejorados */
+    .form-label-modern {
+        font-weight: 600;
+        color: #4a5568;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .form-label-modern i {
+        color: #667eea;
+    }
+    
+    .form-control, .form-select {
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 10px 14px;
+        transition: all 0.3s;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    }
+    
+    /* Badges mejorados */
+    .badge-custom {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-weight: 500;
+        font-size: 0.85rem;
+    }
+    
+    /* Botones modernos */
+    .btn-modern {
+        padding: 12px 28px;
+        border-radius: 10px;
+        font-weight: 600;
+        transition: all 0.3s;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .btn-primary-modern {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+    }
+    
+    .btn-primary-modern:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-secondary-modern {
+        background: #e2e8f0;
+        border: none;
+        color: #4a5568;
+    }
+    
+    .btn-secondary-modern:hover {
+        background: #cbd5e0;
+    }
+    
+    /* Logo preview */
+    .logo-preview-box {
+        border: 3px dashed #cbd5e0;
+        border-radius: 12px;
+        padding: 24px;
+        text-align: center;
+        background: #f7fafc;
+        transition: all 0.3s;
+    }
+    
+    .logo-preview-box:hover {
+        border-color: #667eea;
+        background: #edf2f7;
+    }
+    
+    .logo-preview-img {
+        max-width: 200px;
+        max-height: 200px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    
+    /* Switches personalizados */
+    .form-switch-modern .form-check-input {
+        width: 50px;
+        height: 26px;
+        cursor: pointer;
+    }
+    
+    .form-switch-modern .form-check-input:checked {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+    
+    /* Separadores visuales */
+    .section-divider {
+        border: 0;
+        height: 2px;
+        background: linear-gradient(to right, transparent, #667eea, transparent);
+        margin: 32px 0;
+    }
+    
+    /* Tooltips info */
+    .info-tooltip {
+        color: #667eea;
+        cursor: help;
+        margin-left: 4px;
+    }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+        .nav-pills-custom .nav-link {
+            padding: 10px 16px;
+            font-size: 0.9rem;
+        }
+        
+        .section-card-body {
+            padding: 16px;
+        }
+        
+        .btn-modern {
+            width: 100%;
+            justify-content: center;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid config-container">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-cog text-primary"></i> Configuración del Sistema
+                    </h2>
+                    <p class="text-muted mb-0">Administra la información de tu empresa y preferencias del sistema</p>
+                </div>
+                <a href="{% url 'usuarios:dashboard' %}" class="btn btn-secondary-modern btn-modern">
+                    <i class="fas fa-arrow-left"></i> Volver
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        <div class="row">
+            <!-- Sidebar con navegación -->
+            <div class="col-md-3 mb-4">
+                <div class="card section-card sticky-top" style="top: 80px;">
+                    <div class="card-body p-3">
+                        <nav class="nav flex-column nav-pills-custom" id="config-tabs" role="tablist">
+                            <a class="nav-link active" data-bs-toggle="pill" href="#info-basica" role="tab">
+                                <i class="fas fa-building"></i>
+                                <span>Información Básica</span>
+                            </a>
+                            <a class="nav-link" data-bs-toggle="pill" href="#contacto" role="tab">
+                                <i class="fas fa-address-card"></i>
+                                <span>Contacto</span>
+                            </a>
+                            <a class="nav-link" data-bs-toggle="pill" href="#fiscal" role="tab">
+                                <i class="fas fa-file-invoice-dollar"></i>
+                                <span>Información Fiscal</span>
+                            </a>
+                            <a class="nav-link" data-bs-toggle="pill" href="#personalizacion" role="tab">
+                                <i class="fas fa-palette"></i>
+                                <span>Personalización</span>
+                            </a>
+                            <a class="nav-link" data-bs-toggle="pill" href="#certificados" role="tab">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>Certificados</span>
+                            </a>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenido de los tabs -->
+            <div class="col-md-9">
+                <div class="tab-content">
+                    
+                    <!-- TAB: Información Básica -->
+                    <div class="tab-pane fade show active" id="info-basica" role="tabpanel">
+                        <div class="section-card">
+                            <div class="section-card-header">
+                                <i class="fas fa-building"></i>
+                                <span>Información Básica de la Empresa</span>
+                            </div>
+                            <div class="section-card-body">
+                                {% if config %}
+                                <div class="row mb-4">
+                                    <div class="col-12">
+                                        <div class="alert alert-info d-flex align-items-center">
+                                            <i class="fas fa-info-circle me-2"></i>
+                                            <small>Esta es la información que se mostrará en reportes y facturas</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.ruc.id_for_label }}" class="form-label-modern">
+                                            <i class="fas fa-id-card"></i>
+                                            {{ form.ruc.label }}
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.ruc }}
+                                        {% if form.ruc.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.ruc.errors %}<div>{{ error }}</div>{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        <small class="form-text text-muted">Número de identificación tributaria</small>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.razon_social.id_for_label }}" class="form-label-modern">
+                                            <i class="fas fa-briefcase"></i>
+                                            {{ form.razon_social.label }}
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.razon_social }}
+                                        {% if form.razon_social.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.razon_social.errors %}<div>{{ error }}</div>{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        <small class="form-text text-muted">Nombre legal de la empresa</small>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-12 mb-3">
+                                        <label for="{{ form.nombre_comercial.id_for_label }}" class="form-label-modern">
+                                            <i class="fas fa-store"></i>
+                                            {{ form.nombre_comercial.label }}
+                                        </label>
+                                        {{ form.nombre_comercial }}
+                                        {% if form.nombre_comercial.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.nombre_comercial.errors %}<div>{{ error }}</div>{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        <small class="form-text text-muted">Nombre con el que tus clientes te conocen</small>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-12 mb-3">
+                                        <label for="{{ form.direccion_matriz.id_for_label }}" class="form-label-modern">
+                                            <i class="fas fa-map-marker-alt"></i>
+                                            {{ form.direccion_matriz.label }}
+                                            <span class="text-danger">*</span>
+                                        </label>
+                                        {{ form.direccion_matriz }}
+                                        {% if form.direccion_matriz.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.direccion_matriz.errors %}<div>{{ error }}</div>{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        <small class="form-text text-muted">Dirección completa de tu establecimiento principal</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: Contacto -->
+                    <div class="tab-pane fade" id="contacto" role="tabpanel">
+                        <div class="section-card">
+                            <div class="section-card-header">
+                                <i class="fas fa-address-card"></i>
+                                <span>Información de Contacto</span>
+                            </div>
+                            <div class="section-card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.telefono.id_for_label }}" class="form-label-modern">
+                                            <i class="fas fa-phone"></i>
+                                            {{ form.telefono.label }}
+                                        </label>
+                                        {{ form.telefono }}
+                                        {% if form.telefono.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.telefono.errors %}<div>{{ error }}</div>{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        <small class="form-text text-muted">Número de contacto principal</small>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.email.id_for_label }}" class="form-label-modern">
+                                            <i class="fas fa-envelope"></i>
+                                            {{ form.email.label }}
+                                        </label>
+                                        {{ form.email }}
+                                        {% if form.email.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.email.errors %}<div>{{ error }}</div>{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        <small class="form-text text-muted">Correo electrónico de la empresa</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: Información Fiscal -->
+                    <div class="tab-pane fade" id="fiscal" role="tabpanel">
+                        <div class="section-card">
+                            <div class="section-card-header">
+                                <i class="fas fa-file-invoice-dollar"></i>
+                                <span>Información Fiscal y Tributaria</span>
+                            </div>
+                            <div class="section-card-body">
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.contribuyente_especial.id_for_label }}" class="form-label-modern">
+                                            <i class="fas fa-certificate"></i>
+                                            {{ form.contribuyente_especial.label }}
+                                        </label>
+                                        {{ form.contribuyente_especial }}
+                                        {% if form.contribuyente_especial.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.contribuyente_especial.errors %}<div>{{ error }}</div>{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        <small class="form-text text-muted">Número de resolución (si aplica)</small>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <div class="form-switch-modern form-check form-switch">
+                                            {{ form.obligado_contabilidad }}
+                                            <label class="form-check-label" for="{{ form.obligado_contabilidad.id_for_label }}">
+                                                <strong>{{ form.obligado_contabilidad.label }}</strong>
+                                                <br>
+                                                <small class="text-muted">Marca si tu empresa está obligada a llevar contabilidad</small>
+                                            </label>
+                                        </div>
+                                        {% if form.obligado_contabilidad.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.obligado_contabilidad.errors %}<div>{{ error }}</div>{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: Personalización -->
+                    <div class="tab-pane fade" id="personalizacion" role="tabpanel">
+                        <div class="section-card">
+                            <div class="section-card-header">
+                                <i class="fas fa-palette"></i>
+                                <span>Personalización del Sistema</span>
+                            </div>
+                            <div class="section-card-body">
+                                <!-- Tipo de Menú -->
+                                <!-- <div class="row mb-4">
+                                    <div class="col-12">
+                                        <label for="{{ form.tipo_menu.id_for_label }}" class="form-label-modern">
+                                            <i class="fas fa-bars"></i>
+                                            {{ form.tipo_menu.label }}
+                                        </label>
+                                        {{ form.tipo_menu }}
+                                        <div class="alert alert-info mt-2 d-flex align-items-start">
+                                            <i class="fas fa-lightbulb me-2 mt-1"></i>
+                                            <div>
+                                                <strong>Consejo:</strong> El menú <strong>vertical</strong> es ideal para pantallas pequeñas o cuando trabajas con muchas opciones.
+                                                El menú <strong>horizontal</strong> es mejor para pantallas grandes y uso tradicional.
+                                            </div>
+                                        </div>
+                                        {% if form.tipo_menu.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.tipo_menu.errors %}<div>{{ error }}</div>{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div> -->
+
+                                <hr class="section-divider">
+
+                                <!-- Logo -->
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.logo_file.id_for_label }}" class="form-label-modern">
+                                            <i class="fas fa-image"></i>
+                                            {{ form.logo_file.label }}
+                                        </label>
+                                        {{ form.logo_file }}
+                                        <small class="form-text text-muted d-block mt-2">
+                                            {{ form.logo_file.help_text }}
+                                        </small>
+                                        {% if form.logo_file.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.logo_file.errors %}<div>{{ error }}</div>{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        {% if config and config.logo %}
+                                        <label class="form-label-modern">
+                                            <i class="fas fa-eye"></i>
+                                            Logo Actual
+                                        </label>
+                                        <div class="logo-preview-box">
+                                            <img src="data:image/png;base64,{{ config.logo|base64_encode }}" alt="Logo" class="logo-preview-img">
+                                        </div>
+                                        {% else %}
+                                        <label class="form-label-modern">
+                                            <i class="fas fa-eye"></i>
+                                            Vista Previa
+                                        </label>
+                                        <div class="logo-preview-box">
+                                            <i class="fas fa-image fa-3x text-muted mb-2"></i>
+                                            <p class="text-muted mb-0">Sin logo configurado</p>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- TAB: Certificados -->
+                    <div class="tab-pane fade" id="certificados" role="tabpanel">
+                        <div class="section-card">
+                            <div class="section-card-header">
+                                <i class="fas fa-shield-alt"></i>
+                                <span>Configuración de Certificados Digitales</span>
+                            </div>
+                            <div class="section-card-body">
+                                <div class="alert alert-warning d-flex align-items-center mb-4">
+                                    <i class="fas fa-exclamation-triangle me-2"></i>
+                                    <small>Esta sección es opcional y solo necesaria si utilizas facturación electrónica</small>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.certificado_p12_path.id_for_label }}" class="form-label-modern">
+                                            <i class="fas fa-key"></i>
+                                            {{ form.certificado_p12_path.label }}
+                                        </label>
+                                        {{ form.certificado_p12_path }}
+                                        {% if form.certificado_p12_path.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.certificado_p12_path.errors %}<div>{{ error }}</div>{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        <small class="form-text text-muted">Ruta donde se encuentra el archivo del certificado</small>
+                                    </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.certificado_password.id_for_label }}" class="form-label-modern">
+                                            <i class="fas fa-lock"></i>
+                                            {{ form.certificado_password.label }}
+                                        </label>
+                                        {{ form.certificado_password }}
+                                        {% if form.certificado_password.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.certificado_password.errors %}<div>{{ error }}</div>{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        <small class="form-text text-muted">Contraseña del certificado digital</small>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.certificado_fecha_expiracion.id_for_label }}" class="form-label-modern">
+                                            <i class="fas fa-calendar-times"></i>
+                                            {{ form.certificado_fecha_expiracion.label }}
+                                        </label>
+                                        {{ form.certificado_fecha_expiracion }}
+                                        {% if form.certificado_fecha_expiracion.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.certificado_fecha_expiracion.errors %}<div>{{ error }}</div>{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                        <small class="form-text text-muted">Fecha de vencimiento del certificado</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Botones de acción flotantes -->
+                <div class="card section-card sticky-bottom">
+                    <div class="card-body">
+                        <div class="d-flex gap-3 flex-wrap justify-content-end">
+                            <a href="{% url 'usuarios:dashboard' %}" class="btn btn-secondary-modern btn-modern">
+                                <i class="fas fa-times"></i>
+                                Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary-modern btn-modern">
+                                <i class="fas fa-save"></i>
+                                Guardar Configuración
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Smooth scroll para navegación de tabs
+    const navLinks = document.querySelectorAll('.nav-pills-custom .nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', function() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    });
+
+    // Preview de imagen cuando se selecciona un archivo
+    const logoInput = document.querySelector('input[type="file"][name="logo_file"]');
+    if (logoInput) {
+        logoInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    // Buscar el contenedor de preview
+                    const previewContainer = document.querySelector('.logo-preview-box');
+                    if (previewContainer) {
+                        previewContainer.innerHTML = `
+                            <img src="${e.target.result}" alt="Preview" class="logo-preview-img">
+                            <p class="text-muted mb-0 mt-2">Vista previa del nuevo logo</p>
+                        `;
+                    }
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+
+    // Validación de formulario
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const requiredFields = form.querySelectorAll('[required]');
+            let hasErrors = false;
+
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    hasErrors = true;
+                    field.classList.add('is-invalid');
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+
+            if (hasErrors) {
+                e.preventDefault();
+                // Scroll al primer error
+                const firstError = form.querySelector('.is-invalid');
+                if (firstError) {
+                    firstError.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+        });
+    }
+
+    // Animación de entrada
+    const cards = document.querySelectorAll('.section-card');
+    cards.forEach((card, index) => {
+        setTimeout(() => {
+            card.style.opacity = '0';
+            card.style.transform = 'translateY(20px)';
+            card.style.transition = 'all 0.5s ease';
+            
+            setTimeout(() => {
+                card.style.opacity = '1';
+                card.style.transform = 'translateY(0)';
+            }, 50);
+        }, index * 100);
+    });
+});
+</script>
+{% endblock %}

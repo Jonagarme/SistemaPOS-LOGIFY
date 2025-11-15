@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-edit"></i> {{ titulo }}
+        </h1>
+        <a href="{% url 'caja:lista' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver a Lista
+        </a>
+    </div>
+
+    <!-- Formulario -->
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-cash-register"></i> Editar Información de la Caja
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="codigo" class="form-label">
+                                        <i class="fas fa-barcode"></i> Código de Caja <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="codigo" name="codigo" 
+                                           value="{{ codigo|default:caja.codigo }}" required maxlength="20"
+                                           placeholder="Ej: CAJA001, CAJA-PRINCIPAL, etc.">
+                                    <div class="form-text">
+                                        Identificador único de la caja (máximo 20 caracteres)
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nombre" class="form-label">
+                                        <i class="fas fa-tag"></i> Nombre de la Caja <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="nombre" name="nombre" 
+                                           value="{{ nombre|default:caja.nombre }}" required maxlength="100"
+                                           placeholder="Ej: Caja Principal, Caja Secundaria, etc.">
+                                    <div class="form-text">
+                                        Nombre descriptivo de la caja (máximo 100 caracteres)
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="activa" 
+                                               name="activa" {% if activa|default:caja.activa %}checked{% endif %}>
+                                        <label class="form-check-label" for="activa">
+                                            <i class="fas fa-check-circle text-success"></i> Caja Activa
+                                        </label>
+                                    </div>
+                                    <div class="form-text">
+                                        Solo las cajas activas pueden ser utilizadas para ventas
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Información de la caja -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="alert alert-light">
+                                    <h6><i class="fas fa-info-circle"></i> Información de la Caja</h6>
+                                    <div class="row">
+                                        <div class="col-md-4">
+                                            <strong>ID en Sistema:</strong><br>
+                                            <span class="text-muted">{{ caja.id }}</span>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Código Actual:</strong><br>
+                                            <span class="text-primary">{{ caja.codigo }}</span>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <strong>Estado Actual:</strong><br>
+                                            {% if caja.activa %}
+                                                <span class="badge badge-success">Activa</span>
+                                            {% else %}
+                                                <span class="badge badge-danger">Inactiva</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Advertencias -->
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Importante</h6>
+                            <ul class="mb-0">
+                                <li>Cambiar el código puede afectar reportes históricos</li>
+                                <li>Desactivar la caja impedirá nuevas aperturas</li>
+                                <li>Si hay turnos abiertos, no se recomienda desactivar</li>
+                            </ul>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'caja:lista' %}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,292 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background: linear-gradient(45deg, #007bff, #6610f2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 16px;
+    }
+    
+    .estado-badge {
+        font-size: 0.75rem;
+    }
+    
+    .table th {
+        border-top: none;
+        font-weight: 600;
+        color: #495057;
+        background-color: #f8f9fa;
+    }
+    
+    .btn-actions {
+        white-space: nowrap;
+    }
+    
+    .search-filters {
+        background-color: #f8f9fa;
+        border-radius: 0.375rem;
+        padding: 1rem;
+        margin-bottom: 1.5rem;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5 class="mb-0">
+                                <i class="fas fa-users"></i> {{ titulo }}
+                            </h5>
+                        </div>
+                        <div class="col-auto">
+                            <a href="{% url 'usuarios:crear_usuario' %}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Nuevo Usuario
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Filtros de búsqueda -->
+                    <div class="search-filters">
+                        <form method="get" class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Buscar</label>
+                                <input type="text" name="search" class="form-control" 
+                                       placeholder="Nombre, usuario o email..." 
+                                       value="{{ search }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Rol</label>
+                                <select name="rol" class="form-select">
+                                    <option value="">Todos los roles</option>
+                                    {% for rol in roles %}
+                                        <option value="{{ rol.id }}" 
+                                                {% if rol_filter == rol.id|stringformat:"s" %}selected{% endif %}>
+                                            {{ rol.nombre }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Estado</label>
+                                <select name="estado" class="form-select">
+                                    <option value="">Todos los estados</option>
+                                    <option value="activo" {% if estado_filter == 'activo' %}selected{% endif %}>Activos</option>
+                                    <option value="inactivo" {% if estado_filter == 'inactivo' %}selected{% endif %}>Inactivos</option>
+                                    <option value="anulado" {% if estado_filter == 'anulado' %}selected{% endif %}>Anulados</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">&nbsp;</label>
+                                <div class="d-grid gap-2">
+                                    <button type="submit" class="btn btn-outline-primary">
+                                        <i class="fas fa-search"></i> Buscar
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    
+                    <!-- Tabla de usuarios -->
+                    {% if page_obj %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Usuario</th>
+                                        <th>Nombre Completo</th>
+                                        <th>Email</th>
+                                        <th>Rol</th>
+                                        <th>Estado</th>
+                                        <th>Creado</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for usuario in page_obj %}
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="user-avatar me-3">
+                                                    {{ usuario.nombre_completo|first|upper }}
+                                                </div>
+                                                <div>
+                                                    <strong>{{ usuario.nombre_usuario }}</strong>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td>{{ usuario.nombre_completo }}</td>
+                                        <td>{{ usuario.email }}</td>
+                                        <td>
+                                            <span class="badge bg-info">{{ usuario.rol_nombre }}</span>
+                                        </td>
+                                        <td>
+                                            {% if usuario.anulado %}
+                                                <span class="badge bg-dark estado-badge">Anulado</span>
+                                            {% elif usuario.activo %}
+                                                <span class="badge bg-success estado-badge">Activo</span>
+                                            {% else %}
+                                                <span class="badge bg-warning estado-badge">Inactivo</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ usuario.creado_date|date:"d/m/Y H:i" }}</td>
+                                        <td class="text-center">
+                                            <div class="btn-group btn-actions" role="group">
+                                                <a href="{% url 'usuarios:detalle_usuario' usuario.id %}" 
+                                                   class="btn btn-sm btn-outline-info" title="Ver detalles">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                
+                                                {% if not usuario.anulado %}
+                                                    <a href="{% url 'usuarios:editar_usuario' usuario.id %}" 
+                                                       class="btn btn-sm btn-outline-primary" title="Editar">
+                                                        <i class="fas fa-edit"></i>
+                                                    </a>
+                                                    
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-{% if usuario.activo %}warning{% else %}success{% endif %}" 
+                                                            title="{% if usuario.activo %}Desactivar{% else %}Activar{% endif %}"
+                                                            onclick="cambiarEstadoUsuario({{ usuario.id }}, {{ usuario.activo|yesno:'true,false' }})">
+                                                        <i class="fas fa-{% if usuario.activo %}pause{% else %}play{% endif %}"></i>
+                                                    </button>
+                                                    
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-danger" 
+                                                            title="Anular usuario"
+                                                            onclick="anularUsuario({{ usuario.id }}, '{{ usuario.nombre_usuario }}')">
+                                                        <i class="fas fa-ban"></i>
+                                                    </button>
+                                                {% endif %}
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="7" class="text-center py-4">
+                                            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                                            <p class="text-muted">No se encontraron usuarios</p>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Paginación -->
+                        {% if page_obj.has_other_pages %}
+                        <nav aria-label="Paginación usuarios">
+                            <ul class="pagination justify-content-center">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}{% if rol_filter %}&rol={{ rol_filter }}{% endif %}{% if estado_filter %}&estado={{ estado_filter }}{% endif %}">
+                                            <i class="fas fa-angle-double-left"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if rol_filter %}&rol={{ rol_filter }}{% endif %}{% if estado_filter %}&estado={{ estado_filter }}{% endif %}">
+                                            <i class="fas fa-angle-left"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                                
+                                <li class="page-item active">
+                                    <span class="page-link">
+                                        {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                                    </span>
+                                </li>
+                                
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if rol_filter %}&rol={{ rol_filter }}{% endif %}{% if estado_filter %}&estado={{ estado_filter }}{% endif %}">
+                                            <i class="fas fa-angle-right"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if rol_filter %}&rol={{ rol_filter }}{% endif %}{% if estado_filter %}&estado={{ estado_filter }}{% endif %}">
+                                            <i class="fas fa-angle-double-right"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-users fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay usuarios registrados</h5>
+                            <p class="text-muted">Comienza creando tu primer usuario</p>
+                            <a href="{% url 'usuarios:crear_usuario' %}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Crear Usuario
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function cambiarEstadoUsuario(usuarioId, estadoActual) {
+    const accion = estadoActual ? 'desactivar' : 'activar';
+    
+    if (confirm(`¿Está seguro de ${accion} este usuario?`)) {
+        fetch(`/usuarios/cambiar-estado/${usuarioId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value,
+                'Content-Type': 'application/json',
+            },
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Ocurrió un error inesperado');
+        });
+    }
+}
+
+function anularUsuario(usuarioId, nombreUsuario) {
+    if (confirm(`¿Está seguro de anular al usuario "${nombreUsuario}"?\n\nEsta acción no se puede deshacer.`)) {
+        // Crear formulario y enviarlo
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/usuarios/anular/${usuarioId}/`;
+        
+        const csrfToken = document.createElement('input');
+        csrfToken.type = 'hidden';
+        csrfToken.name = 'csrfmiddlewaretoken';
+        csrfToken.value = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        form.appendChild(csrfToken);
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+</script>
+{% endblock %}

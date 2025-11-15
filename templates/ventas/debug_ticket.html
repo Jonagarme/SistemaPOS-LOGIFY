@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Ticket</title>
+</head>
+<body>
+    <h1>DEBUG TICKET</h1>
+    
+    <h2>Datos del objeto venta:</h2>
+    <p><strong>Tipo:</strong> {{ venta|default:"NO VENTA OBJECT" }}</p>
+    <p><strong>venta.id:</strong> {{ venta.id|default:"NO venta.id" }}</p>
+    <p><strong>venta.pk:</strong> {{ venta.pk|default:"NO venta.pk" }}</p>
+    <p><strong>ID Factura:</strong> {{ venta.idFactura|default:"NO ID" }}</p>
+    <p><strong>Número Factura:</strong> {{ venta.numeroFactura|default:"NO NUMERO" }}</p>
+    <p><strong>Cliente ID:</strong> {{ venta.idCliente|default:"NO CLIENTE" }}</p>
+    <p><strong>Total:</strong> {{ venta.total|default:"NO TOTAL" }}</p>
+    <p><strong>Fecha:</strong> {{ venta.fechaVenta|default:"NO FECHA" }}</p>
+    <p><strong>Fecha Emision:</strong> {{ venta.fechaEmision|default:"NO FECHA EMISION" }}</p>
+    
+    <h2>Datos de debug_id:</h2>
+    <p><strong>debug_id:</strong> {{ debug_id|default:"NO DEBUG ID" }}</p>
+    
+    <h2>Detalles:</h2>
+    <p><strong>Count detalles:</strong> {{ detalles.count|default:"NO DETALLES" }}</p>
+    
+    <h2>URL Test:</h2>
+    {% if debug_id %}
+        <p><a href="{% url 'ventas:json_facturacion' debug_id %}">Link usando debug_id ({{ debug_id }})</a></p>
+    {% else %}
+        <p>No hay debug_id para crear link</p>
+    {% endif %}
+    
+    {% if venta.pk %}
+        <p><a href="{% url 'ventas:json_facturacion' venta.pk %}">Link usando venta.pk ({{ venta.pk }})</a></p>
+    {% else %}
+        <p>No hay venta.pk</p>
+    {% endif %}
+    
+    {% if venta.id %}
+        <p><a href="{% url 'ventas:json_facturacion' venta.id %}">Link usando venta.id ({{ venta.id }})</a></p>
+    {% else %}
+        <p>No hay venta.id</p>
+    {% endif %}
+    
+    {% if venta.idFactura %}
+        <p><a href="{% url 'ventas:json_facturacion' venta.idFactura %}">Link usando venta.idFactura ({{ venta.idFactura }})</a></p>
+    {% else %}
+        <p>No hay venta.idFactura</p>
+    {% endif %}
+    
+    <hr>
+    <button onclick="window.close()">Cerrar</button>
+</body>
+</html>

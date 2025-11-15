@@ -1,0 +1,240 @@
+{% extends 'base.html' %}
+
+{% block title %}Productos LogiPharm - Sistema POS{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'productos:crear' %}" class="btn btn-primary">
+    <i class="fas fa-plus"></i> Nuevo Producto
+</a>
+{% endblock %}
+
+{% block content %}
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <input type="text" name="search" class="form-control" 
+                       placeholder="Buscar por nombre, código..." value="{{ search }}">
+            </div>
+            <div class="col-md-2">
+                <select name="categoria" class="form-select">
+                    <option value="">Todas las categorías</option>
+                    {% for categoria in categorias %}
+                        <option value="{{ categoria.id }}" {% if categoria.id|stringformat:"s" == categoria_id %}selected{% endif %}>
+                            {{ categoria.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="marca" class="form-select">
+                    <option value="">Todas las marcas</option>
+                    {% for marca in marcas %}
+                        <option value="{{ marca.id }}" {% if marca.id|stringformat:"s" == marca_id %}selected{% endif %}>
+                            {{ marca.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <select name="laboratorio" class="form-select">
+                    <option value="">Todos los laboratorios</option>
+                    {% for laboratorio in laboratorios %}
+                        <option value="{{ laboratorio.id }}" {% if laboratorio.id|stringformat:"s" == laboratorio_id %}selected{% endif %}>
+                            {{ laboratorio.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
+            <div class="col-md-1">
+                <a href="{% url 'productos:stock_bajo' %}" class="btn btn-outline-warning w-100" title="Productos con stock bajo">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Lista de productos -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="fas fa-pills"></i> {{ titulo }}
+            <span class="badge bg-secondary">{{ page_obj.paginator.count }} productos</span>
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>Código</th>
+                            <th>Producto</th>
+                            <th>Categoría</th>
+                            <th>Marca</th>
+                            <th>Laboratorio</th>
+                            <th>Precio Venta</th>
+                            <th>Stock</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for producto in page_obj %}
+                        <tr>
+                            <td>
+                                <code>{{ producto.codigo_principal }}</code>
+                                {% if producto.codigo_auxiliar %}
+                                    <br><small class="text-muted">{{ producto.codigo_auxiliar }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ producto.nombre }}</strong>
+                                {% if producto.necesita_restock %}
+                                    <span class="badge bg-warning ms-1">
+                                        <i class="fas fa-exclamation-triangle"></i> Bajo Stock
+                                    </span>
+                                {% endif %}
+                                {% if producto.es_psicotropico %}
+                                    <span class="badge bg-danger ms-1">
+                                        <i class="fas fa-prescription-bottle-alt"></i> Psicotrópico
+                                    </span>
+                                {% endif %}
+                                {% if producto.requiere_cadena_frio %}
+                                    <span class="badge bg-info ms-1">
+                                        <i class="fas fa-snowflake"></i> Cadena Frío
+                                    </span>
+                                {% endif %}
+                                {% if producto.descripcion %}
+                                    <br><small class="text-muted">{{ producto.descripcion|truncatechars:60 }}</small>
+                                {% endif %}
+                            </td>
+                            <td>{{ producto.id_categoria.nombre }}</td>
+                            <td>{{ producto.id_marca.nombre }}</td>
+                            <td>
+                                {% if producto.id_laboratorio %}
+                                    {{ producto.id_laboratorio.nombre }}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>${{ producto.precio_venta|floatformat:2 }}</strong>
+                                {% if producto.pvp_unidad != producto.precio_venta %}
+                                    <br><small class="text-muted">PVP: ${{ producto.pvp_unidad|floatformat:2 }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if producto.stock <= producto.stock_minimo %}
+                                    <span class="badge bg-danger">
+                                        {{ producto.stock|floatformat:2 }}
+                                    </span>
+                                    <br><small class="text-muted">Mín: {{ producto.stock_minimo|floatformat:2 }}</small>
+                                {% elif producto.stock <= producto.stock_maximo %}
+                                    <span class="badge bg-warning">
+                                        {{ producto.stock|floatformat:2 }}
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-success">
+                                        {{ producto.stock|floatformat:2 }}
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if producto.activo and not producto.anulado %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check"></i> Activo
+                                    </span>
+                                {% elif producto.anulado %}
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-times"></i> Anulado
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">
+                                        <i class="fas fa-pause"></i> Inactivo
+                                    </span>
+                                {% endif %}
+                                {% if producto.clasificacion_abc %}
+                                    <br><span class="badge bg-info">Clase {{ producto.clasificacion_abc }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'productos:detalle' producto.id %}" 
+                                       class="btn btn-outline-info" title="Ver detalles">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{% url 'productos:editar' producto.pk %}" 
+                                       class="btn btn-outline-primary" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <a href="{% url 'inventario:kardex_producto' producto.pk %}" 
+                                       class="btn btn-outline-success" title="Kardex">
+                                        <i class="fas fa-list"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Paginación -->
+            {% if page_obj.has_other_pages %}
+                <nav>
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}{% if categoria_id %}&categoria={{ categoria_id }}{% endif %}">
+                                    Primera
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}{% if categoria_id %}&categoria={{ categoria_id }}{% endif %}">
+                                    Anterior
+                                </a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}{% if categoria_id %}&categoria={{ categoria_id }}{% endif %}">
+                                    Siguiente
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}{% if categoria_id %}&categoria={{ categoria_id }}{% endif %}">
+                                    Última
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-box fa-3x text-muted mb-3"></i>
+                <h5>No hay productos registrados</h5>
+                <p class="text-muted">Comience agregando su primer producto</p>
+                <a href="{% url 'productos:crear' %}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Crear Primer Producto
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

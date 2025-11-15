@@ -1,0 +1,207 @@
+{% extends 'base.html' %}
+
+{% block title %}Historial de Movimientos de Caja - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="mb-0">
+                            <i class="fas fa-history"></i> Historial de Movimientos de Caja
+                        </h5>
+                        <small class="text-muted">Registro de todas las aperturas y cierres de caja</small>
+                    </div>
+                    <div class="col-auto">
+                        {% if caja_abierta %}
+                            <a href="{% url 'caja:estado' %}" class="btn btn-info me-2">
+                                <i class="fas fa-eye"></i> Ver Estado Actual
+                            </a>
+                            <a href="{% url 'caja:cerrar' %}" class="btn btn-warning">
+                                <i class="fas fa-lock"></i> Cerrar Caja
+                            </a>
+                        {% else %}
+                            <a href="{% url 'caja:abrir' %}" class="btn btn-success">
+                                <i class="fas fa-unlock"></i> Abrir Caja
+                            </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                {% if caja_abierta %}
+                <div class="alert alert-info mb-4">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h6 class="alert-heading mb-1">
+                                <i class="fas fa-info-circle"></i> Caja Actualmente Abierta
+                            </h6>
+                            <p class="mb-0">
+                                <strong>{{ caja_abierta.caja_nombre }}</strong> - 
+                                Abierta el {{ caja_abierta.fechaApertura|date:"d/m/Y" }} a las {{ caja_abierta.fechaApertura|date:"H:i" }}
+                                <br>
+                                <small class="text-muted">Saldo inicial: ${{ caja_abierta.saldoInicial|floatformat:2 }}</small>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Tabla de Movimientos -->
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Caja</th>
+                                <th>Tipo</th>
+                                <th>Fecha Apertura</th>
+                                <th>Fecha Cierre</th>
+                                <th>Estado</th>
+                                <th>Saldo Inicial</th>
+                                <th>Saldo Final</th>
+                                <th>Diferencia</th>
+                                <th>Usuario</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for item in page_obj %}
+                                {% with movimiento=item.movimiento %}
+                                <tr class="{% if movimiento.estado == 'ABIERTA' %}table-warning{% elif movimiento.diferencia < 0 %}table-danger{% elif movimiento.diferencia > 0 %}table-success{% endif %}">
+                                    <td><strong>#{{ movimiento.id }}</strong></td>
+                                    <td>
+                                        <strong>{{ item.caja_codigo }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ item.caja_nombre_extra }}</small>
+                                    </td>
+                                    <td>
+                                        {% if movimiento.estado == 'ABIERTA' %}
+                                            <span class="badge bg-warning text-dark">
+                                                <i class="fas fa-unlock"></i> APERTURA
+                                            </span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">
+                                                <i class="fas fa-lock"></i> CIERRE
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {{ movimiento.fechaApertura|date:"d/m/Y" }}
+                                        <br>
+                                        <small class="text-muted">{{ movimiento.fechaApertura|date:"H:i:s" }}</small>
+                                    </td>
+                                    <td>
+                                        {% if movimiento.fechaCierre %}
+                                            {{ movimiento.fechaCierre|date:"d/m/Y" }}
+                                            <br>
+                                            <small class="text-muted">{{ movimiento.fechaCierre|date:"H:i:s" }}</small>
+                                        {% else %}
+                                            <span class="text-muted">--</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if movimiento.estado == 'ABIERTA' %}
+                                            <span class="badge bg-warning text-dark">ABIERTA</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">CERRADA</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-primary">
+                                            ${{ movimiento.saldoInicial|floatformat:2 }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if movimiento.estado == 'CERRADA' %}
+                                            <span class="badge bg-info">
+                                                ${{ movimiento.totalContadoFisico|floatformat:2 }}
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">--</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if movimiento.estado == 'CERRADA' %}
+                                            {% if movimiento.diferencia == 0 %}
+                                                <span class="badge bg-success">
+                                                    ${{ movimiento.diferencia|floatformat:2 }}
+                                                </span>
+                                            {% elif movimiento.diferencia > 0 %}
+                                                <span class="badge bg-warning text-dark">
+                                                    +${{ movimiento.diferencia|floatformat:2 }}
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-danger">
+                                                    ${{ movimiento.diferencia|floatformat:2 }}
+                                                </span>
+                                            {% endif %}
+                                        {% else %}
+                                            <span class="text-muted">--</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <strong>Apertura:</strong> Usuario {{ movimiento.idUsuarioApertura }}
+                                        {% if movimiento.idUsuarioCierre %}
+                                            <br>
+                                            <small class="text-muted">Cierre: Usuario {{ movimiento.idUsuarioCierre }}</small>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endwith %}
+                            {% empty %}
+                                <tr>
+                                    <td colspan="10" class="text-center py-4">
+                                        <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">No hay movimientos de caja registrados</p>
+                                        <a href="{% url 'caja:abrir' %}" class="btn btn-success">
+                                            <i class="fas fa-plus"></i> Abrir Primera Caja
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                {% if page_obj.has_other_pages %}
+                <nav aria-label="Paginación">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}">
+                                    <i class="fas fa-chevron-left"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for num in page_obj.paginator.page_range %}
+                            {% if page_obj.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% else %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}">
+                                    <i class="fas fa-chevron-right"></i>
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

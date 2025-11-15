@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Ticket {{ venta.numero_factura }}</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            margin: 0;
+            padding: 10px;
+            width: 300px;
+        }
+        
+        .ticket {
+            text-align: center;
+        }
+        
+        .header {
+            border-bottom: 1px dashed #000;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .company-name {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+        
+        .details {
+            text-align: left;
+            margin: 10px 0;
+        }
+        
+        .details-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+        }
+        
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        
+        .items-table th,
+        .items-table td {
+            text-align: left;
+            padding: 2px;
+            font-size: 11px;
+        }
+        
+        .items-table th {
+            border-bottom: 1px solid #000;
+        }
+        
+        .item-row {
+            border-bottom: 1px dotted #ccc;
+        }
+        
+        .totals {
+            border-top: 1px dashed #000;
+            padding-top: 10px;
+            margin-top: 10px;
+        }
+        
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 3px 0;
+        }
+        
+        .total-final {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .footer {
+            border-top: 1px dashed #000;
+            padding-top: 10px;
+            margin-top: 10px;
+            text-align: center;
+            font-size: 10px;
+        }
+        
+        .payment-info {
+            margin: 10px 0;
+        }
+        
+        @media print {
+            body {
+                width: auto;
+            }
+            
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="ticket">
+        <!-- Header -->
+        <div class="header">
+            <div class="company-name">SISTEMA POS</div>
+            <div>Tu Tienda de Confianza</div>
+            <div>Tel: (504) 0000-0000</div>
+            <div>RTN: 12345678901234</div>
+        </div>
+        
+        <!-- Detalles de venta -->
+        <div class="details">
+            <div class="details-row">
+                <span>Factura:</span>
+                <span>{{ venta.numero_factura }}</span>
+            </div>
+            <div class="details-row">
+                <span>Fecha:</span>
+                <span>{{ venta.fecha|date:"d/m/Y H:i" }}</span>
+            </div>
+            <div class="details-row">
+                <span>Vendedor:</span>
+                <span>{{ venta.vendedor.get_full_name|default:venta.vendedor.username }}</span>
+            </div>
+            {% if venta.cliente %}
+            <div class="details-row">
+                <span>Cliente:</span>
+                <span>{{ venta.cliente.nombre_completo }}</span>
+            </div>
+            {% if venta.cliente.rtn %}
+            <div class="details-row">
+                <span>RTN:</span>
+                <span>{{ venta.cliente.rtn }}</span>
+            </div>
+            {% endif %}
+            {% endif %}
+        </div>
+        
+        <!-- Items -->
+        <table class="items-table">
+            <thead>
+                <tr>
+                    <th>Producto</th>
+                    <th>Cant</th>
+                    <th>Precio</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for detalle in venta.detalles.all %}
+                <tr class="item-row">
+                    <td>{{ detalle.producto.nombre|truncatechars:15 }}</td>
+                    <td>{{ detalle.cantidad }}</td>
+                    <td>${{ detalle.precio_unitario|floatformat:2 }}</td>
+                    <td>${{ detalle.total_linea|floatformat:2 }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <!-- Totales -->
+        <div class="totals">
+            <div class="total-row">
+                <span>Subtotal:</span>
+                <span>$ {{ venta.subtotal|floatformat:2 }}</span>
+            </div>
+            {% if venta.descuento > 0 %}
+            <div class="total-row">
+                <span>Descuento:</span>
+                <span>$ {{ venta.descuento|floatformat:2 }}</span>
+            </div>
+            {% endif %}
+            <div class="total-row">
+                <span>ISV (15%):</span>
+                <span>$ {{ venta.impuesto|floatformat:2 }}</span>
+            </div>
+            <div class="total-row total-final">
+                <span>TOTAL:</span>
+                <span>$ {{ venta.total|floatformat:2 }}</span>
+            </div>
+        </div>
+        
+        <!-- Información de pago -->
+        <div class="payment-info">
+            {% for pago in venta.pagos.all %}
+            <div class="total-row">
+                <span>{{ pago.get_metodo_pago_display }}:</span>
+                <span>$ {{ pago.monto|floatformat:2 }}</span>
+            </div>
+            {% endfor %}
+            
+            {% with saldo=venta.saldo_pendiente %}
+            {% if saldo > 0 %}
+            <div class="total-row">
+                <span>Saldo Pendiente:</span>
+                <span>$ {{ saldo|floatformat:2 }}</span>
+            </div>
+            {% elif saldo < 0 %}
+            <div class="total-row">
+                <span>Cambio:</span>
+                <span>$ {{ saldo|floatformat:2|cut:"-" }}</span>
+            </div>
+            {% endif %}
+            {% endwith %}
+        </div>
+        
+        <!-- Footer -->
+        <div class="footer">
+            <div>¡Gracias por su compra!</div>
+            <div>{{ venta.fecha|date:"d/m/Y H:i:s" }}</div>
+            <div>No. Items: {{ venta.detalles.count }}</div>
+            <div style="margin-top: 10px;">
+                Esta factura es válida para efectos fiscales
+            </div>
+        </div>
+    </div>
+    
+    <!-- Botones para impresión -->
+    <div class="no-print" style="text-align: center; margin-top: 20px;">
+        <button onclick="window.print()" style="padding: 10px 20px; margin: 5px;">
+            Imprimir
+        </button>
+        <button onclick="window.close()" style="padding: 10px 20px; margin: 5px;">
+            Cerrar
+        </button>
+    </div>
+    
+    <script>
+        // Auto-imprimir al cargar
+        window.onload = function() {
+            // Dar tiempo para que se cargue completamente
+            setTimeout(function() {
+                window.print();
+            }, 500);
+        };
+    </script>
+</body>
+</html>

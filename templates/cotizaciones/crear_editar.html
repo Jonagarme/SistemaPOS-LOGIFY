@@ -1,0 +1,608 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load crispy_forms_tags %}
+
+{% block title %}{% if cotizacion.pk %}Editar{% else %}Crear{% endif %} Cotización{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+    .detalle-row {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        margin-bottom: 10px;
+        padding: 15px;
+        background: #f8f9fa;
+    }
+    .detalle-row:hover {
+        background: #e9ecef;
+    }
+    .form-floating > label {
+        padding: 1rem 0.75rem;
+    }
+    .form-floating > .form-control:focus ~ label,
+    .form-floating > .form-control:not(:placeholder-shown) ~ label,
+    .form-floating > .form-select ~ label {
+        opacity: .65;
+        transform: scale(.85) translateY(-0.5rem) translateX(0.15rem);
+    }
+    .total-section {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 20px;
+    }
+    .btn-add-producto {
+        background: #28a745;
+        border: none;
+        border-radius: 50px;
+        padding: 10px 20px;
+        box-shadow: 0 2px 10px rgba(40, 167, 69, 0.3);
+    }
+    .btn-add-producto:hover {
+        background: #218838;
+        transform: translateY(-2px);
+    }
+    .producto-autocomplete {
+        position: relative;
+    }
+    .autocomplete-suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: white;
+        border: 1px solid #dee2e6;
+        border-top: none;
+        border-radius: 0 0 8px 8px;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        display: none;
+    }
+    .autocomplete-suggestion {
+        padding: 10px;
+        cursor: pointer;
+        border-bottom: 1px solid #f1f3f4;
+    }
+    .autocomplete-suggestion:hover {
+        background: #f8f9fa;
+    }
+    .autocomplete-suggestion.active {
+        background: #e3f2fd;
+    }
+    .invalid-feedback {
+        display: block;
+    }
+    .form-errors {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h2 class="mb-0">
+                <i class="bi bi-file-earmark-plus me-2"></i>
+                {% if cotizacion.pk %}Editar Cotización #{{ cotizacion.numero }}{% else %}Nueva Cotización{% endif %}
+            </h2>
+            <p class="text-muted">Complete la información de la cotización</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'cotizaciones:lista' %}" class="btn btn-outline-secondary me-2">
+                <i class="bi bi-arrow-left me-2"></i>Volver
+            </a>
+            {% if cotizacion.pk %}
+            <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}" class="btn btn-info">
+                <i class="bi bi-eye me-2"></i>Ver Detalle
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Errores del formulario -->
+    {% if form.non_field_errors or formset.non_form_errors %}
+    <div class="form-errors">
+        <h6><i class="bi bi-exclamation-triangle me-2"></i>Errores encontrados:</h6>
+        {% for error in form.non_field_errors %}
+        <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+        {% for error in formset.non_form_errors %}
+        <div class="text-danger">{{ error }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <form method="post" id="cotizacion-form">
+        {% csrf_token %}
+        {{ formset.management_form }}
+        
+        <div class="row">
+            <!-- Información principal -->
+            <div class="col-lg-8">
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-info-circle me-2"></i>Información General</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    {{ form.cliente }}
+                                    <label for="{{ form.cliente.id_for_label }}">Cliente *</label>
+                                    {% if form.cliente.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.cliente.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    {{ form.referencia_cliente }}
+                                    <label for="{{ form.referencia_cliente.id_for_label }}">Referencia del Cliente</label>
+                                    {% if form.referencia_cliente.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.referencia_cliente.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    {{ form.fecha }}
+                                    <label for="{{ form.fecha.id_for_label }}">Fecha *</label>
+                                    {% if form.fecha.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.fecha.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-floating mb-3">
+                                    {{ form.fecha_vencimiento }}
+                                    <label for="{{ form.fecha_vencimiento.id_for_label }}">Válida hasta *</label>
+                                    {% if form.fecha_vencimiento.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.fecha_vencimiento.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-floating mb-3">
+                                    {{ form.validez_dias }}
+                                    <label for="{{ form.validez_dias.id_for_label }}">Validez (días)</label>
+                                    {% if form.validez_dias.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.validez_dias.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <div class="col-md-8">
+                                <div class="form-floating mb-3">
+                                    {{ form.condiciones }}
+                                    <label for="{{ form.condiciones.id_for_label }}">Términos y Condiciones</label>
+                                    {% if form.condiciones.errors %}
+                                    <div class="invalid-feedback d-block">{{ form.condiciones.errors.0 }}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-floating mb-3">
+                            {{ form.observaciones }}
+                            <label for="{{ form.observaciones.id_for_label }}">Observaciones</label>
+                            {% if form.observaciones.errors %}
+                            <div class="invalid-feedback d-block">{{ form.observaciones.errors.0 }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Productos -->
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-box me-2"></i>Productos</h5>
+                        <button type="button" class="btn btn-success btn-add-producto" id="add-producto">
+                            <i class="bi bi-plus-circle me-2"></i>Agregar Producto
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="detalles-container">
+                            {% for form_detalle in formset %}
+                            <div class="detalle-row" data-form-index="{{ forloop.counter0 }}">
+                                {{ form_detalle.id }}
+                                {{ form_detalle.DELETE }}
+                                
+                                <div class="row align-items-end">
+                                    <div class="col-md-4">
+                                        <div class="form-floating producto-autocomplete">
+                                            {{ form_detalle.producto }}
+                                            <label>Producto *</label>
+                                            <div class="autocomplete-suggestions"></div>
+                                            {% if form_detalle.producto.errors %}
+                                            <div class="invalid-feedback">{{ form_detalle.producto.errors.0 }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-floating">
+                                            {{ form_detalle.cantidad }}
+                                            <label>Cantidad *</label>
+                                            {% if form_detalle.cantidad.errors %}
+                                            <div class="invalid-feedback">{{ form_detalle.cantidad.errors.0 }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-floating">
+                                            {{ form_detalle.precio_unitario }}
+                                            <label>Precio Unit. *</label>
+                                            {% if form_detalle.precio_unitario.errors %}
+                                            <div class="invalid-feedback">{{ form_detalle.precio_unitario.errors.0 }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-floating">
+                                            {{ form_detalle.descuento_linea }}
+                                            <label>Desc. %</label>
+                                            {% if form_detalle.descuento_linea.errors %}
+                                            <div class="invalid-feedback">{{ form_detalle.descuento_linea.errors.0 }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    <div class="col-md-1">
+                                        <div class="form-floating">
+                                            <input type="text" class="form-control subtotal" readonly>
+                                            <label>Subtotal</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-1">
+                                        <button type="button" class="btn btn-danger btn-sm remove-detalle" title="Eliminar">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <div id="empty-message" class="text-center py-4" {% if formset|length > 0 %}style="display: none;"{% endif %}>
+                            <i class="bi bi-box display-4 text-muted"></i>
+                            <p class="text-muted mt-2">No hay productos agregados</p>
+                            <button type="button" class="btn btn-primary" onclick="document.getElementById('add-producto').click()">
+                                <i class="bi bi-plus-circle me-2"></i>Agregar primer producto
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel lateral -->
+            <div class="col-lg-4">
+                <!-- Totales -->
+                <div class="card total-section mb-4">
+                    <div class="card-body">
+                        <h5 class="mb-3"><i class="bi bi-calculator me-2"></i>Resumen</h5>
+                        
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal:</span>
+                            <span id="subtotal-display">$ 0.00</span>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Descuento:</span>
+                            <span id="descuento-display">$ 0.00</span>
+                        </div>
+                        
+                        <div class="form-floating mb-3">
+                            {{ form.descuento_global }}
+                            <label for="{{ form.descuento_global.id_for_label }}" class="text-white">Descuento Global %</label>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Impuesto (15%):</span>
+                            <span id="impuesto-display">$ 0.00</span>
+                        </div>
+                        
+                        <hr class="my-3">
+                        
+                        <div class="d-flex justify-content-between mb-3">
+                            <h5>Total:</h5>
+                            <h5 id="total-display">$ 0.00</h5>
+                        </div>
+                        
+                        <!-- Campos ocultos para totales -->
+                        {{ form.subtotal }}
+                        {{ form.impuesto }}
+                        {{ form.total }}
+                    </div>
+                </div>
+
+                <!-- Estado -->
+                {% if cotizacion.pk %}
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <h6><i class="bi bi-info-circle me-2"></i>Estado</h6>
+                        <div class="form-floating">
+                            {{ form.estado }}
+                            <label for="{{ form.estado.id_for_label }}">Estado</label>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Acciones -->
+                <div class="card">
+                    <div class="card-body">
+                        <h6><i class="bi bi-gear me-2"></i>Acciones</h6>
+                        
+                        <button type="submit" name="action" value="guardar" class="btn btn-primary w-100 mb-2">
+                            <i class="bi bi-save me-2"></i>
+                            {% if cotizacion.pk %}Actualizar{% else %}Guardar{% endif %} Cotización
+                        </button>
+                        
+                        {% if not cotizacion.pk %}
+                        <button type="submit" name="action" value="guardar_enviar" class="btn btn-success w-100 mb-2">
+                            <i class="bi bi-send me-2"></i>Guardar y Enviar
+                        </button>
+                        {% endif %}
+                        
+                        <a href="{% url 'cotizaciones:lista' %}" class="btn btn-outline-secondary w-100">
+                            <i class="bi bi-x-circle me-2"></i>Cancelar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Template para nuevo detalle -->
+<div id="detalle-template" style="display: none;">
+    <div class="detalle-row" data-form-index="__prefix__">
+        <div class="row align-items-end">
+            <div class="col-md-4">
+                <div class="form-floating producto-autocomplete">
+                    <select class="form-select" name="__prefix__-producto" id="id___prefix__-producto">
+                        <option value="">Seleccionar producto...</option>
+                        {% for producto in productos %}
+                        <option value="{{ producto.id }}" data-precio="{{ producto.precio_venta }}">{{ producto.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                    <label>Producto *</label>
+                    <div class="autocomplete-suggestions"></div>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="form-floating">
+                    <input type="number" class="form-control" name="__prefix__-cantidad" 
+                           id="id___prefix__-cantidad" step="0.01" min="0" value="1">
+                    <label>Cantidad *</label>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="form-floating">
+                    <input type="number" class="form-control" name="__prefix__-precio_unitario" 
+                           id="id___prefix__-precio_unitario" step="0.01" min="0">
+                    <label>Precio Unit. *</label>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <div class="form-floating">
+                    <input type="number" class="form-control" name="__prefix__-descuento_linea" 
+                           id="id___prefix__-descuento_linea" step="0.01" min="0" max="100" value="0">
+                    <label>Desc. %</label>
+                </div>
+            </div>
+            <div class="col-md-1">
+                <div class="form-floating">
+                    <input type="text" class="form-control subtotal" readonly>
+                    <label>Subtotal</label>
+                </div>
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-danger btn-sm remove-detalle" title="Eliminar">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>
+        </div>
+        <input type="hidden" name="__prefix__-id" id="id___prefix__-id">
+        <input type="hidden" name="__prefix__-DELETE" id="id___prefix__-DELETE" value="False">
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    let formCount = parseInt('{{ formset.total_form_count|default:"0" }}') || 0;
+    const maxForms = parseInt('{{ formset.max_num|default:"10" }}') || 10;
+    const container = document.getElementById('detalles-container');
+    const addButton = document.getElementById('add-producto');
+    const emptyMessage = document.getElementById('empty-message');
+    
+    // Función para actualizar los totales
+    function updateTotals() {
+        let subtotal = 0;
+        let descuentoTotal = 0;
+        
+        document.querySelectorAll('.detalle-row:not([data-deleted="true"])').forEach(function(row) {
+            const cantidad = parseFloat(row.querySelector('[name$="-cantidad"]').value || 0);
+            const precio = parseFloat(row.querySelector('[name$="-precio_unitario"]').value || 0);
+            const descuento = parseFloat(row.querySelector('[name$="-descuento_linea"]').value || 0);
+            
+            const subtotalLinea = cantidad * precio;
+            const descuentoLinea = subtotalLinea * (descuento / 100);
+            const totalLinea = subtotalLinea - descuentoLinea;
+            
+            // Actualizar el subtotal de la línea
+            const subtotalInput = row.querySelector('.subtotal');
+            if (subtotalInput) {
+                subtotalInput.value = `$ ${totalLinea.toFixed(2)}`;
+            }
+            
+            subtotal += totalLinea;
+            descuentoTotal += descuentoLinea;
+        });
+        
+        // Aplicar descuento global
+        const descuentoGlobal = parseFloat(document.getElementById('id_descuento_global').value || 0);
+        const descuentoGlobalMonto = subtotal * (descuentoGlobal / 100);
+        const subtotalConDescuento = subtotal - descuentoGlobalMonto;
+        
+        // Calcular impuesto (15% sobre subtotal con descuento)
+        const impuesto = subtotalConDescuento * 0.15;
+        const total = subtotalConDescuento + impuesto;
+        
+        // Actualizar displays
+        document.getElementById('subtotal-display').textContent = `$ ${subtotal.toFixed(2)}`;
+        document.getElementById('descuento-display').textContent = `$ ${(descuentoTotal + descuentoGlobalMonto).toFixed(2)}`;
+        document.getElementById('impuesto-display').textContent = `$ ${impuesto.toFixed(2)}`;
+        document.getElementById('total-display').textContent = `$ ${total.toFixed(2)}`;
+        
+        // Actualizar campos ocultos
+        document.getElementById('id_subtotal').value = subtotal.toFixed(2);
+        document.getElementById('id_impuesto').value = impuesto.toFixed(2);
+        document.getElementById('id_total').value = total.toFixed(2);
+    }
+    
+    // Función para agregar nuevo producto
+    function addNewDetalle() {
+        if (formCount >= maxForms) {
+            alert('Se ha alcanzado el máximo número de productos permitidos.');
+            return;
+        }
+        
+        const template = document.getElementById('detalle-template').innerHTML;
+        const newForm = template.replace(/__prefix__/g, formCount);
+        
+        const newDiv = document.createElement('div');
+        newDiv.innerHTML = newForm;
+        const newRow = newDiv.firstElementChild;
+        newRow.setAttribute('data-form-index', formCount);
+        
+        container.appendChild(newRow);
+        
+        // Actualizar el número total de formularios
+        formCount++;
+        document.getElementById('id_form-TOTAL_FORMS').value = formCount;
+        
+        // Configurar eventos del nuevo elemento
+        setupDetalleEvents(newRow);
+        
+        // Ocultar mensaje vacío
+        emptyMessage.style.display = 'none';
+        
+        updateTotals();
+    }
+    
+    // Función para configurar eventos de una fila de detalle
+    function setupDetalleEvents(row) {
+        // Evento para eliminar
+        const removeBtn = row.querySelector('.remove-detalle');
+        if (removeBtn) {
+            removeBtn.addEventListener('click', function() {
+                const deleteInput = row.querySelector('[name$="-DELETE"]');
+                if (deleteInput) {
+                    deleteInput.value = 'True';
+                    row.setAttribute('data-deleted', 'true');
+                    row.style.display = 'none';
+                } else {
+                    row.remove();
+                    formCount--;
+                    document.getElementById('id_form-TOTAL_FORMS').value = formCount;
+                }
+                
+                // Mostrar mensaje vacío si no hay productos
+                const visibleRows = container.querySelectorAll('.detalle-row:not([data-deleted="true"]):not([style*="display: none"])');
+                if (visibleRows.length === 0) {
+                    emptyMessage.style.display = 'block';
+                }
+                
+                updateTotals();
+            });
+        }
+        
+        // Eventos para cálculos
+        const cantidad = row.querySelector('[name$="-cantidad"]');
+        const precio = row.querySelector('[name$="-precio_unitario"]');
+        const descuento = row.querySelector('[name$="-descuento_linea"]');
+        const productoSelect = row.querySelector('[name$="-producto"]');
+        
+        [cantidad, precio, descuento].forEach(function(input) {
+            if (input) {
+                input.addEventListener('input', updateTotals);
+                input.addEventListener('change', updateTotals);
+            }
+        });
+        
+        // Evento para autocompletar precio cuando se selecciona producto
+        if (productoSelect) {
+            productoSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                if (selectedOption && selectedOption.dataset.precio) {
+                    if (precio) {
+                        precio.value = selectedOption.dataset.precio;
+                        updateTotals();
+                    }
+                }
+            });
+        }
+    }
+    
+    // Configurar eventos existentes
+    document.querySelectorAll('.detalle-row').forEach(setupDetalleEvents);
+    
+    // Evento para agregar producto
+    if (addButton) {
+        addButton.addEventListener('click', addNewDetalle);
+    }
+    
+    // Evento para descuento global
+    const descuentoGlobal = document.getElementById('id_descuento_global');
+    if (descuentoGlobal) {
+        descuentoGlobal.addEventListener('input', updateTotals);
+        descuentoGlobal.addEventListener('change', updateTotals);
+    }
+    
+    // Calcular totales iniciales
+    updateTotals();
+    
+    // Validación del formulario
+    document.getElementById('cotizacion-form').addEventListener('submit', function(e) {
+        const visibleRows = container.querySelectorAll('.detalle-row:not([data-deleted="true"]):not([style*="display: none"])');
+        if (visibleRows.length === 0) {
+            e.preventDefault();
+            alert('Debe agregar al menos un producto a la cotización.');
+            return false;
+        }
+        
+        // Validar que todos los productos tengan cantidad y precio
+        let isValid = true;
+        visibleRows.forEach(function(row) {
+            const producto = row.querySelector('[name$="-producto"]');
+            const cantidad = row.querySelector('[name$="-cantidad"]');
+            const precio = row.querySelector('[name$="-precio_unitario"]');
+            
+            if (!producto.value || !cantidad.value || cantidad.value <= 0 || !precio.value || precio.value <= 0) {
+                isValid = false;
+                row.style.border = '2px solid #dc3545';
+            } else {
+                row.style.border = '1px solid #dee2e6';
+            }
+        });
+        
+        if (!isValid) {
+            e.preventDefault();
+            alert('Todos los productos deben tener seleccionado el producto, cantidad y precio válidos.');
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

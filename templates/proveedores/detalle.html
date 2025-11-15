@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block page_actions %}
+<div class="d-flex gap-2">
+    <a href="{% url 'proveedores:editar' proveedor.pk %}" class="btn btn-primary">
+        <i class="fas fa-edit"></i> Editar
+    </a>
+    <a href="{% url 'proveedores:lista' %}" class="btn btn-secondary">
+        <i class="fas fa-arrow-left"></i> Volver
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Información del Proveedor -->
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-building"></i> Información del Proveedor
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <dl class="row">
+                            <dt class="col-4">RUC:</dt>
+                            <dd class="col-8"><strong>{{ proveedor.ruc }}</strong></dd>
+                            
+                            <dt class="col-4">Razón Social:</dt>
+                            <dd class="col-8">{{ proveedor.razon_social }}</dd>
+                            
+                            {% if proveedor.nombre_comercial %}
+                            <dt class="col-4">Nombre Comercial:</dt>
+                            <dd class="col-8">{{ proveedor.nombre_comercial }}</dd>
+                            {% endif %}
+                        </dl>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <dl class="row">
+                            {% if proveedor.telefono %}
+                            <dt class="col-4">Teléfono:</dt>
+                            <dd class="col-8">
+                                <i class="fas fa-phone text-primary"></i> {{ proveedor.telefono }}
+                            </dd>
+                            {% endif %}
+                            
+                            {% if proveedor.email %}
+                            <dt class="col-4">Email:</dt>
+                            <dd class="col-8">
+                                <i class="fas fa-envelope text-info"></i> 
+                                <a href="mailto:{{ proveedor.email }}">{{ proveedor.email }}</a>
+                            </dd>
+                            {% endif %}
+                            
+                            <dt class="col-4">Estado:</dt>
+                            <dd class="col-8">
+                                {% if proveedor.activo %}
+                                    <span class="badge bg-success">Activo</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactivo</span>
+                                {% endif %}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+                
+                {% if proveedor.direccion %}
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <dl class="row">
+                            <dt class="col-2">Dirección:</dt>
+                            <dd class="col-10">
+                                <i class="fas fa-map-marker-alt text-danger"></i> 
+                                {{ proveedor.direccion }}
+                            </dd>
+                        </dl>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Panel Lateral -->
+    <div class="col-md-4">
+        <!-- Estado del Proveedor -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Estado del Proveedor</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>Estado:</span>
+                    {% if proveedor.activo %}
+                        <span class="badge bg-success">Activo</span>
+                    {% else %}
+                        <span class="badge bg-secondary">Inactivo</span>
+                    {% endif %}
+                </div>
+                
+                {% if proveedor.creado_date %}
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span>Creado:</span>
+                    <small class="text-muted">{{ proveedor.creado_date|date:"d/m/Y H:i" }}</small>
+                </div>
+                {% endif %}
+                
+                {% if proveedor.editado_date %}
+                <div class="d-flex justify-content-between align-items-center">
+                    <span>Última edición:</span>
+                    <small class="text-muted">{{ proveedor.editado_date|date:"d/m/Y H:i" }}</small>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Acciones Rápidas -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="card-title mb-0">Acciones</h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'proveedores:editar' proveedor.pk %}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-edit"></i> Editar Proveedor
+                    </a>
+                    <a href="{% url 'inventario:nueva_compra' %}?proveedor={{ proveedor.pk }}" class="btn btn-success btn-sm">
+                        <i class="fas fa-shopping-cart"></i> Nueva Compra
+                    </a>
+                    <a href="{% url 'inventario:compras_por_proveedor' %}?proveedor={{ proveedor.pk }}" class="btn btn-info btn-sm">
+                        <i class="fas fa-history"></i> Ver Compras
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

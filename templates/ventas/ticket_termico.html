@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ticket de Venta - {{ venta.numeroFactura }}</title>
+    <style>
+        @page {
+            size: 80mm auto;
+            margin: 0;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            line-height: 1.2;
+            margin: 0;
+            padding: 5mm;
+            background: white;
+            color: black;
+            width: 70mm;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 5px;
+        }
+        
+        .logo-icon {
+            width: 20px;
+            height: 20px;
+            background: #28a745;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+            position: relative;
+        }
+        
+        .logo-icon::before {
+            content: '+';
+            color: white;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-weight: bold;
+            font-size: 14px;
+        }
+        
+        .empresa-nombre {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 0;
+        }
+        
+        .eslogan {
+            font-size: 9px;
+            font-style: italic;
+            margin: 2px 0;
+        }
+        
+        .empresa-info {
+            font-size: 8px;
+            margin: 1px 0;
+        }
+        
+        .separador {
+            border-top: 1px dashed #000;
+            margin: 8px 0;
+        }
+        
+        .factura-header {
+            text-align: center;
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        
+        .cliente-info, .venta-info {
+            font-size: 9px;
+            margin: 2px 0;
+        }
+        
+        .productos-header {
+            font-size: 9px;
+            font-weight: bold;
+            margin: 8px 0 3px 0;
+            text-align: center;
+        }
+        
+        .productos-table {
+            width: 100%;
+            font-size: 8px;
+        }
+        
+        .producto-item {
+            margin: 2px 0;
+            padding: 1px 0;
+        }
+        
+        .producto-desc {
+            font-weight: bold;
+        }
+        
+        .producto-linea {
+            display: flex;
+            justify-content: space-between;
+            margin: 1px 0;
+        }
+        
+        .totales {
+            margin-top: 8px;
+            border-top: 1px solid #000;
+            padding-top: 3px;
+        }
+        
+        .total-linea {
+            display: flex;
+            justify-content: space-between;
+            margin: 1px 0;
+            font-size: 9px;
+        }
+        
+        .total-final {
+            font-weight: bold;
+            font-size: 11px;
+            border-top: 1px solid #000;
+            padding-top: 2px;
+            margin-top: 2px;
+        }
+        
+        .pago-info {
+            margin: 5px 0;
+            font-size: 9px;
+        }
+        
+        .sri-info {
+            text-align: center;
+            font-size: 8px;
+            margin: 8px 0;
+        }
+        
+        .footer {
+            text-align: center;
+            font-size: 8px;
+            margin-top: 10px;
+        }
+        
+        .mensaje-final {
+            font-weight: bold;
+            margin: 5px 0;
+        }
+        
+        @media print {
+            body {
+                width: 80mm;
+                font-size: 9px;
+            }
+            
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header con logo y empresa -->
+    <div class="header">
+        <div class="logo">
+            <span class="logo-icon"></span>
+            <span class="empresa-nombre">{{ empresa.nombre }}</span>
+        </div>
+        <div class="eslogan">{{ empresa.eslogan }}</div>
+        
+        <div class="empresa-info">RUC: {{ empresa.ruc }}</div>
+        <div class="empresa-info">Ambiente: {{ empresa.ambiente }}</div>
+        <div class="empresa-info">Emisión: {{ empresa.emision }}</div>
+        <div class="empresa-info">Matriz: {{ empresa.direccion_matriz }}</div>
+        <div class="empresa-info">Telf: {{ empresa.telefono }}</div>
+        <div class="empresa-info">Sucursal: {{ empresa.direccion_sucursal }}</div>
+    </div>
+
+    <!-- Información SRI -->
+    <div class="sri-info">
+        <div>{{ empresa.autorizacion_sri }}</div>
+        <div>{{ empresa.clave_acceso }}</div>
+    </div>
+
+    <div class="separador"></div>
+
+    <!-- Información de la factura -->
+    <div class="factura-header">
+        FACTURA No. {{ secuencial|slice:":3" }}-{{ secuencial|slice:"3:6" }}-{{ numero_factura }}
+    </div>
+
+    <!-- Información del cliente -->
+    <div class="cliente-info">
+        <div>Cliente: {{ venta.cliente.get_nombre_completo|default:"CONSUMIDOR FINAL" }}</div>
+        {% if venta.cliente.cedula %}
+        <div>CI/RUC: {{ venta.cliente.cedula }}</div>
+        {% endif %}
+        {% if venta.cliente.direccion %}
+        <div>Dirección: {{ venta.cliente.direccion|truncatechars:35 }}</div>
+        {% endif %}
+        <div>Fecha: {{ venta.fechaEmision|date:"d/m/Y H:i" }}</div>
+    </div>
+
+    <div class="separador"></div>
+
+    <!-- Productos -->
+    <div class="productos-header">
+        CANT. DESCRIPCIÓN&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DESC&nbsp;&nbsp;&nbsp;P.UNI&nbsp;&nbsp;&nbsp;VALOR
+    </div>
+
+    <div class="productos-table">
+        {% for detalle in detalles %}
+        <div class="producto-item">
+            <div class="producto-desc">{{ detalle.productoNombre|upper|truncatechars:25 }}</div>
+            <div class="producto-linea">
+                <span>{{ detalle.cantidad|floatformat:0 }}</span>
+                <span>&nbsp;</span>
+                <span>${{ detalle.precioUnitario|floatformat:2 }}</span>
+                <span>${{ detalle.total|floatformat:2 }}</span>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- Totales -->
+    <div class="totales">
+        <div class="total-linea">
+            <span>Subtotal:</span>
+            <span>${{ venta.subtotal|floatformat:2 }}</span>
+        </div>
+        <div class="total-linea">
+            <span>IVA 15%:</span>
+            <span>${{ venta.iva|floatformat:2 }}</span>
+        </div>
+        <div class="total-linea">
+            <span>A pagar:</span>
+            <span>${{ venta.total|floatformat:2 }}</span>
+        </div>
+        
+        <div class="total-final">
+            <div class="total-linea">
+                <span>EFECTIVO</span>
+                <span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información de pago -->
+    <div class="pago-info">
+        <div>Su ahorro fue: $</div>
+    </div>
+
+    <div class="separador"></div>
+
+    <!-- Información adicional -->
+    <div class="footer">
+        <div>GRACIAS POR SU COMPRA</div>
+        <div>PUEDE VERIFICAR SU FACTURA ELECTRÓNICA EN:</div>
+        <div>{{ empresa.verificacion_url }}</div>
+        <div>Cualquier cotización a este número: {{ empresa.telefono_atencion }}</div>
+        <div class="mensaje-final">{{ empresa.mensaje_final }}</div>
+    </div>
+
+    <!-- Botones de acción (no se imprimen) -->
+    <div class="no-print" style="text-align: center; margin-top: 20px;">
+        <button onclick="window.print()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px;">
+            🖨️ Imprimir Ticket
+        </button>
+        <button onclick="window.close()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px;">
+            ❌ Cerrar
+        </button>
+        {% if debug_id %}
+        <a href="{% url 'ventas:json_facturacion' debug_id %}" style="padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 5px; margin: 5px; display: inline-block;">
+            📄 Descargar JSON
+        </a>
+        {% else %}
+        <p style="color: red;">Error: No hay ID de factura para JSON</p>
+        {% endif %}
+    </div>
+
+    <script>
+        // Auto-imprimir al cargar la página (opcional)
+        // window.onload = function() {
+        //     window.print();
+        // }
+        
+        // Configurar impresora térmica
+        window.onbeforeprint = function() {
+            // Configuraciones específicas para impresoras térmicas
+            document.body.style.width = '80mm';
+            document.body.style.fontSize = '9px';
+        }
+    </script>
+</body>
+</html>

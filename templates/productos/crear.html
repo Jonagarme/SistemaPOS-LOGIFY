@@ -1,0 +1,629 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background-color: #f8f9fc;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .section-title {
+        color: #5a5c69;
+        font-weight: 600;
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 2px solid #e3e6f0;
+    }
+    .required {
+        color: #e74a3b;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #4e73df;
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+    }
+    .characteristics-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+    }
+    .price-calculator {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+    .stock-indicator {
+        padding: 10px;
+        border-radius: 5px;
+        text-align: center;
+        font-weight: bold;
+    }
+    .stock-low { background-color: #f8d7da; color: #721c24; }
+    .stock-normal { background-color: #d4edda; color: #155724; }
+    .stock-high { background-color: #d1ecf1; color: #0c5460; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-pills text-primary"></i> {{ titulo }}
+                </h2>
+                <div>
+                    <a href="{% url 'productos:lista' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver a Productos
+                    </a>
+                </div>
+            </div>
+
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <form method="post" id="producto-form" novalidate>
+                {% csrf_token %}
+                
+                <!-- Sección 1: Información Básica -->
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-info-circle text-primary"></i> Información Básica
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="codigo_principal" class="form-label">
+                                    Código Principal <span class="required">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="codigo_principal" name="codigo_principal" 
+                                       value="{{ producto.codigo_principal|default:'' }}" required
+                                       placeholder="Ej: MED001, FAR123">
+                                <div class="invalid-feedback">
+                                    Por favor ingrese un código válido
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="codigo_auxiliar" class="form-label">Código Auxiliar</label>
+                                <input type="text" class="form-control" id="codigo_auxiliar" name="codigo_auxiliar"
+                                       value="{{ producto.codigo_auxiliar|default:'' }}"
+                                       placeholder="Código alternativo o de barra">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="mb-3">
+                                <label for="nombre" class="form-label">
+                                    Nombre del Producto <span class="required">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="nombre" name="nombre" 
+                                       value="{{ producto.nombre|default:'' }}" required
+                                       placeholder="Nombre completo del producto">
+                                <div class="invalid-feedback">
+                                    El nombre del producto es obligatorio
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="registro_sanitario" class="form-label">Registro Sanitario</label>
+                                <input type="text" class="form-control" id="registro_sanitario" name="registro_sanitario"
+                                       value="{{ producto.registro_sanitario|default:'' }}"
+                                       placeholder="RSA-XXX-XXXX">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="descripcion" class="form-label">Descripción</label>
+                                <textarea class="form-control" id="descripcion" name="descripcion" rows="3"
+                                          placeholder="Descripción detallada del producto">{{ producto.descripcion|default:'' }}</textarea>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="observaciones" class="form-label">Observaciones</label>
+                                <textarea class="form-control" id="observaciones" name="observaciones" rows="3"
+                                          placeholder="Notas adicionales, instrucciones especiales">{{ producto.observaciones|default:'' }}</textarea>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 2: Clasificación -->
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-tags text-success"></i> Clasificación Farmacéutica
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="id_tipo_producto" class="form-label">
+                                    Tipo de Producto <span class="required">*</span>
+                                </label>
+                                <select class="form-select" id="id_tipo_producto" name="id_tipo_producto" required>
+                                    <option value="">Seleccionar tipo...</option>
+                                    {% for tipo in tipos_producto %}
+                                    <option value="{{ tipo.id_tipo_producto }}" 
+                                            {% if producto.id_tipo_producto_id == tipo.id_tipo_producto %}selected{% endif %}>
+                                        {{ tipo.nombre }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="id_clase_producto" class="form-label">
+                                    Clase de Producto <span class="required">*</span>
+                                </label>
+                                <select class="form-select" id="id_clase_producto" name="id_clase_producto" required>
+                                    <option value="">Seleccionar clase...</option>
+                                    {% for clase in clases_producto %}
+                                    <option value="{{ clase.id_clase_producto }}" 
+                                            {% if producto.id_clase_producto_id == clase.id_clase_producto %}selected{% endif %}>
+                                        {{ clase.nombre }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="clasificacion_abc" class="form-label">Clasificación ABC</label>
+                                <select class="form-select" id="clasificacion_abc" name="clasificacion_abc">
+                                    <option value="">Sin clasificar</option>
+                                    <option value="A" {% if producto.clasificacion_abc == 'A' %}selected{% endif %}>Clase A - Alta rotación</option>
+                                    <option value="B" {% if producto.clasificacion_abc == 'B' %}selected{% endif %}>Clase B - Rotación media</option>
+                                    <option value="C" {% if producto.clasificacion_abc == 'C' %}selected{% endif %}>Clase C - Baja rotación</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="id_categoria" class="form-label">
+                                    Categoría <span class="required">*</span>
+                                </label>
+                                <select class="form-select" id="id_categoria" name="id_categoria" required>
+                                    <option value="">Seleccionar categoría...</option>
+                                    {% for categoria in categorias %}
+                                    <option value="{{ categoria.id_categoria }}" 
+                                            {% if producto.id_categoria_id == categoria.id_categoria %}selected{% endif %}>
+                                        {{ categoria.nombre }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="id_marca" class="form-label">
+                                    Marca <span class="required">*</span>
+                                </label>
+                                <select class="form-select" id="id_marca" name="id_marca" required>
+                                    <option value="">Seleccionar marca...</option>
+                                    {% for marca in marcas %}
+                                    <option value="{{ marca.id_marca }}" 
+                                            {% if producto.id_marca_id == marca.id_marca %}selected{% endif %}>
+                                        {{ marca.nombre }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="id_laboratorio" class="form-label">Laboratorio</label>
+                                <select class="form-select" id="id_laboratorio" name="id_laboratorio">
+                                    <option value="">Seleccionar laboratorio...</option>
+                                    {% for laboratorio in laboratorios %}
+                                    <option value="{{ laboratorio.id_laboratorio }}" 
+                                            {% if producto.id_laboratorio_id == laboratorio.id_laboratorio %}selected{% endif %}>
+                                        {{ laboratorio.nombre }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 3: Precios y Costos -->
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-dollar-sign text-warning"></i> Precios y Costos
+                    </h5>
+                    
+                    <div class="price-calculator">
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <h6>Margen de Ganancia</h6>
+                                <h3 id="margen-display">0%</h3>
+                            </div>
+                            <div class="col-md-3">
+                                <h6>Ganancia por Unidad</h6>
+                                <h3 id="ganancia-display">$0.00</h3>
+                            </div>
+                            <div class="col-md-3">
+                                <h6>Valor Total Inventario</h6>
+                                <h3 id="valor-inventario">$0.00</h3>
+                            </div>
+                            <div class="col-md-3">
+                                <h6>Estado Stock</h6>
+                                <div id="stock-status" class="stock-indicator">Normal</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="costo_unidad" class="form-label">
+                                    Costo por Unidad <span class="required">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="costo_unidad" name="costo_unidad" 
+                                           value="{{ producto.costo_unidad|default:'0.00' }}" 
+                                           step="0.01" min="0" required>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="costo_caja" class="form-label">Costo por Caja</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="costo_caja" name="costo_caja" 
+                                           value="{{ producto.costo_caja|default:'0.00' }}" 
+                                           step="0.01" min="0">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="pvp_unidad" class="form-label">PVP Unidad</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="pvp_unidad" name="pvp_unidad" 
+                                           value="{{ producto.pvp_unidad|default:'0.00' }}" 
+                                           step="0.01" min="0">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="precio_venta" class="form-label">
+                                    Precio de Venta <span class="required">*</span>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="precio_venta" name="precio_venta" 
+                                           value="{{ producto.precio_venta|default:'0.00' }}" 
+                                           step="0.01" min="0" required>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 4: Inventario -->
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-warehouse text-info"></i> Control de Inventario
+                    </h5>
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="stock" class="form-label">
+                                    Stock Actual <span class="required">*</span>
+                                </label>
+                                <input type="number" class="form-control" id="stock" name="stock" 
+                                       value="{{ producto.stock|default:'0' }}" 
+                                       step="0.01" min="0" required>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="stock_minimo" class="form-label">Stock Mínimo</label>
+                                <input type="number" class="form-control" id="stock_minimo" name="stock_minimo" 
+                                       value="{{ producto.stock_minimo|default:'5' }}" 
+                                       step="0.01" min="0">
+                                <small class="text-muted">Alerta cuando el stock esté por debajo</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label for="stock_maximo" class="form-label">Stock Máximo</label>
+                                <input type="number" class="form-control" id="stock_maximo" name="stock_maximo" 
+                                       value="{{ producto.stock_maximo|default:'100' }}" 
+                                       step="0.01" min="0">
+                                <small class="text-muted">Límite máximo de almacenamiento</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="mb-3">
+                                <label class="form-label">Punto de Reorden</label>
+                                <div class="form-control bg-light" id="punto-reorden">
+                                    Se calculará automáticamente
+                                </div>
+                                <small class="text-muted">Basado en stock mínimo + margen de seguridad</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección 5: Características Farmacéuticas -->
+                <div class="form-section">
+                    <h5 class="section-title">
+                        <i class="fas fa-flask text-danger"></i> Características Farmacéuticas
+                    </h5>
+                    <div class="characteristics-grid">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="es_divisible" name="es_divisible" 
+                                   {% if producto.es_divisible %}checked{% endif %}>
+                            <label class="form-check-label" for="es_divisible">
+                                <i class="fas fa-cut text-primary"></i> Es Divisible
+                            </label>
+                            <small class="d-block text-muted">Se puede vender en fracciones</small>
+                        </div>
+                        
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="es_psicotropico" name="es_psicotropico" 
+                                   {% if producto.es_psicotropico %}checked{% endif %}>
+                            <label class="form-check-label" for="es_psicotropico">
+                                <i class="fas fa-exclamation-triangle text-danger"></i> Es Psicotrópico
+                            </label>
+                            <small class="d-block text-muted">Requiere control especial</small>
+                        </div>
+                        
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="requiere_cadena_frio" name="requiere_cadena_frio" 
+                                   {% if producto.requiere_cadena_frio %}checked{% endif %}>
+                            <label class="form-check-label" for="requiere_cadena_frio">
+                                <i class="fas fa-snowflake text-info"></i> Cadena de Frío
+                            </label>
+                            <small class="d-block text-muted">Requiere refrigeración</small>
+                        </div>
+                        
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="requiere_seguimiento" name="requiere_seguimiento" 
+                                   {% if producto.requiere_seguimiento %}checked{% endif %}>
+                            <label class="form-check-label" for="requiere_seguimiento">
+                                <i class="fas fa-prescription text-warning"></i> Requiere Seguimiento
+                            </label>
+                            <small class="d-block text-muted">Seguimiento farmacoterapéutico</small>
+                        </div>
+                        
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="calculo_abc_manual" name="calculo_abc_manual" 
+                                   {% if producto.calculo_abc_manual %}checked{% endif %}>
+                            <label class="form-check-label" for="calculo_abc_manual">
+                                <i class="fas fa-hand-paper text-secondary"></i> Clasificación ABC Manual
+                            </label>
+                            <small class="d-block text-muted">No calcular automáticamente</small>
+                        </div>
+                        
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="activo" name="activo" 
+                                   {% if producto.activo or not producto %}checked{% endif %}>
+                            <label class="form-check-label" for="activo">
+                                <i class="fas fa-check-circle text-success"></i> Producto Activo
+                            </label>
+                            <small class="d-block text-muted">Disponible para venta</small>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones de Acción -->
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        {% if producto %}
+                        <button type="button" class="btn btn-danger" onclick="confirmarEliminacion()">
+                            <i class="fas fa-trash"></i> Eliminar Producto
+                        </button>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <a href="{% url 'productos:lista' %}" class="btn btn-secondary me-2">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="btn-guardar">
+                            <i class="fas fa-save"></i> 
+                            {% if producto %}Actualizar{% else %}Crear{% endif %} Producto
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Referencias a elementos
+    const costoUnidad = document.getElementById('costo_unidad');
+    const precioVenta = document.getElementById('precio_venta');
+    const stock = document.getElementById('stock');
+    const stockMinimo = document.getElementById('stock_minimo');
+    const stockMaximo = document.getElementById('stock_maximo');
+    const margenDisplay = document.getElementById('margen-display');
+    const gananciaDisplay = document.getElementById('ganancia-display');
+    const valorInventario = document.getElementById('valor-inventario');
+    const stockStatus = document.getElementById('stock-status');
+    const puntoReorden = document.getElementById('punto-reorden');
+    const form = document.getElementById('producto-form');
+
+    // Función para calcular y mostrar métricas
+    function actualizarCalculos() {
+        const costo = parseFloat(costoUnidad.value) || 0;
+        const precio = parseFloat(precioVenta.value) || 0;
+        const stockActual = parseFloat(stock.value) || 0;
+        const stockMin = parseFloat(stockMinimo.value) || 0;
+        const stockMax = parseFloat(stockMaximo.value) || 0;
+
+        // Calcular margen de ganancia
+        let margen = 0;
+        let ganancia = 0;
+        if (costo > 0) {
+            margen = ((precio - costo) / costo) * 100;
+            ganancia = precio - costo;
+        }
+
+        // Actualizar displays
+        margenDisplay.textContent = margen.toFixed(2) + '%';
+        gananciaDisplay.textContent = '$' + ganancia.toFixed(2);
+        valorInventario.textContent = '$' + (stockActual * costo).toFixed(2);
+
+        // Estado del stock
+        let statusClass = 'stock-normal';
+        let statusText = 'Normal';
+        
+        if (stockActual <= stockMin) {
+            statusClass = 'stock-low';
+            statusText = 'Bajo';
+        } else if (stockActual >= stockMax * 0.8) {
+            statusClass = 'stock-high';
+            statusText = 'Alto';
+        }
+
+        stockStatus.className = 'stock-indicator ' + statusClass;
+        stockStatus.textContent = statusText;
+
+        // Punto de reorden (stock mínimo + 20%)
+        const reorden = Math.ceil(stockMin * 1.2);
+        puntoReorden.textContent = reorden + ' unidades';
+
+        // Cambiar color del margen según porcentaje
+        if (margen < 10) {
+            margenDisplay.style.color = '#e74a3b';
+        } else if (margen < 25) {
+            margenDisplay.style.color = '#f39c12';
+        } else {
+            margenDisplay.style.color = '#00d4aa';
+        }
+    }
+
+    // Event listeners para cálculos automáticos
+    [costoUnidad, precioVenta, stock, stockMinimo, stockMaximo].forEach(element => {
+        element.addEventListener('input', actualizarCalculos);
+    });
+
+    // Calcular al cargar la página
+    actualizarCalculos();
+
+    // Validación del formulario
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const costo = parseFloat(costoUnidad.value) || 0;
+        const precio = parseFloat(precioVenta.value) || 0;
+        const stockMin = parseFloat(stockMinimo.value) || 0;
+        const stockMax = parseFloat(stockMaximo.value) || 0;
+
+        // Validaciones
+        let errores = [];
+
+        if (precio <= costo) {
+            errores.push('El precio de venta debe ser mayor que el costo');
+        }
+
+        if (stockMax > 0 && stockMin >= stockMax) {
+            errores.push('El stock mínimo debe ser menor que el stock máximo');
+        }
+
+        if (errores.length > 0) {
+            alert('Errores encontrados:\n' + errores.join('\n'));
+            return false;
+        }
+
+        // Si todo está bien, enviar el formulario
+        this.submit();
+    });
+
+    // Autocompletado para códigos
+    document.getElementById('codigo_principal').addEventListener('blur', function() {
+        if (this.value && !document.getElementById('codigo_auxiliar').value) {
+            // Sugerir código auxiliar basado en el principal
+            document.getElementById('codigo_auxiliar').value = this.value + '-ALT';
+        }
+    });
+
+    // Bootstrap form validation
+    form.classList.add('needs-validation');
+});
+
+function confirmarEliminacion() {
+    if (confirm('¿Está seguro de que desea eliminar este producto? Esta acción no se puede deshacer.')) {
+        // Aquí implementarías la lógica de eliminación
+        alert('Funcionalidad de eliminación por implementar');
+    }
+}
+
+// Auto-guardar borrador cada 2 minutos
+setInterval(function() {
+    const formData = new FormData(document.getElementById('producto-form'));
+    const borrador = {};
+    for (let [key, value] of formData.entries()) {
+        borrador[key] = value;
+    }
+    localStorage.setItem('producto_borrador', JSON.stringify(borrador));
+}, 120000);
+
+// Cargar borrador al iniciar
+window.addEventListener('load', function() {
+    const borrador = localStorage.getItem('producto_borrador');
+    if (borrador && confirm('Se encontró un borrador guardado. ¿Desea cargarlo?')) {
+        const datos = JSON.parse(borrador);
+        for (let [key, value] of Object.entries(datos)) {
+            const elemento = document.querySelector(`[name="${key}"]`);
+            if (elemento) {
+                if (elemento.type === 'checkbox') {
+                    elemento.checked = value === 'on';
+                } else {
+                    elemento.value = value;
+                }
+            }
+        }
+        // Recalcular después de cargar
+        calcularTotales();
+    }
+    
+    // Validar que precio de venta sea mayor que precio de compra
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const costo = parseFloat(costoUnidad.value) || 0;
+        const venta = parseFloat(precioVenta.value) || 0;
+        
+        if (venta <= costo) {
+            e.preventDefault();
+            alert('El precio de venta debe ser mayor que el costo');
+            precioVenta.focus();
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}

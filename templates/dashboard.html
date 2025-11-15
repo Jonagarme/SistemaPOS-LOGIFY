@@ -1,0 +1,212 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard - Sistema POS{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col">
+                        <div class="text-xs font-weight-bold text-uppercase mb-1">Ventas Hoy</div>
+                        <div class="h5 mb-0">{{ ventas_hoy }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-shopping-cart fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col">
+                        <div class="text-xs font-weight-bold text-uppercase mb-1">Total Ventas Hoy</div>
+                        <div class="h5 mb-0">$ {{ total_ventas_hoy|floatformat:2 }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-dollar-sign fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col">
+                        <div class="text-xs font-weight-bold text-uppercase mb-1">Productos</div>
+                        <div class="h5 mb-0">{{ total_productos }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-box fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-xl-3 col-md-6">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col">
+                        <div class="text-xs font-weight-bold text-uppercase mb-1">Bajo Stock</div>
+                        <div class="h5 mb-0">{{ productos_bajo_stock }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Estado de Caja -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cash-register"></i> Estado de Caja
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if caja_abierta %}
+                    <div class="alert alert-success">
+                        <strong>Caja Abierta:</strong> {{ caja_abierta.caja.nombre }}<br>
+                        <small>Abierta: {{ caja_abierta.fecha_apertura|date:"d/m/Y H:i" }}</small><br>
+                        <strong>Monto Inicial:</strong> $ {{ caja_abierta.monto_inicial|floatformat:2 }}
+                    </div>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'ventas:crear' %}" class="btn btn-primary">
+                            <i class="fas fa-shopping-cart"></i> Realizar Venta
+                        </a>
+                        <a href="{% url 'caja:cerrar' %}" class="btn btn-warning">
+                            <i class="fas fa-lock"></i> Cerrar Caja
+                        </a>
+                    </div>
+                {% else %}
+                    <div class="alert alert-warning">
+                        No hay caja abierta para este usuario
+                    </div>
+                    <div class="d-grid">
+                        <a href="{% url 'caja:abrir' %}" class="btn btn-success">
+                            <i class="fas fa-unlock"></i> Abrir Caja
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Accesos Rápidos -->
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-rocket"></i> Accesos Rápidos
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6">
+                        <a href="{% url 'productos:crear' %}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-plus"></i><br>Nuevo Producto
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="{% url 'clientes:crear' %}" class="btn btn-outline-success w-100">
+                            <i class="fas fa-user-plus"></i><br>Nuevo Cliente
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="{% url 'inventario:nueva_compra' %}" class="btn btn-outline-warning w-100">
+                            <i class="fas fa-truck"></i><br>Nueva Compra
+                        </a>
+                    </div>
+                    <div class="col-6">
+                        <a href="{% url 'productos:bajo_stock' %}" class="btn btn-outline-danger w-100">
+                            <i class="fas fa-exclamation-triangle"></i><br>Bajo Stock
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Últimas Ventas -->
+    <div class="col-md-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-list"></i> Últimas Ventas
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if ultimas_ventas %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Factura</th>
+                                    <th>Cliente</th>
+                                    <th>Total</th>
+                                    <th>Fecha</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for venta in ultimas_ventas %}
+                                <tr>
+                                    <td>{{ venta.numero }}</td>
+                                    <td>{{ venta.cliente }}</td>
+                                    <td>$ {{ venta.total|floatformat:2 }}</td>
+                                    <td>{{ venta.fecha|date:"d/m/Y H:i" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <p class="text-muted">No hay ventas registradas</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Productos Top -->
+    <div class="col-md-4 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-star"></i> Productos Top
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if productos_top %}
+                    {% for producto in productos_top %}
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <small>{{ producto.nombre|truncatechars:20 }}</small>
+                            <span class="badge bg-primary">{{ producto.cantidad|floatformat:0 }}</span>
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="text-muted">No hay datos de ventas</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

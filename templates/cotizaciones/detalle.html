@@ -1,0 +1,387 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Cotización #{{ cotizacion.numero }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+    .cotizacion-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+    }
+    .estado-badge {
+        font-size: 1rem;
+        padding: 0.5rem 1rem;
+    }
+    .info-card {
+        border: none;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        border-radius: 15px;
+    }
+    .producto-item {
+        border-bottom: 1px solid #f1f3f4;
+        padding: 1rem 0;
+    }
+    .producto-item:last-child {
+        border-bottom: none;
+    }
+    .totals-card {
+        background: #f8f9fa;
+        border-radius: 15px;
+        border: 1px solid #dee2e6;
+    }
+    .action-buttons {
+        position: sticky;
+        top: 20px;
+        z-index: 100;
+    }
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        .cotizacion-header {
+            background: #667eea !important;
+            -webkit-print-color-adjust: exact;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header de la cotización -->
+    <div class="cotizacion-header p-4">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2 class="mb-2">
+                    <i class="bi bi-file-earmark-text me-2"></i>
+                    Cotización #{{ cotizacion.numero }}
+                </h2>
+                <div class="row">
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Cliente:</strong> {{ cotizacion.cliente.nombre_completo }}</p>
+                        <p class="mb-1"><strong>Fecha:</strong> {{ cotizacion.fecha|date:"d/m/Y" }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p class="mb-1"><strong>Válida hasta:</strong> {{ cotizacion.valida_hasta|date:"d/m/Y" }}</p>
+                        {% if cotizacion.referencia_cliente %}
+                        <p class="mb-1"><strong>Referencia:</strong> {{ cotizacion.referencia_cliente }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4 text-end">
+                {% if cotizacion.estado == 'borrador' %}
+                <span class="badge bg-secondary estado-badge">Borrador</span>
+                {% elif cotizacion.estado == 'enviada' %}
+                <span class="badge bg-primary estado-badge">Enviada</span>
+                {% elif cotizacion.estado == 'aceptada' %}
+                <span class="badge bg-success estado-badge">Aceptada</span>
+                {% elif cotizacion.estado == 'rechazada' %}
+                <span class="badge bg-danger estado-badge">Rechazada</span>
+                {% elif cotizacion.estado == 'vencida' %}
+                <span class="badge bg-warning estado-badge">Vencida</span>
+                {% elif cotizacion.estado == 'convertida' %}
+                <span class="badge bg-info estado-badge">Convertida</span>
+                {% endif %}
+                
+                {% if cotizacion.esta_vencida %}
+                <br><span class="badge bg-warning mt-2">Esta cotización ha vencido</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Contenido principal -->
+        <div class="col-lg-8">
+            <!-- Información del cliente -->
+            <div class="card info-card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-person me-2"></i>Información del Cliente</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Nombre:</strong> {{ cotizacion.cliente.nombre_completo }}</p>
+                            <p><strong>Código:</strong> {{ cotizacion.cliente.codigo }}</p>
+                            {% if cotizacion.cliente.numero_documento %}
+                            <p><strong>Documento:</strong> {{ cotizacion.cliente.get_tipo_documento_display }} - {{ cotizacion.cliente.numero_documento }}</p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6">
+                            {% if cotizacion.cliente.telefono %}
+                            <p><strong>Teléfono:</strong> {{ cotizacion.cliente.telefono }}</p>
+                            {% endif %}
+                            {% if cotizacion.cliente.email %}
+                            <p><strong>Email:</strong> {{ cotizacion.cliente.email }}</p>
+                            {% endif %}
+                            {% if cotizacion.cliente.direccion %}
+                            <p><strong>Dirección:</strong> {{ cotizacion.cliente.direccion }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Productos -->
+            <div class="card info-card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-box me-2"></i>Productos Cotizados</h5>
+                </div>
+                <div class="card-body">
+                    {% for detalle in cotizacion.detalles.all %}
+                    <div class="producto-item">
+                        <div class="row align-items-center">
+                            <div class="col-md-5">
+                                <h6 class="mb-1">{{ detalle.producto.nombre }}</h6>
+                                <small class="text-muted">Código: {{ detalle.producto.codigo }}</small>
+                                {% if detalle.producto.descripcion %}
+                                <br><small class="text-muted">{{ detalle.producto.descripcion|truncatechars:100 }}</small>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <strong>{{ detalle.cantidad|floatformat:0 }}</strong>
+                                <br><small class="text-muted">Unidades</small>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <strong>$ {{ detalle.precio_unitario|floatformat:2 }}</strong>
+                                <br><small class="text-muted">c/u</small>
+                            </div>
+                            <div class="col-md-1 text-center">
+                                {% if detalle.descuento > 0 %}
+                                <span class="text-success">{{ detalle.descuento|floatformat:1 }}%</span>
+                                {% else %}
+                                <span class="text-muted">0%</span>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-2 text-end">
+                                <strong class="text-primary">$ {{ detalle.subtotal|floatformat:2 }}</strong>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-box display-4 text-muted"></i>
+                        <p class="text-muted mt-2">No hay productos en esta cotización</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Observaciones -->
+            {% if cotizacion.observaciones %}
+            <div class="card info-card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="bi bi-chat-text me-2"></i>Observaciones</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ cotizacion.observaciones|linebreaks }}</p>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Información de conversión a venta -->
+            {% if cotizacion.venta_generada %}
+            <div class="card info-card mb-4 border-info">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-arrow-right-circle me-2"></i>Convertida a Venta</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-2">Esta cotización fue convertida a venta:</p>
+                    <p class="mb-0">
+                        <strong>Venta #{{ cotizacion.venta_generada.numero }}</strong> - 
+                        {{ cotizacion.venta_generada.fecha|date:"d/m/Y H:i" }}
+                        <a href="{% url 'ventas:detalle' cotizacion.venta_generada.pk %}" class="btn btn-sm btn-outline-info ms-2">
+                            <i class="bi bi-eye me-1"></i>Ver Venta
+                        </a>
+                    </p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Panel lateral -->
+        <div class="col-lg-4">
+            <!-- Botones de acción -->
+            <div class="card action-buttons mb-4 no-print">
+                <div class="card-body">
+                    <h6 class="mb-3"><i class="bi bi-gear me-2"></i>Acciones</h6>
+                    
+                    <!-- Editar (solo en borrador) -->
+                    {% if cotizacion.estado == 'borrador' %}
+                    <a href="{% url 'cotizaciones:editar' cotizacion.pk %}" class="btn btn-warning w-100 mb-2">
+                        <i class="bi bi-pencil me-2"></i>Editar Cotización
+                    </a>
+                    {% endif %}
+                    
+                    <!-- Cambios de estado -->
+                    {% if cotizacion.estado != 'convertida' %}
+                    <div class="btn-group w-100 mb-2">
+                        <button type="button" class="btn btn-outline-secondary dropdown-toggle w-100" 
+                                data-bs-toggle="dropdown">
+                            <i class="bi bi-arrow-repeat me-2"></i>Cambiar Estado
+                        </button>
+                        <ul class="dropdown-menu w-100">
+                            {% if cotizacion.estado != 'enviada' %}
+                            <li><a class="dropdown-item cambiar-estado" href="#" data-estado="enviada">
+                                <i class="bi bi-send me-2"></i>Marcar como Enviada
+                            </a></li>
+                            {% endif %}
+                            {% if cotizacion.estado != 'aceptada' %}
+                            <li><a class="dropdown-item cambiar-estado" href="#" data-estado="aceptada">
+                                <i class="bi bi-check-circle me-2"></i>Marcar como Aceptada
+                            </a></li>
+                            {% endif %}
+                            {% if cotizacion.estado != 'rechazada' %}
+                            <li><a class="dropdown-item cambiar-estado" href="#" data-estado="rechazada">
+                                <i class="bi bi-x-circle me-2"></i>Marcar como Rechazada
+                            </a></li>
+                            {% endif %}
+                        </ul>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Convertir a venta -->
+                    {% if cotizacion.estado == 'aceptada' and not cotizacion.venta_generada %}
+                    <a href="{% url 'cotizaciones:convertir_venta' cotizacion.pk %}" class="btn btn-success w-100 mb-2">
+                        <i class="bi bi-arrow-right-circle me-2"></i>Convertir a Venta
+                    </a>
+                    {% endif %}
+                    
+                    <!-- Duplicar -->
+                    <a href="{% url 'cotizaciones:duplicar' cotizacion.pk %}" class="btn btn-outline-primary w-100 mb-2">
+                        <i class="bi bi-files me-2"></i>Duplicar Cotización
+                    </a>
+                    
+                    <!-- Imprimir -->
+                    <button type="button" class="btn btn-outline-secondary w-100 mb-3" onclick="window.print()">
+                        <i class="bi bi-printer me-2"></i>Imprimir
+                    </button>
+                    
+                    <!-- Volver -->
+                    <a href="{% url 'cotizaciones:lista' %}" class="btn btn-outline-dark w-100">
+                        <i class="bi bi-arrow-left me-2"></i>Volver a Lista
+                    </a>
+                </div>
+            </div>
+
+            <!-- Totales -->
+            <div class="card totals-card">
+                <div class="card-body">
+                    <h6 class="mb-3"><i class="bi bi-calculator me-2"></i>Resumen de Totales</h6>
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Subtotal:</span>
+                        <span>$ {{ cotizacion.subtotal|floatformat:2 }}</span>
+                    </div>
+                    
+                    {% if cotizacion.descuento_global > 0 %}
+                    <div class="d-flex justify-content-between mb-2 text-success">
+                        <span>Descuento Global ({{ cotizacion.descuento_global }}%):</span>
+                        <span>- $ {{ cotizacion.descuento_global_monto|floatformat:2 }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-between mb-2">
+                        <span>Impuesto (15%):</span>
+                        <span>$ {{ cotizacion.impuesto|floatformat:2 }}</span>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="d-flex justify-content-between">
+                        <h5>Total:</h5>
+                        <h5 class="text-primary">$ {{ cotizacion.total|floatformat:2 }}</h5>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información adicional -->
+            <div class="card mt-4">
+                <div class="card-body">
+                    <h6 class="mb-3"><i class="bi bi-info-circle me-2"></i>Información</h6>
+                    
+                    <small class="text-muted">
+                        <strong>Creada:</strong> {{ cotizacion.fecha_creacion|date:"d/m/Y H:i" }}<br>
+                        {% if cotizacion.fecha_modificacion != cotizacion.fecha_creacion %}
+                        <strong>Modificada:</strong> {{ cotizacion.fecha_modificacion|date:"d/m/Y H:i" }}<br>
+                        {% endif %}
+                        <strong>Usuario:</strong> {{ cotizacion.usuario.get_full_name|default:cotizacion.usuario.username }}
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación para cambio de estado -->
+<div class="modal fade" id="modalCambiarEstado" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Cambiar Estado de Cotización</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea cambiar el estado de esta cotización?</p>
+                <p class="text-muted">Esta acción no se puede deshacer.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirmarCambioEstado">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Cambio de estado con confirmación
+    let estadoSeleccionado = null;
+    const modal = new bootstrap.Modal(document.getElementById('modalCambiarEstado'));
+
+    document.querySelectorAll('.cambiar-estado').forEach(function(link) {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            estadoSeleccionado = this.dataset.estado;
+            modal.show();
+        });
+    });
+
+    document.getElementById('confirmarCambioEstado').addEventListener('click', function() {
+        if (estadoSeleccionado) {
+            // Crear formulario para envío POST
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '{% url "cotizaciones:cambiar_estado" cotizacion.pk %}';
+            
+            // Token CSRF
+            const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+            if (csrfToken) {
+                const csrfInput = document.createElement('input');
+                csrfInput.type = 'hidden';
+                csrfInput.name = 'csrfmiddlewaretoken';
+                csrfInput.value = csrfToken.value;
+                form.appendChild(csrfInput);
+            }
+            
+            // Estado
+            const estadoInput = document.createElement('input');
+            estadoInput.type = 'hidden';
+            estadoInput.name = 'estado';
+            estadoInput.value = estadoSeleccionado;
+            form.appendChild(estadoInput);
+            
+            document.body.appendChild(form);
+            form.submit();
+        }
+    });
+});
+</script>
+{% endblock %}

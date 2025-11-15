@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">
+                        <i class="fas fa-bookmark"></i> {{ titulo }}
+                    </h4>
+                    <a href="{% url 'productos:crear_marca' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Nueva Marca
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if marcas %}
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Descripción</th>
+                                    <th>Productos</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for marca in marcas %}
+                                <tr>
+                                    <td>{{ marca.id_marca }}</td>
+                                    <td>{{ marca.nombre }}</td>
+                                    <td>{{ marca.descripcion|default:"-" }}</td>
+                                    <td>
+                                        <span class="badge bg-info">
+                                            {{ marca.producto_set.count }} productos
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if marca.activo %}
+                                            <span class="badge bg-success">Activo</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactivo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            {% if marca.id_marca %}
+                                            <a href="{% url 'productos:editar_marca' marca.id_marca %}" class="btn btn-outline-primary" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            {% endif %}
+                                            <button class="btn btn-outline-info" title="Ver productos">
+                                                <i class="fas fa-eye"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="fas fa-bookmark fa-3x text-muted"></i>
+                        <h5 class="mt-3 text-muted">No hay marcas registradas</h5>
+                        <p class="text-muted">Comienza creando una nueva marca para organizar tus productos</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

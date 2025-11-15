@@ -1,0 +1,1942 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load l10n %}
+
+{% block title %}Punto de Venta - Sistema POS{% endblock %}
+
+{% block extra_css %}
+<style>
+.pos-container {
+    height: calc(100vh - 120px);
+}
+
+.product-search {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    height: 100%;
+}
+
+.shopping-cart {
+    background: white;
+    border-radius: 10px;
+    border: 1px solid #dee2e6;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.cart-header {
+    background: #007bff;
+    color: white;
+    padding: 15px;
+    border-radius: 10px 10px 0 0;
+}
+
+.cart-items {
+    flex: 1;
+    overflow-y: auto;
+    padding: 15px;
+}
+
+.cart-footer {
+    border-top: 1px solid #dee2e6;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 0 0 10px 10px;
+}
+
+.product-card {
+    cursor: pointer;
+    transition: all 0.3s;
+    height: 120px;
+}
+
+.product-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.cart-item {
+    border-bottom: 1px solid #eee;
+    padding: 10px 0;
+    position: relative;
+}
+
+.cart-item:last-child {
+    border-bottom: none;
+}
+
+.cart-item .btn-outline-danger {
+    border: 1px solid #dc3545;
+    color: #dc3545;
+    background: white;
+    min-width: 35px;
+    height: 35px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.cart-item .btn-outline-danger:hover {
+    background: #dc3545;
+    color: white;
+    border-color: #dc3545;
+}
+
+.quantity-controls {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.quantity-controls input {
+    width: 60px;
+    text-align: center;
+}
+
+.payment-section {
+    background: #f8f9fa;
+    padding: 15px;
+    border-radius: 10px;
+    margin-top: 10px;
+}
+
+/* Estilos para búsqueda de cliente */
+.client-search-container {
+    position: relative;
+}
+
+.client-info {
+    border-radius: 5px;
+}
+
+.alert-sm {
+    font-size: 0.875rem;
+}
+
+#cliente-search:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.total-display {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: #28a745;
+}
+
+/* Estilos para tabs de ventas */
+.sales-tabs-container {
+    background: white;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.nav-tabs .nav-link {
+    color: #6c757d;
+    border: 1px solid #dee2e6;
+    border-bottom: none;
+    margin-right: 5px;
+    position: relative;
+    padding-right: 40px;
+}
+
+.nav-tabs .nav-link.active {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.nav-tabs .nav-link .badge {
+    font-size: 0.7rem;
+}
+
+.nav-tabs .nav-link.active .badge {
+    background-color: white !important;
+    color: #007bff !important;
+}
+
+.btn-close-tab {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: inherit;
+    padding: 0;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+}
+
+.btn-close-tab:hover {
+    background-color: rgba(255,255,255,0.2);
+}
+
+.nav-tabs .nav-link.active .btn-close-tab:hover {
+    background-color: rgba(0,0,0,0.1);
+}
+
+.tab-content {
+    height: calc(100vh - 200px);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="pos-container">
+    <!-- Sistema de Tabs para múltiples ventas -->
+    <div class="sales-tabs-container mb-3">
+        <div class="d-flex justify-content-between align-items-center">
+            <ul class="nav nav-tabs flex-grow-1" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <a class="nav-link active position-relative" href="#venta1" data-bs-toggle="tab" onclick="switchToTab('venta1')">
+                        <i class="fas fa-shopping-cart me-1"></i>
+                        Venta 1
+                        <span class="badge bg-primary ms-1" id="badge-venta1">0</span>
+                        <button type="button" class="btn-close btn-close-tab ms-2" onclick="closeTab('venta1'); event.stopPropagation();" title="Cerrar tab" style="display: none;"></button>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link add-tab-btn" href="#" onclick="createNewTab(); return false;" title="Nueva venta">
+                        <i class="fas fa-plus"></i>
+                    </a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Contenido de las tabs -->
+    {% csrf_token %}
+    <div class="tab-content">
+        <div class="tab-pane fade show active" id="venta1" role="tabpanel">
+            <div class="row h-100">
+                <!-- Panel de productos -->
+                <div class="col-lg-8">
+                    <div class="product-search">
+                        <!-- Sistema de búsqueda offline/online -->
+                        <div id="product-search-container">
+                            <!-- El componente ProductSearchComponent se carga aquí -->
+                        </div>
+                        
+                        <!-- Grid de productos mostrados -->
+                        <div id="products-grid" class="row">
+                            {% for producto in productos %}
+                            <div class="col-xl-3 col-lg-4 col-md-6 mb-3 product-item" 
+                                 data-category="{{ producto.id_categoria.id }}"
+                                 data-name="{{ producto.nombre|lower }}"
+                                 data-code="{{ producto.codigo_principal }}">
+                                <div class="card product-card h-100" 
+                                     data-product-id="{{ producto.id }}"
+                                     data-product-name="{{ producto.nombre|escapejs }}"
+                                     data-product-price="{% if producto.precio_venta %}{{ producto.precio_venta|stringformat:'.2f' }}{% else %}0.00{% endif %}"
+                                     data-product-stock="{{ producto.stock|default:0 }}"
+                                     onclick="addToCartFromElement(this)">
+                                    <div class="card-body d-flex flex-column">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <h6 class="card-title text-truncate">{{ producto.nombre }}</h6>
+                                            {% if not navigator.onLine %}
+                                                <i class="fas fa-database text-muted" title="Cache offline"></i>
+                                            {% endif %}
+                                        </div>
+                                        <p class="card-text small text-muted">{{ producto.id_categoria.nombre }}</p>
+                                        <div class="mt-auto">
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <span class="fw-bold text-success">$ {{ producto.precio_venta|floatformat:2 }}</span>
+                                                <span class="badge {% if producto.stock > 0 %}{% if producto.necesita_restock %}bg-warning{% else %}bg-success{% endif %}{% else %}bg-danger{% endif %}">
+                                                    Stock: {{ producto.stock }}
+                                                </span>
+                                            </div>
+                                            <small class="text-muted">Código: {{ producto.codigo_principal }}</small>
+                                            {% if producto.necesita_restock and producto.stock > 0 %}
+                                                <small class="text-warning"><i class="fas fa-exclamation-triangle"></i> Stock bajo</small>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Panel del carrito -->
+        <div class="col-lg-4">
+            <div class="shopping-cart">
+                <div class="cart-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shopping-cart"></i> Carrito de Compras
+                    </h5>
+                </div>
+                
+                <div class="cart-items" id="cart-items">
+                    <div class="text-center text-muted py-4" id="empty-cart">
+                        <i class="fas fa-shopping-cart fa-3x mb-3"></i>
+                        <p>Carrito vacío</p>
+                        <small>Selecciona productos para agregar</small>
+                    </div>
+                </div>
+                
+                <div class="cart-footer">
+                    <!-- Cliente -->
+                    <div class="mb-3">
+                        <label class="form-label small">Cliente:</label>
+                        <div class="client-search-container">
+                            <div class="input-group input-group-sm">
+                                <input type="text" 
+                                       id="cliente-search" 
+                                       class="form-control" 
+                                       placeholder="Buscar por cédula/RUC..."
+                                       autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" id="clear-client">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                            <div id="client-info" class="client-info mt-2" style="display: none;">
+                                <div class="alert alert-info alert-sm mb-0 p-2">
+                                    <small>
+                                        <strong id="client-name"></strong><br>
+                                        <span id="client-document" class="text-muted"></span>
+                                    </small>
+                                </div>
+                            </div>
+                            <input type="hidden" id="cliente-id" name="cliente_id" value="">
+                        </div>
+                    </div>
+                    
+                    <!-- Resumen -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Subtotal:</span>
+                            <span id="subtotal">$ 0.00</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span>ISV (15%):</span>
+                            <span id="impuesto">$ 0.00</span>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between">
+                            <strong>Total:</strong>
+                            <strong class="total-display" id="total">$ 0.00</strong>
+                        </div>
+                    </div>
+                    
+                    <!-- Forma de pago -->
+                    <div class="payment-section">
+                        <div class="row">
+                            <div class="col-6">
+                                <label class="form-label small">Forma de Pago:</label>
+                                <select id="forma-pago" class="form-select form-select-sm">
+                                    <option value="efectivo">Efectivo</option>
+                                    <option value="tarjeta">Tarjeta</option>
+                                    <option value="transferencia">Transferencia</option>
+                                </select>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small">Monto Recibido:</label>
+                                <input type="number" id="monto-recibido" class="form-control form-control-sm" 
+                                       step="0.01" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="mt-2">
+                            <div class="d-flex justify-content-between">
+                                <span>Cambio:</span>
+                                <span id="cambio">$ 0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Botones de acción -->
+                    <div class="d-grid gap-2 mt-3">
+                        <button class="btn btn-success btn-lg" onclick="procesarVenta()" disabled id="btn-procesar">
+                            <i class="fas fa-cash-register"></i> Procesar Venta
+                        </button>
+                        
+                        <!-- Botón temporal de debug -->
+                        <button class="btn btn-warning btn-sm mt-2" onclick="debugCurrentState()" style="font-size: 0.8rem;">
+                            🔧 Debug Totales
+                        </button>
+                        <button class="btn btn-info btn-sm mt-1" onclick="calculateChange()" style="font-size: 0.8rem;">
+                            🔄 Recalcular Cambio
+                        </button>
+                        <button class="btn btn-outline-secondary" onclick="clearCart()">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+            </div>
+            <!-- Fin del primer tab de venta -->
+        </div>
+        <!-- Fin del contenido de tabs -->
+    </div>
+    <!-- Fin del contenedor de tabs -->
+</div>
+
+<!-- Modal de confirmación de venta -->
+<div class="modal fade" id="ventaModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Venta Procesada</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                <h4>¡Venta realizada exitosamente!</h4>
+                <p>Número de venta: <strong id="numero-venta"></strong></p>
+                <p>Total: <strong id="total-venta"></strong></p>
+                
+                <!-- JSON de facturación electrónica -->
+                <div class="mt-3" id="json-info" style="display: none;">
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-file-code"></i> Facturación Electrónica</h6>
+                        <p>JSON generado para envío al SRI</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <div class="row w-100">
+                    <div class="col-md-6 mb-2">
+                        <button type="button" class="btn btn-primary w-100" onclick="imprimirTicketTermico()">
+                            <i class="fas fa-print"></i> Ticket Térmico
+                        </button>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <button type="button" class="btn btn-success w-100" onclick="descargarJSON()">
+                            <i class="fas fa-file-download"></i> JSON SRI
+                        </button>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <button type="button" class="btn btn-info w-100" onclick="imprimirTicket()">
+                            <i class="fas fa-receipt"></i> Ticket Normal
+                        </button>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <button type="button" class="btn btn-secondary w-100" data-bs-dismiss="modal" onclick="nuevaVenta()">
+                            <i class="fas fa-plus"></i> Nueva Venta
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<!-- Cargar script de búsqueda de productos primero -->
+<script src="{% static 'js/product-search.js' %}"></script>
+
+<script>
+// Sistema de múltiples carritos para tabs
+let carts = {}; // Almacena un carrito por cada tab
+let currentTabId = 'venta1'; // Tab activo
+let tabCounter = 1; // Contador para nuevos tabs
+let ultimaVenta = {}; // Almacenar información de la última venta procesada
+
+// Inicializar el primer carrito
+carts[currentTabId] = {
+    items: [],
+    total: 0,
+    cliente: ''
+};
+
+// Obtener carrito activo
+function getCurrentCart() {
+    console.log('getCurrentCart called, currentTabId:', currentTabId);
+    console.log('Available carts:', carts);
+    
+    if (!carts[currentTabId]) {
+        console.error('Cart not found for tab:', currentTabId);
+        // Crear carrito si no existe
+        carts[currentTabId] = {
+            items: [],
+            total: 0,
+            cliente: ''
+        };
+        console.log('Created new cart for tab:', currentTabId);
+    }
+    
+    return carts[currentTabId];
+}
+
+// Función para crear nuevo tab
+function createNewTab() {
+    tabCounter++;
+    const newTabId = `venta${tabCounter}`;
+    
+    console.log('Creating new tab:', newTabId);
+    
+    // Crear el tab en la navegación
+    const tabNav = document.querySelector('.nav-tabs');
+    const newTabItem = document.createElement('li');
+    newTabItem.className = 'nav-item';
+    newTabItem.innerHTML = `
+        <a class="nav-link position-relative" href="#${newTabId}" data-bs-toggle="tab" onclick="switchToTab('${newTabId}')">
+            <i class="fas fa-shopping-cart me-1"></i>
+            Venta ${tabCounter}
+            <span class="badge bg-primary ms-1" id="badge-${newTabId}">0</span>
+            <button type="button" class="btn-close btn-close-tab ms-2" onclick="closeTab('${newTabId}'); event.stopPropagation();" title="Cerrar tab"></button>
+        </a>
+    `;
+    
+    // Insertar antes del botón de nuevo tab
+    const newTabButton = document.querySelector('.add-tab-btn').parentElement;
+    tabNav.insertBefore(newTabItem, newTabButton);
+    
+    // Crear el contenido del tab clonando el primero
+    const tabContent = document.querySelector('.tab-content');
+    const originalTab = document.querySelector('#venta1');
+    const newTabPane = originalTab.cloneNode(true);
+    
+    // Actualizar ID del tab
+    newTabPane.id = newTabId;
+    newTabPane.className = 'tab-pane fade';
+    
+    // Solo cambiar IDs específicos que pueden causar conflictos, 
+    // pero mantener los IDs de elementos funcionales como totales
+    const specificElementsToChange = ['cart-items', 'empty-cart'];
+    specificElementsToChange.forEach(elementId => {
+        const element = newTabPane.querySelector(`#${elementId}`);
+        if (element) {
+            element.id = `${elementId}-${newTabId}`;
+        }
+    });
+    
+    // Limpiar el contenido del carrito en el nuevo tab
+    const cartItems = newTabPane.querySelector('[id^="cart-items"]');
+    if (cartItems) {
+        cartItems.innerHTML = `
+            <div class="text-center text-muted py-4" id="empty-cart-${newTabId}">
+                <i class="fas fa-shopping-cart fa-2x mb-2"></i>
+                <p>El carrito está vacío</p>
+            </div>
+        `;
+    }
+    
+    // Resetear valores en el nuevo tab
+    const inputs = newTabPane.querySelectorAll('input, select');
+    inputs.forEach(input => {
+        if (input.type === 'number' || input.type === 'text') {
+            input.value = '';
+        } else if (input.tagName === 'SELECT') {
+            input.selectedIndex = 0;
+        }
+    });
+    
+    // Resetear totales manualmente
+    const subtotalEl = newTabPane.querySelector('#subtotal');
+    const impuestoEl = newTabPane.querySelector('#impuesto');
+    const totalEl = newTabPane.querySelector('#total');
+    const cambioEl = newTabPane.querySelector('#cambio');
+    
+    if (subtotalEl) subtotalEl.textContent = '$ 0.00';
+    if (impuestoEl) impuestoEl.textContent = '$ 0.00';
+    if (totalEl) totalEl.textContent = '$ 0.00';
+    if (cambioEl) cambioEl.textContent = '$ 0.00';
+    
+    // Agregar listeners específicos al nuevo campo monto-recibido
+    const newMontoRecibido = newTabPane.querySelector('#monto-recibido');
+    if (newMontoRecibido) {
+        newMontoRecibido.addEventListener('input', function() {
+            console.log('New tab - monto recibido input:', this.value);
+            if (currentTabId === newTabId) {
+                calculateChange();
+            }
+        });
+        
+        newMontoRecibido.addEventListener('keyup', function() {
+            console.log('New tab - monto recibido keyup:', this.value);
+            if (currentTabId === newTabId) {
+                calculateChange();
+            }
+        });
+        
+        newMontoRecibido.addEventListener('change', function() {
+            console.log('New tab - monto recibido change:', this.value);
+            if (currentTabId === newTabId) {
+                calculateChange();
+            }
+        });
+    }
+    
+    tabContent.appendChild(newTabPane);
+    
+    // Inicializar carrito para el nuevo tab
+    carts[newTabId] = {
+        items: [],
+        total: 0,
+        cliente: ''
+    };
+    
+    console.log('New tab created. Available carts:', Object.keys(carts));
+    
+    // Mostrar botones de cierre cuando hay más de un tab
+    updateCloseButtonsVisibility();
+    
+    // Cambiar al nuevo tab
+    switchToTab(newTabId);
+}
+
+// Actualizar visibilidad de botones de cierre
+function updateCloseButtonsVisibility() {
+    const closeButtons = document.querySelectorAll('.btn-close-tab');
+    const visibleTabs = document.querySelectorAll('.nav-tabs .nav-item a[href^="#venta"]').length;
+    const showButtons = visibleTabs > 1;
+    
+    console.log('Updating close buttons visibility:', {visibleTabs, showButtons});
+    
+    closeButtons.forEach(button => {
+        button.style.display = showButtons ? 'inline-block' : 'none';
+    });
+}
+
+// Función para cambiar de tab
+function switchToTab(tabId) {
+    console.log('Switching to tab:', tabId);
+    
+    const oldTabId = currentTabId;
+    currentTabId = tabId;
+    
+    console.log('Tab switched from', oldTabId, 'to', currentTabId);
+    
+    // Activar el tab usando Bootstrap
+    const tabElement = document.querySelector(`a[href="#${tabId}"]`);
+    if (tabElement) {
+        const tabTrigger = new bootstrap.Tab(tabElement);
+        tabTrigger.show();
+        console.log('Bootstrap tab activated');
+    } else {
+        console.error('Tab element not found for:', tabId);
+    }
+    
+    // Actualizar la vista del carrito
+    updateCartDisplay();
+    
+    console.log('Switch complete. Current cart items:', getCurrentCart().items.length);
+}
+
+// Función para cerrar tab
+function closeTab(tabId) {
+    // Contar tabs visibles (excluir el botón de añadir)
+    const visibleTabs = document.querySelectorAll('.nav-tabs .nav-item a[href^="#venta"]').length;
+    
+    // No permitir cerrar si es el único tab
+    if (visibleTabs <= 1) {
+        alert('Debe mantener al menos una venta abierta');
+        return;
+    }
+    
+    // Confirmar cierre si tiene productos
+    if (carts[tabId] && carts[tabId].items.length > 0) {
+        if (!confirm('¿Está seguro de cerrar esta venta? Se perderán los productos seleccionados.')) {
+            return;
+        }
+    }
+    
+    // Eliminar el tab de la navegación
+    const tabElement = document.querySelector(`a[href="#${tabId}"]`).closest('.nav-item');
+    tabElement.remove();
+    
+    // Eliminar el contenido del tab
+    const tabPane = document.querySelector(`#${tabId}`);
+    tabPane.remove();
+    
+    // Eliminar el carrito
+    delete carts[tabId];
+    
+    // Actualizar visibilidad de botones de cierre
+    updateCloseButtonsVisibility();
+    
+    // Si era el tab activo, cambiar a otro
+    if (currentTabId === tabId) {
+        const remainingTabs = Object.keys(carts);
+        if (remainingTabs.length > 0) {
+            switchToTab(remainingTabs[0]);
+        }
+    }
+}
+
+// Agregar al carrito desde elemento DOM
+function addToCartFromElement(element) {
+    console.log('addToCartFromElement called', element);
+    
+    const productId = element.getAttribute('data-product-id');
+    const productName = element.getAttribute('data-product-name');
+    const price = element.getAttribute('data-product-price');
+    const stock = element.getAttribute('data-product-stock');
+    
+    console.log('Raw data attributes:', {productId, productName, price, stock});
+    console.log('Price type:', typeof price, 'Price value:', price);
+    console.log('Current tab ID:', currentTabId);
+    console.log('Available carts:', Object.keys(carts));
+    
+    // Convertir a números
+    const numProductId = parseInt(productId);
+    const numPrice = parseFloat(price);
+    const numStock = parseInt(stock);
+    
+    console.log('Converted values:', {numProductId, numPrice, numStock});
+    console.log('Converted price type:', typeof numPrice, 'Converted price value:', numPrice);
+    
+    addToCart(numProductId, productName, numPrice, numStock);
+}
+
+function addToCart(productId, productName, price, stock) {
+    console.log('=== ADD TO CART START ===');
+    console.log('addToCart called with:', {productId, productName, price, stock});
+    console.log('Current tab ID in addToCart:', currentTabId);
+    
+    const currentCart = getCurrentCart();
+    console.log('Current cart before addition:', JSON.parse(JSON.stringify(currentCart)));
+    
+    // Asegurar que stock es un número
+    stock = Number(stock);
+    
+    if (isNaN(stock) || stock <= 0) {
+        console.error('Stock validation failed:', {stock, isNaN: isNaN(stock), lessThanOrEqualZero: stock <= 0});
+        alert('Producto sin stock disponible');
+        return;
+    }
+    
+    let existingItem = currentCart.items.find(item => item.id === productId);
+    
+    if (existingItem) {
+        console.log('Found existing item:', existingItem);
+        if (existingItem.quantity >= stock) {
+            alert('No hay suficiente stock disponible');
+            return;
+        }
+        existingItem.quantity++;
+        console.log('Updated existing item quantity to:', existingItem.quantity);
+    } else {
+        console.log('Adding new item to cart');
+        const newItem = {
+            id: productId,
+            name: productName,
+            price: price,
+            quantity: 1,
+            stock: stock
+        };
+        console.log('New item object:', newItem);
+        currentCart.items.push(newItem);
+    }
+    
+    console.log('Current cart after addition:', JSON.parse(JSON.stringify(currentCart)));
+    console.log('=== ADD TO CART END ===');
+    
+    updateCartDisplay();
+    updateProductStockDisplay();
+    
+    // Debug adicional
+    setTimeout(() => {
+        console.log('=== POST-UPDATE DEBUG ===');
+        debugCurrentState();
+    }, 100);
+}
+
+// Actualizar visualización del carrito
+function updateCartDisplay() {
+    const currentCart = getCurrentCart();
+    console.log('Updating cart display for tab:', currentTabId, 'Items:', currentCart.items.length);
+    
+    // Buscar el contenedor del carrito en el tab activo
+    const activeTab = document.querySelector(`#${currentTabId}`);
+    if (!activeTab) {
+        console.error('Active tab not found:', currentTabId);
+        return;
+    }
+    
+    // Buscar contenedor de carrito (puede tener ID modificado en tabs nuevos)
+    let cartItemsContainer = activeTab.querySelector('#cart-items') || 
+                            activeTab.querySelector('[id^="cart-items"]') ||
+                            activeTab.querySelector('.cart-items');
+    
+    if (!cartItemsContainer) {
+        console.error('Cart container not found in tab:', currentTabId);
+        return;
+    }
+    
+    if (currentCart.items.length === 0) {
+        cartItemsContainer.innerHTML = '<div class="text-center text-muted p-4"><i class="fas fa-shopping-cart fa-2x mb-2"></i><p>El carrito está vacío</p></div>';
+        updateTotals();
+        updateTabBadge();
+        return;
+    }
+    
+    let cartHTML = '';
+    currentCart.items.forEach((item, index) => {
+        const itemTotal = item.price * item.quantity;
+        cartHTML += `
+            <div class="cart-item">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">${item.name}</h6>
+                        <small class="text-muted">$ ${item.price.toFixed(2)} c/u</small>
+                        <br><small class="text-info">Stock disponible: ${item.stock}</small>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeFromCart(${index})" title="Eliminar producto">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-2">
+                    <div class="quantity-controls">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="updateQuantity(${index}, -1)">-</button>
+                        <input type="number" class="form-control form-control-sm" value="${item.quantity}" 
+                               onchange="setQuantity(${index}, this.value)" min="1" max="${item.stock}">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="updateQuantity(${index}, 1)">+</button>
+                    </div>
+                    <strong>$ ${itemTotal.toFixed(2)}</strong>
+                </div>
+            </div>
+        `;
+    });
+    
+    cartItemsContainer.innerHTML = cartHTML;
+    updateTotals();
+    updateTabBadge();
+    
+    console.log('Cart display updated successfully');
+}
+
+// Actualizar badge del tab con cantidad de productos
+function updateTabBadge() {
+    const currentCart = getCurrentCart();
+    const badge = document.querySelector(`#badge-${currentTabId}`);
+    if (badge) {
+        const totalItems = currentCart.items.reduce((sum, item) => sum + item.quantity, 0);
+        badge.textContent = totalItems;
+        badge.style.display = totalItems > 0 ? 'inline' : 'none';
+    }
+}
+
+
+// Actualizar badge del tab con cantidad de productos
+function updateTabBadge() {
+    const currentCart = getCurrentCart();
+    const badge = document.querySelector(`#badge-${currentTabId}`);
+    if (badge) {
+        const totalItems = currentCart.items.reduce((sum, item) => sum + item.quantity, 0);
+        badge.textContent = totalItems;
+        badge.style.display = totalItems > 0 ? 'inline' : 'none';
+    }
+}
+
+// Actualizar cantidad
+function updateQuantity(index, change) {
+    const currentCart = getCurrentCart();
+    const item = currentCart.items[index];
+    const newQuantity = item.quantity + change;
+    
+    if (newQuantity <= 0) {
+        removeFromCart(index);
+    } else if (newQuantity <= item.stock) {
+        item.quantity = newQuantity;
+        updateCartDisplay();
+        updateProductStockDisplay();
+    } else {
+        alert('No hay suficiente stock disponible');
+    }
+}
+
+// Establecer cantidad específica
+function setQuantity(index, quantity) {
+    const currentCart = getCurrentCart();
+    const item = currentCart.items[index];
+    const qty = parseInt(quantity);
+    
+    if (qty <= 0) {
+        removeFromCart(index);
+    } else if (qty <= item.stock) {
+        item.quantity = qty;
+        updateCartDisplay();
+        updateProductStockDisplay();
+    } else {
+        alert('No hay suficiente stock disponible');
+        updateCartDisplay(); // Restaurar valor anterior
+    }
+}
+
+// Remover del carrito
+function removeFromCart(index) {
+    const currentCart = getCurrentCart();
+    if (index >= 0 && index < currentCart.items.length) {
+        currentCart.items.splice(index, 1);
+        updateCartDisplay();
+        updateTotals();
+        updateProductStockDisplay();
+        
+        // Mostrar mensaje visual (opcional)
+        console.log(`Producto removido del carrito. Quedan ${currentCart.items.length} items.`);
+    }
+}
+
+// Limpiar carrito
+function clearCart() {
+    const currentCart = getCurrentCart();
+    currentCart.items = [];
+    currentCart.total = 0;
+    updateCartDisplay();
+    // Restaurar la visualización original del stock
+    document.querySelectorAll('.product-card').forEach(card => {
+        card.style.opacity = '1';
+        card.style.pointerEvents = 'auto';
+        const stockBadge = card.querySelector('.badge');
+        const originalStock = card.getAttribute('data-product-stock');
+        if (stockBadge && originalStock) {
+            stockBadge.textContent = `Stock: ${originalStock}`;
+            if (parseInt(originalStock) > 0) {
+                stockBadge.className = 'badge bg-success';
+            } else {
+                stockBadge.className = 'badge bg-danger';
+            }
+        }
+    });
+}
+
+// Actualizar totales
+function updateTotals() {
+    const currentCart = getCurrentCart();
+    const subtotal = currentCart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const impuesto = subtotal * 0.15;
+    const total = subtotal + impuesto;
+    
+    console.log('Updating totals for tab:', currentTabId, {subtotal, impuesto, total});
+    
+    // Buscar elementos en el tab activo
+    const activeTab = document.querySelector(`#${currentTabId}`);
+    if (!activeTab) {
+        console.error('Active tab not found:', currentTabId);
+        return;
+    }
+    
+    // Buscar elementos de totales con diferentes estrategias
+    let subtotalEl = activeTab.querySelector('#subtotal');
+    let impuestoEl = activeTab.querySelector('#impuesto');
+    let totalEl = activeTab.querySelector('#total');
+    let btnProcesar = activeTab.querySelector('#btn-procesar');
+    
+    // Si no encontramos con ID directo, buscar por ID que termine con el texto
+    if (!subtotalEl) {
+        subtotalEl = activeTab.querySelector('[id$="subtotal"]');
+    }
+    if (!impuestoEl) {
+        impuestoEl = activeTab.querySelector('[id$="impuesto"]');
+    }
+    if (!totalEl) {
+        totalEl = activeTab.querySelector('[id$="total"]');
+    }
+    if (!btnProcesar) {
+        btnProcesar = activeTab.querySelector('[id$="btn-procesar"]');
+    }
+    
+    console.log('Elements found:', {
+        subtotalEl: !!subtotalEl,
+        impuestoEl: !!impuestoEl,
+        totalEl: !!totalEl,
+        btnProcesar: !!btnProcesar
+    });
+    
+    // Actualizar valores
+    if (subtotalEl) {
+        subtotalEl.textContent = `$ ${subtotal.toFixed(2)}`;
+        console.log('Updated subtotal to:', subtotalEl.textContent);
+    } else {
+        console.error('Subtotal element not found in tab:', currentTabId);
+    }
+    
+    if (impuestoEl) {
+        impuestoEl.textContent = `$ ${impuesto.toFixed(2)}`;
+        console.log('Updated impuesto to:', impuestoEl.textContent);
+    } else {
+        console.error('Impuesto element not found in tab:', currentTabId);
+    }
+    
+    if (totalEl) {
+        totalEl.textContent = `$ ${total.toFixed(2)}`;
+        console.log('Updated total to:', totalEl.textContent);
+    } else {
+        console.error('Total element not found in tab:', currentTabId);
+    }
+    
+    if (btnProcesar) {
+        btnProcesar.disabled = currentCart.items.length === 0;
+    }
+    
+    currentCart.total = total;
+    
+    // Calcular cambio
+    calculateChange();
+}
+
+// Calcular cambio
+function calculateChange() {
+    console.log('=== CALCULATE CHANGE START ===');
+    const currentCart = getCurrentCart();
+    const activeTab = document.querySelector(`#${currentTabId}`);
+    
+    console.log('Current tab:', currentTabId);
+    console.log('Cart total:', currentCart.total);
+    
+    if (!activeTab) {
+        console.error('Active tab not found for change calculation');
+        return;
+    }
+    
+    // Buscar elementos con múltiples estrategias
+    let montoRecibidoEl = activeTab.querySelector('#monto-recibido') || 
+                         activeTab.querySelector('[id$="monto-recibido"]');
+    let cambioEl = activeTab.querySelector('#cambio') || 
+                  activeTab.querySelector('[id$="cambio"]');
+    
+    console.log('Elements found:', {
+        montoRecibidoEl: !!montoRecibidoEl,
+        cambioEl: !!cambioEl,
+        montoRecibidoValue: montoRecibidoEl ? montoRecibidoEl.value : 'N/A'
+    });
+    
+    if (montoRecibidoEl && cambioEl) {
+        const montoRecibido = parseFloat(montoRecibidoEl.value) || 0;
+        const cambio = montoRecibido - currentCart.total;
+        
+        console.log('Calculation:', {
+            montoRecibido,
+            cartTotal: currentCart.total,
+            cambio
+        });
+        
+        cambioEl.textContent = `$ ${cambio.toFixed(2)}`;
+        console.log('Updated cambio to:', cambioEl.textContent);
+    } else {
+        console.error('Elements not found for change calculation:', {
+            montoRecibidoEl: !!montoRecibidoEl,
+            cambioEl: !!cambioEl
+        });
+    }
+    
+    console.log('=== CALCULATE CHANGE END ===');
+}
+
+// Procesar venta
+function procesarVenta() {
+    const currentCart = getCurrentCart();
+    if (currentCart.items.length === 0) {
+        alert('El carrito está vacío');
+        return;
+    }
+    
+    const activeTab = document.querySelector(`#${currentTabId}`);
+    const clienteIdInput = activeTab.querySelector('#cliente-id') || document.getElementById('cliente-id');
+    const formaPagoSelect = activeTab.querySelector('#forma-pago');
+    const montoRecibidoInput = activeTab.querySelector('#monto-recibido');
+    
+    const clienteId = clienteIdInput ? clienteIdInput.value : '';
+    const formaPago = formaPagoSelect ? formaPagoSelect.value : 'efectivo';
+    const montoRecibido = montoRecibidoInput ? parseFloat(montoRecibidoInput.value) || 0 : 0;
+    
+    if (formaPago === 'efectivo' && montoRecibido < currentCart.total) {
+        alert('El monto recibido es insuficiente');
+        return;
+    }
+    
+    // Preparar datos de la venta
+    const ventaData = {
+        cliente_id: clienteId || null,
+        items: currentCart.items.map(item => ({
+            producto_id: item.id,
+            cantidad: item.quantity,
+            precio_unitario: item.price
+        })),
+        pagos: [{
+            forma_pago: formaPago,
+            monto: currentCart.total
+        }]
+    };
+    
+    // Enviar venta al servidor
+    fetch('{% url "ventas:crear_ajax" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify(ventaData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Almacenar información de la venta
+            ultimaVenta = {
+                numero_venta: data.numero_venta,
+                total: data.total,
+                venta_id: data.venta_id,
+                json_facturacion: data.json_facturacion
+            };
+            
+            document.getElementById('numero-venta').textContent = data.numero_venta;
+            document.getElementById('total-venta').textContent = `$ ${currentCart.total.toFixed(2)}`;
+            
+            // Mostrar información del JSON si está disponible
+            if (data.json_facturacion) {
+                document.getElementById('json-info').style.display = 'block';
+            }
+            
+            // Limpiar el carrito después de una venta exitosa
+            clearCart();
+            
+            const modal = new bootstrap.Modal(document.getElementById('ventaModal'));
+            modal.show();
+        } else {
+            alert('Error al procesar la venta: ' + data.error);
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error al procesar la venta');
+    });
+}
+
+// Nueva venta
+function nuevaVenta() {
+    clearCart();
+    // No limpiar el cliente, mantenerlo seleccionado para la siguiente venta
+    const activeTab = document.querySelector(`#${currentTabId}`);
+    if (activeTab) {
+        const formaPagoSelect = activeTab.querySelector('#forma-pago');
+        const montoRecibidoInput = activeTab.querySelector('#monto-recibido');
+        
+        // Solo resetear forma de pago y monto, mantener cliente
+        if (formaPagoSelect) formaPagoSelect.value = 'efectivo';
+        if (montoRecibidoInput) montoRecibidoInput.value = '';
+    }
+}
+
+// Función para limpiar todo (incluyendo cliente)
+function limpiarTodo() {
+    clearCart();
+    
+    // Limpiar cliente
+    document.getElementById('cliente-search').value = '';
+    document.getElementById('cliente-id').value = '';
+    document.getElementById('client-info').style.display = 'none';
+    
+    // Limpiar otros campos
+    const activeTab = document.querySelector(`#${currentTabId}`);
+    if (activeTab) {
+        const formaPagoSelect = activeTab.querySelector('#forma-pago');
+        const montoRecibidoInput = activeTab.querySelector('#monto-recibido');
+        
+        if (formaPagoSelect) formaPagoSelect.value = 'efectivo';
+        if (montoRecibidoInput) montoRecibidoInput.value = '';
+    }
+}
+
+// Filtros de productos - usar event delegation para tabs
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing...');
+    
+    // Asegurar que el primer carrito esté inicializado
+    if (!carts[currentTabId]) {
+        carts[currentTabId] = {
+            items: [],
+            total: 0,
+            cliente: ''
+        };
+        console.log('Initialized first cart for:', currentTabId);
+    }
+    
+    // Configurar event listeners para filtros (que están fuera de los tabs)
+    const searchInput = document.getElementById('search-products');
+    const categorySelect = document.getElementById('filter-category');
+    
+    console.log('Elementos encontrados:');
+    console.log('searchInput:', searchInput);
+    console.log('categorySelect:', categorySelect);
+    
+    // Variable para debounce de búsqueda
+    let searchTimeout;
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', function(e) {
+            console.log('Event input disparado, valor:', e.target.value);
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(function() {
+                console.log('Ejecutando filterProducts después del debounce');
+                filterProducts();
+            }, 300);
+        });
+        
+        // También agregar listener para keyup y change como respaldo
+        searchInput.addEventListener('keyup', function(e) {
+            console.log('Event keyup disparado, valor:', e.target.value);
+        });
+        
+        searchInput.addEventListener('change', function(e) {
+            console.log('Event change disparado, valor:', e.target.value);
+        });
+        
+        console.log('Search input listener added with debounce');
+    } else {
+        console.error('No se encontró el elemento search-products');
+    }
+    
+    if (categorySelect) {
+        categorySelect.addEventListener('change', filterProducts);
+        console.log('Category select listener added');
+    } else {
+        console.error('No se encontró el elemento filter-category');
+    }
+    
+    // Configurar búsqueda de clientes
+    setupClientSearch();
+    
+    // Event listener para monto recibido en cada tab (usando delegación)
+    document.addEventListener('input', function(e) {
+        if (e.target.matches('#monto-recibido') || e.target.matches('[id$="monto-recibido"]')) {
+            console.log('Monto recibido changed:', e.target.value);
+            calculateChange();
+        }
+    });
+    
+    // También listener para keyup para mayor responsividad
+    document.addEventListener('keyup', function(e) {
+        if (e.target.matches('#monto-recibido') || e.target.matches('[id$="monto-recibido"]')) {
+            console.log('Monto recibido keyup:', e.target.value);
+            calculateChange();
+        }
+    });
+    
+    // Listener para eventos de cambio (change)
+    document.addEventListener('change', function(e) {
+        if (e.target.matches('#monto-recibido') || e.target.matches('[id$="monto-recibido"]')) {
+            console.log('Monto recibido change:', e.target.value);
+            calculateChange();
+        }
+    });
+    
+    // También agregar listener específico para el campo en el primer tab
+    const initialMontoRecibido = document.querySelector('#venta1 #monto-recibido');
+    if (initialMontoRecibido) {
+        initialMontoRecibido.addEventListener('input', function() {
+            console.log('Direct listener - monto recibido changed:', this.value);
+            calculateChange();
+        });
+        
+        initialMontoRecibido.addEventListener('keyup', function() {
+            console.log('Direct keyup listener - monto recibido changed:', this.value);
+            calculateChange();
+        });
+    }
+    
+    // Inicializar el primer carrito
+    updateCartDisplay();
+    
+    // Ocultar botón de cierre inicial (solo hay un tab)
+    updateCloseButtonsVisibility();
+    
+    console.log('Initialization complete. Current state:', {
+        currentTabId,
+        carts,
+        cartItems: carts[currentTabId] ? carts[currentTabId].items.length : 'N/A'
+    });
+});
+
+function filterProducts() {
+    const searchInput = document.getElementById('search-products');
+    const categorySelect = document.getElementById('filter-category');
+    const loadingIndicator = document.getElementById('search-loading');
+    
+    const searchTerm = searchInput ? searchInput.value.trim() : '';
+    const categoryFilter = categorySelect ? categorySelect.value : '';
+    
+    console.log('Búsqueda iniciada:', searchTerm);
+    
+    // Si no hay término de búsqueda, recargar productos iniciales
+    if (searchTerm.length === 0) {
+        console.log('Campo vacío, recargando productos iniciales');
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        reloadInitialProducts();
+        return;
+    }
+    
+    // Si el término es muy corto, mostrar productos locales si existen
+    if (searchTerm.length < 2) {
+        console.log('Término muy corto, mostrando productos locales');
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        
+        // Mostrar productos iniciales (solo filtrando localmente por categoría si existe)
+        const products = document.querySelectorAll('.product-item');
+        if (products.length > 0) {
+            products.forEach(product => {
+                const category = product.dataset.category || '';
+                const matchesCategory = !categoryFilter || category === categoryFilter;
+                product.style.display = matchesCategory ? 'block' : 'none';
+            });
+        } else {
+            // Si no hay productos locales, recargar los iniciales
+            reloadInitialProducts();
+        }
+        return;
+    }
+    
+    console.log('Realizando búsqueda AJAX para:', searchTerm);
+    
+    // Mostrar indicador de carga
+    if (loadingIndicator) loadingIndicator.style.display = 'block';
+    
+    // Realizar búsqueda AJAX
+    fetch(`{% url 'ventas:buscar_producto' %}?search=${encodeURIComponent(searchTerm)}`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]')?.value || '',
+        }
+    })
+    .then(response => {
+        console.log('Respuesta recibida:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Datos recibidos:', data);
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        
+        if (data.productos) {
+            updateProductsGrid(data.productos, categoryFilter);
+        } else {
+            console.error('No se encontró el campo productos en la respuesta');
+        }
+    })
+    .catch(error => {
+        console.error('Error en búsqueda:', error);
+        if (loadingIndicator) loadingIndicator.style.display = 'none';
+        
+        // Mostrar mensaje de error al usuario
+        const productGrid = document.getElementById('products-grid');
+        if (productGrid) {
+            productGrid.innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-warning text-center">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Error al buscar productos. Inténtalo de nuevo.
+                    </div>
+                </div>
+            `;
+        }
+    });
+}
+
+function imprimirTicket() {
+    window.open('{% url "ventas:ticket" 0 %}'.replace('0', document.getElementById('numero-venta').textContent), '_blank');
+}
+
+// Actualizar la visualización del stock en las tarjetas de productos
+function updateProductStockDisplay() {
+    const currentCart = getCurrentCart();
+    currentCart.items.forEach(cartItem => {
+        const productCards = document.querySelectorAll(`[data-product-id="${cartItem.id}"]`);
+        productCards.forEach(card => {
+            const stockBadge = card.querySelector('.badge');
+            if (stockBadge) {
+                const availableStock = cartItem.stock - cartItem.quantity;
+                stockBadge.textContent = `Stock: ${availableStock}`;
+                
+                // Cambiar color según disponibilidad
+                if (availableStock <= 0) {
+                    stockBadge.className = 'badge bg-danger';
+                    card.style.opacity = '0.6';
+                    card.style.pointerEvents = 'none';
+                } else if (availableStock <= 5) {
+                    stockBadge.className = 'badge bg-warning';
+                    card.style.opacity = '1';
+                    card.style.pointerEvents = 'auto';
+                } else {
+                    stockBadge.className = 'badge bg-success';
+                    card.style.opacity = '1';
+                    card.style.pointerEvents = 'auto';
+                }
+            }
+        });
+    });
+}
+
+// Función para recargar los productos iniciales (cuando se borra la búsqueda)
+function reloadInitialProducts() {
+    console.log('Recargando productos iniciales...');
+    
+    const productGrid = document.getElementById('products-grid');
+    if (!productGrid) return;
+    
+    // Mostrar indicador de carga
+    productGrid.innerHTML = `
+        <div class="col-12">
+            <div class="text-center py-4">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando productos...</span>
+                </div>
+                <p class="mt-2">Cargando productos...</p>
+            </div>
+        </div>
+    `;
+    
+    // Hacer petición para obtener productos iniciales (vacío = productos con stock)
+    fetch(`{% url 'ventas:buscar_producto' %}?search=`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.productos && data.productos.length > 0) {
+            updateProductsGrid(data.productos);
+        } else {
+            // Si no hay productos, recargar la página como respaldo
+            location.reload();
+        }
+    })
+    .catch(error => {
+        console.error('Error recargando productos:', error);
+        // Como respaldo, recargar la página
+        location.reload();
+    });
+}
+
+// Función para actualizar la grilla de productos con resultados de búsqueda
+function updateProductsGrid(productos, categoryFilter = '') {
+    console.log('Actualizando grilla con', productos.length, 'productos');
+    const productGrid = document.getElementById('products-grid');
+    if (!productGrid) {
+        console.error('No se encontró el contenedor products-grid');
+        return;
+    }
+    
+    // Limpiar productos actuales
+    productGrid.innerHTML = '';
+    
+    // Agregar productos de búsqueda
+    productos.forEach(producto => {
+        console.log('Procesando producto:', producto.nombre, 'Stock:', producto.stock);
+        
+        // Aplicar filtro de categoría si existe
+        if (categoryFilter && producto.categoria !== categoryFilter) {
+            return;
+        }
+        
+        const stockClass = producto.stock > 0 ? 
+            (producto.stock <= 5 ? 'bg-warning' : 'bg-success') : 'bg-danger';
+        
+        const productCard = `
+            <div class="col-xl-3 col-lg-4 col-md-6 mb-3 product-item" 
+                 data-category="${producto.categoria || ''}"
+                 data-name="${producto.nombre.toLowerCase()}"
+                 data-code="${producto.codigo}">
+                <div class="card product-card h-100" 
+                     data-product-id="${producto.id}"
+                     data-product-name="${producto.nombre}"
+                     data-product-price="${parseFloat(producto.precio).toFixed(2)}"
+                     data-product-stock="${producto.stock}"
+                     onclick="addToCartFromElement(this)">
+                    <div class="card-body d-flex flex-column">
+                        <h6 class="card-title text-truncate">${producto.nombre}</h6>
+                        <p class="card-text small text-muted">Código: ${producto.codigo}</p>
+                        <div class="mt-auto">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold text-success">$ ${parseFloat(producto.precio).toFixed(2)}</span>
+                                <span class="badge ${stockClass}">
+                                    Stock: ${producto.stock}
+                                </span>
+                            </div>
+                            ${producto.stock <= 5 && producto.stock > 0 ? 
+                                '<small class="text-warning"><i class="fas fa-exclamation-triangle"></i> Stock bajo</small>' : ''}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        productGrid.insertAdjacentHTML('beforeend', productCard);
+    });
+    
+    // Si no hay resultados, mostrar mensaje
+    if (productos.length === 0) {
+        productGrid.innerHTML = `
+            <div class="col-12">
+                <div class="text-center py-4">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <p class="text-muted">No se encontraron productos</p>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Función auxiliar para mostrar notificaciones (opcional)
+function showNotification(message, type = 'info') {
+    // Implementar sistema de notificaciones si se desea
+    console.log(`${type.toUpperCase()}: ${message}`);
+}
+
+// Función de debug para verificar estado
+function debugCurrentState() {
+    const currentCart = getCurrentCart();
+    const activeTab = document.querySelector(`#${currentTabId}`);
+    
+    console.log('=== DEBUG STATE ===');
+    console.log('Current Tab ID:', currentTabId);
+    console.log('Current Cart:', currentCart);
+    console.log('Active Tab Element:', activeTab);
+    
+    if (activeTab) {
+        const subtotalEl = activeTab.querySelector('#subtotal');
+        const impuestoEl = activeTab.querySelector('#impuesto');
+        const totalEl = activeTab.querySelector('#total');
+        const montoRecibidoEl = activeTab.querySelector('#monto-recibido');
+        const cambioEl = activeTab.querySelector('#cambio');
+        
+        console.log('Elements found:');
+        console.log('- Subtotal:', subtotalEl, subtotalEl ? subtotalEl.textContent : 'NULL');
+        console.log('- Impuesto:', impuestoEl, impuestoEl ? impuestoEl.textContent : 'NULL');
+        console.log('- Total:', totalEl, totalEl ? totalEl.textContent : 'NULL');
+        console.log('- Monto Recibido:', montoRecibidoEl, montoRecibidoEl ? montoRecibidoEl.value : 'NULL');
+        console.log('- Cambio:', cambioEl, cambioEl ? cambioEl.textContent : 'NULL');
+        
+        // Forzar actualización
+        console.log('Forcing update...');
+        updateTotals();
+        calculateChange();
+    }
+    
+    console.log('=== END DEBUG ===');
+}
+
+// Función para probar event listeners
+function testMontoRecibidoListeners() {
+    const activeTab = document.querySelector(`#${currentTabId}`);
+    if (activeTab) {
+        const montoRecibidoEl = activeTab.querySelector('#monto-recibido');
+        if (montoRecibidoEl) {
+            console.log('Testing listeners for monto recibido...');
+            
+            // Simular input
+            montoRecibidoEl.value = '100';
+            
+            // Disparar eventos manualmente
+            montoRecibidoEl.dispatchEvent(new Event('input', { bubbles: true }));
+            montoRecibidoEl.dispatchEvent(new Event('keyup', { bubbles: true }));
+            montoRecibidoEl.dispatchEvent(new Event('change', { bubbles: true }));
+            
+            console.log('Events dispatched, check if cambio updated');
+        } else {
+            console.error('Monto recibido element not found');
+        }
+    }
+}
+
+// Función para configurar la búsqueda de clientes
+function setupClientSearch() {
+    const clienteSearch = document.getElementById('cliente-search');
+    const clearClientBtn = document.getElementById('clear-client');
+    
+    let searchTimeout;
+    
+    if (clienteSearch) {
+        // Búsqueda al escribir
+        clienteSearch.addEventListener('input', function(e) {
+            clearTimeout(searchTimeout);
+            const query = e.target.value.trim();
+            
+            if (query.length >= 3) {
+                searchTimeout = setTimeout(() => {
+                    searchClient(query);
+                }, 300);
+            } else {
+                clearClientInfo();
+            }
+        });
+        
+        // Búsqueda al presionar Enter
+        clienteSearch.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const query = e.target.value.trim();
+                if (query.length > 0) {
+                    searchClient(query);
+                }
+            }
+        });
+    }
+    
+    // Botón limpiar cliente
+    if (clearClientBtn) {
+        clearClientBtn.addEventListener('click', function() {
+            clearClientInfo();
+            clienteSearch.value = '';
+            clienteSearch.focus();
+        });
+    }
+}
+
+// Función para buscar cliente por cédula/RUC
+function searchClient(query) {
+    console.log('Buscando cliente:', query);
+    
+    fetch(`{% url 'clientes:buscar' %}?search=${encodeURIComponent(query)}`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Respuesta de búsqueda:', data);
+        
+        if (data.clientes && data.clientes.length > 0) {
+            const cliente = data.clientes[0]; // Tomar el primer resultado
+            displayClientInfo(cliente);
+        } else {
+            clearClientInfo();
+            showClientNotFound(query);
+        }
+    })
+    .catch(error => {
+        console.error('Error al buscar cliente:', error);
+        clearClientInfo();
+    });
+}
+
+// Función para mostrar información del cliente encontrado
+function displayClientInfo(cliente) {
+    const clientInfo = document.getElementById('client-info');
+    const clienteId = document.getElementById('cliente-id');
+    
+    if (clientInfo && clienteId) {
+        clienteId.value = cliente.id;
+        
+        clientInfo.style.display = 'block';
+        clientInfo.innerHTML = `
+            <div class="alert alert-success alert-sm mb-0 p-2">
+                <small>
+                    <strong>${cliente.nombre || 'Cliente'}</strong><br>
+                    <span class="text-muted">${cliente.documento || ''}</span>
+                </small>
+            </div>
+        `;
+    }
+}
+
+// Función para limpiar información del cliente
+function clearClientInfo() {
+    const clientInfo = document.getElementById('client-info');
+    const clienteId = document.getElementById('cliente-id');
+    
+    if (clientInfo) {
+        clientInfo.style.display = 'none';
+    }
+    
+    if (clienteId) {
+        clienteId.value = '';
+    }
+}
+
+// Función para mostrar mensaje de cliente no encontrado
+function showClientNotFound(query) {
+    const clientInfo = document.getElementById('client-info');
+    
+    if (clientInfo) {
+        clientInfo.style.display = 'block';
+        clientInfo.innerHTML = `
+            <div class="alert alert-warning alert-sm mb-0 p-2">
+                <small>
+                    <i class="fas fa-exclamation-triangle"></i>
+                    No se encontró cliente con: "${query}"
+                </small>
+            </div>
+        `;
+    }
+}
+
+// Función para imprimir ticket térmico
+function imprimirTicketTermico() {
+    if (ultimaVenta.venta_id) {
+        const url = `/ventas/${ultimaVenta.venta_id}/ticket-termico/`;
+        window.open(url, '_blank', 'width=400,height=600');
+    } else {
+        alert('No hay información de venta disponible');
+    }
+}
+
+// Función para descargar JSON de facturación
+function descargarJSON() {
+    if (ultimaVenta.venta_id) {
+        // Opción 1: Descargar archivo JSON
+        const url = `/ventas/${ultimaVenta.venta_id}/json-facturacion/`;
+        window.open(url, '_blank');
+        
+        // Opción 2: Mostrar JSON en modal (adicional)
+        mostrarJSONModal();
+    } else {
+        alert('No hay información de venta disponible');
+    }
+}
+
+// Función para mostrar JSON en modal
+function mostrarJSONModal() {
+    if (ultimaVenta.json_facturacion) {
+        const jsonFormatted = JSON.stringify(ultimaVenta.json_facturacion, null, 2);
+        
+        // Crear modal dinámico
+        const modalHTML = `
+            <div class="modal fade" id="jsonModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">
+                                <i class="fas fa-file-code"></i> JSON Facturación Electrónica
+                            </h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-3">
+                                <label class="form-label">JSON para envío al SRI:</label>
+                                <textarea class="form-control" rows="15" readonly style="font-family: monospace; font-size: 12px;">${jsonFormatted}</textarea>
+                            </div>
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-info-circle"></i> Información</h6>
+                                <p>Este JSON contiene todos los datos necesarios para la facturación electrónica según las especificaciones del SRI de Ecuador.</p>
+                                <ul>
+                                    <li>Información tributaria de la empresa</li>
+                                    <li>Datos del cliente</li>
+                                    <li>Detalles de productos con impuestos</li>
+                                    <li>Totales calculados</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-primary" onclick="copiarJSON()">
+                                <i class="fas fa-copy"></i> Copiar JSON
+                            </button>
+                            <button type="button" class="btn btn-success" onclick="descargarJSON()">
+                                <i class="fas fa-download"></i> Descargar Archivo
+                            </button>
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                                Cerrar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remover modal anterior si existe
+        const existingModal = document.getElementById('jsonModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Agregar nuevo modal
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('jsonModal'));
+        modal.show();
+    }
+}
+
+// Función para copiar JSON al portapapeles
+function copiarJSON() {
+    if (ultimaVenta.json_facturacion) {
+        const jsonText = JSON.stringify(ultimaVenta.json_facturacion, null, 2);
+        navigator.clipboard.writeText(jsonText).then(() => {
+            // Mostrar mensaje de éxito
+            const alertHTML = `
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check"></i> JSON copiado al portapapeles
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            `;
+            document.querySelector('#jsonModal .modal-body').insertAdjacentHTML('afterbegin', alertHTML);
+        }).catch(err => {
+            alert('Error al copiar: ' + err);
+        });
+    }
+}
+
+// Función mejorada para ticket normal (mantener funcionalidad existente)
+function imprimirTicket() {
+    if (ultimaVenta.numero_venta) {
+        const url = `/ventas/ticket/${ultimaVenta.numero_venta}/`;
+        window.open(url, '_blank');
+    } else {
+        alert('No hay información de venta disponible');
+    }
+}
+
+// =====================================
+// SISTEMA DE BÚSQUEDA OFFLINE/ONLINE
+// =====================================
+
+// Variable global para el componente de búsqueda
+let productSearchComponent;
+
+// Inicializar componente de búsqueda cuando esté disponible
+function initProductSearch() {
+    console.log('Intentando inicializar ProductSearchComponent...');
+    console.log('ProductSearchComponent disponible:', !!window.ProductSearchComponent);
+    console.log('offlineManager disponible:', !!window.offlineManager);
+    
+    if (window.ProductSearchComponent && window.offlineManager) {
+        productSearchComponent = new ProductSearchComponent({
+            containerId: 'product-search-container',
+            placeholder: 'Buscar productos por nombre o código...',
+            limit: 50,
+            includeAgotados: true,
+            showFilters: true,
+            onProductSelect: function(producto) {
+                console.log('onProductSelect llamado con:', producto);
+                // Agregar producto seleccionado al carrito
+                addProductToCart(producto);
+                
+                // Mostrar notificación
+                showProductAddedNotification(producto);
+            }
+        });
+        
+        console.log('ProductSearchComponent inicializado en POS');
+    } else {
+        console.warn('No se puede inicializar ProductSearchComponent - dependencias faltantes');
+    }
+}
+
+// Función para agregar producto al carrito desde búsqueda
+function addProductToCart(producto) {
+    console.log('Agregando producto al carrito:', producto);
+    
+    // Obtener el carrito activo
+    const currentCart = getCurrentCart();
+    const cart = currentCart.items;
+    
+    // Verificar si el producto ya está en el carrito
+    const existingCartItem = cart.find(item => item.id === producto.id);
+    
+    if (existingCartItem) {
+        // Si ya existe, incrementar cantidad
+        existingCartItem.quantity += 1;
+        existingCartItem.subtotal = existingCartItem.quantity * existingCartItem.price;
+    } else {
+        // Si no existe, agregarlo como nuevo item
+        const precio = parseFloat(producto.pvp_unidad || producto.precio_venta || 0);
+        const newItem = {
+            id: producto.id,
+            name: producto.nombre,
+            price: precio,
+            quantity: 1,
+            stock: parseInt(producto.stock || 0),
+            subtotal: precio,
+            categoria: producto.categoria?.nombre || '',
+            codigo: producto.codigo_principal || producto.codigo_auxiliar || '',
+            from_cache: producto.from_cache || false
+        };
+        
+        cart.push(newItem);
+        console.log('Producto agregado al carrito:', newItem);
+    }
+    
+    // Actualizar carrito en la UI
+    console.log('Llamando updateCartDisplay...');
+    updateCartDisplay();
+    console.log('Llamando updateTotals...');
+    updateTotals();
+    
+    // Guardar en localStorage
+    localStorage.setItem('pos_carts', JSON.stringify(carts));
+    console.log('Carritos guardados en localStorage');
+}
+
+// Mostrar notificación de producto agregado
+function showProductAddedNotification(producto) {
+    const notification = document.createElement('div');
+    notification.className = 'alert alert-success alert-dismissible fade show position-fixed';
+    notification.style.cssText = `
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        min-width: 300px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    
+    notification.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="fas fa-check-circle text-success me-2"></i>
+            <div class="flex-grow-1">
+                <strong>${producto.nombre}</strong><br>
+                <small>Agregado al carrito - $${(producto.pvp_unidad || producto.precio_venta || 0).toFixed(2)}</small>
+                ${producto.from_cache ? '<br><small class="text-muted"><i class="fas fa-database"></i> Desde cache offline</small>' : ''}
+            </div>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-eliminar después de 3 segundos
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 3000);
+}
+
+// Esperar a que se carguen todos los componentes
+document.addEventListener('DOMContentLoaded', function() {
+    // Intentar inicializar cada 500ms hasta que esté disponible
+    const initInterval = setInterval(() => {
+        if (window.ProductSearchComponent && window.offlineManager) {
+            initProductSearch();
+            clearInterval(initInterval);
+        }
+    }, 500);
+    
+    // Timeout después de 10 segundos
+    setTimeout(() => {
+        clearInterval(initInterval);
+        if (!productSearchComponent) {
+            console.warn('ProductSearchComponent no se pudo inicializar');
+        }
+    }, 10000);
+});
+
+// Funciones auxiliares para compatibilidad
+function focusProductSearch() {
+    if (productSearchComponent) {
+        productSearchComponent.focusSearch();
+    } else {
+        // Fallback al input original
+        const searchInput = document.getElementById('search-products') || document.getElementById('product-search-input');
+        if (searchInput) searchInput.focus();
+    }
+}
+
+// Atajo de teclado para enfocar búsqueda (F3)
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'F3') {
+        e.preventDefault();
+        focusProductSearch();
+    }
+});
+</script>
+{% endblock %}

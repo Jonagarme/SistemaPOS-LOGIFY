@@ -1,0 +1,75 @@
+# Archivos de Bytecode y optimizados de Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Archivos de C extensions
+*.so
+
+# Paquetes de distribución / instalación
+*.egg-info/
+.eggs/
+dist/
+build/
+*.egg
+
+# Archivos del instalador de Pip
+pip-wheel-metadata/
+share/python-wheels/
+*.wheel
+
+# Entornos Virtuales (muy importante)
+venv/
+env/
+.venv/
+.env/
+*/venv/
+*/env/
+*/.venv/
+*/.env/
+
+# Archivos de Django
+# ------------------
+
+# Base de datos local (nunca subas tu DB de desarrollo)
+*.sqlite3
+db.sqlite3
+
+# Archivos de migración de 'contrib.gis' (si los usas)
+*.chm
+*.dbf
+*.idx
+*.prj
+*.sbn
+*.sbx
+*.shp
+*.shx
+
+# Archivos de media subidos por el usuario (localmente)
+/media/
+
+
+# Logs
+logs/
+*.log
+
+# Archivos de configuración local (¡Nunca subas tus secrets!)
+.env
+*.local
+local_settings.py
+
+# Archivos de Cobertura de Pruebas (Testing)
+.coverage
+coverage.xml
+htmlcov/
+
+# Archivos del sistema operativo (OS)
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archivos de IDE (PyCharm, VSCode)
+.idea/
+.vscode/
+*.swp
+*.swo

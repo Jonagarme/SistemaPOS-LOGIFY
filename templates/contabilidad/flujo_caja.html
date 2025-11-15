@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Flujo de Caja{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-chart-area me-2"></i>Flujo de Caja Proyectado
+                    </h2>
+                    <p class="text-muted mb-0">Análisis y proyección del flujo de efectivo</p>
+                </div>
+                <div>
+                    <button class="btn btn-primary" onclick="generarProyeccion()">
+                        <i class="fas fa-calculator me-1"></i>Generar Proyección
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros de período -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Período de Análisis</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="fecha_desde" class="form-label">Fecha Desde</label>
+                    <input type="date" name="fecha_desde" id="fecha_desde" class="form-control" 
+                           value="{{ fecha_desde|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="fecha_hasta" class="form-label">Fecha Hasta</label>
+                    <input type="date" name="fecha_hasta" id="fecha_hasta" class="form-control" 
+                           value="{{ fecha_hasta|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search me-1"></i>Aplicar
+                    </button>
+                    <a href="{% url 'contabilidad:flujo_caja' %}" class="btn btn-secondary">
+                        <i class="fas fa-refresh me-1"></i>Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Resumen del período -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Saldo Inicial
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ${{ saldo_inicial|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-university fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                CxC a Vencer
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ${{ total_cxc_periodo|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-arrow-down fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                CxP a Vencer
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ${{ total_cxp_periodo|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-arrow-up fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Flujo Neto Proyectado
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                $0.00
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-calculator fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de flujo de caja -->
+    <div class="card shadow">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Detalle del Flujo de Caja</h6>
+        </div>
+        <div class="card-body">
+            {% if flujos %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Concepto</th>
+                                <th class="text-end">Ingreso Proyectado</th>
+                                <th class="text-end">Egreso Proyectado</th>
+                                <th class="text-end">Flujo Proyectado</th>
+                                <th class="text-end">Ingreso Real</th>
+                                <th class="text-end">Egreso Real</th>
+                                <th class="text-end">Flujo Real</th>
+                                <th class="text-end">Variación</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for flujo in flujos %}
+                            <tr>
+                                <td>{{ flujo.fecha|date:"d/m/Y" }}</td>
+                                <td>{{ flujo.concepto }}</td>
+                                <td class="text-end text-success">
+                                    ${{ flujo.ingreso_proyectado|floatformat:2 }}
+                                </td>
+                                <td class="text-end text-danger">
+                                    ${{ flujo.egreso_proyectado|floatformat:2 }}
+                                </td>
+                                <td class="text-end">
+                                    {% if flujo.flujo_proyectado >= 0 %}
+                                        <span class="text-success">+${{ flujo.flujo_proyectado|floatformat:2 }}</span>
+                                    {% else %}
+                                        <span class="text-danger">-${{ flujo.flujo_proyectado|add:"-1"|floatformat:2 }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end text-success">
+                                    ${{ flujo.ingreso_real|floatformat:2 }}
+                                </td>
+                                <td class="text-end text-danger">
+                                    ${{ flujo.egreso_real|floatformat:2 }}
+                                </td>
+                                <td class="text-end">
+                                    {% if flujo.flujo_real >= 0 %}
+                                        <span class="text-success">+${{ flujo.flujo_real|floatformat:2 }}</span>
+                                    {% else %}
+                                        <span class="text-danger">-${{ flujo.flujo_real|add:"-1"|floatformat:2 }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    {% if flujo.variacion >= 0 %}
+                                        <span class="text-success">+${{ flujo.variacion|floatformat:2 }}</span>
+                                    {% else %}
+                                        <span class="text-danger">-${{ flujo.variacion|add:"-1"|floatformat:2 }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-chart-area fa-3x text-gray-300 mb-3"></i>
+                    <p class="text-muted">No hay datos de flujo de caja para el período seleccionado</p>
+                    <button class="btn btn-primary" onclick="generarProyeccion()">
+                        <i class="fas fa-plus me-1"></i>Generar Proyección Automática
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Cuentas por cobrar del período -->
+    <div class="row mt-4">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-success">Cuentas por Cobrar - Período</h6>
+                </div>
+                <div class="card-body">
+                    {% if cxc_periodo %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Cliente</th>
+                                        <th>Vencimiento</th>
+                                        <th class="text-end">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for cxc in cxc_periodo %}
+                                    <tr>
+                                        <td>{{ cxc.cliente.nombres|truncatechars:20 }}</td>
+                                        <td>{{ cxc.fecha_vencimiento|date:"d/m" }}</td>
+                                        <td class="text-end">${{ cxc.monto_pendiente|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">No hay CxC para este período</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-warning">Cuentas por Pagar - Período</h6>
+                </div>
+                <div class="card-body">
+                    {% if cxp_periodo %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Proveedor</th>
+                                        <th>Vencimiento</th>
+                                        <th class="text-end">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for cxp in cxp_periodo %}
+                                    <tr>
+                                        <td>{{ cxp.proveedor.nombres|truncatechars:20 }}</td>
+                                        <td>{{ cxp.fecha_vencimiento|date:"d/m" }}</td>
+                                        <td class="text-end">${{ cxp.monto_pendiente|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">No hay CxP para este período</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function generarProyeccion() {
+    // TODO: Implementar generación automática de proyecciones
+    alert('Función de generación automática en desarrollo');
+}
+</script>
+{% endblock %}

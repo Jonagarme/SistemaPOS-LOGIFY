@@ -1,0 +1,268 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Dashboard - Contabilidad{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-calculator me-2"></i>Dashboard de Contabilidad
+                    </h2>
+                    <p class="text-muted mb-0">Resumen financiero y contable</p>
+                </div>
+                <div class="btn-group" role="group">
+                    <a href="{% url 'contabilidad:reportes_contables' %}" class="btn btn-primary">
+                        <i class="fas fa-chart-line me-1"></i>Reportes
+                    </a>
+                    <a href="{% url 'contabilidad:flujo_caja' %}" class="btn btn-info">
+                        <i class="fas fa-chart-area me-1"></i>Flujo de Caja
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tarjetas de resumen -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Cuentas por Cobrar
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ${{ total_cxc|floatformat:2 }}
+                            </div>
+                            {% if cxc_vencidas > 0 %}
+                            <div class="text-xs text-danger mt-1">
+                                {{ cxc_vencidas }} vencida{{ cxc_vencidas|pluralize }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-money-bill-wave fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Cuentas por Pagar
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ${{ total_cxp|floatformat:2 }}
+                            </div>
+                            {% if cxp_vencidas > 0 %}
+                            <div class="text-xs text-danger mt-1">
+                                {{ cxp_vencidas }} vencida{{ cxp_vencidas|pluralize }}
+                            </div>
+                            {% endif %}
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-credit-card fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Saldo Bancos
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ${{ total_bancos|floatformat:2 }}
+                            </div>
+                            <div class="text-xs text-muted mt-1">
+                                {{ cuentas_bancarias.count }} cuenta{{ cuentas_bancarias.count|pluralize }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-university fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Gastos del Mes
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ${{ gastos_mes|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-shopping-cart fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accesos rápidos -->
+    <div class="row mb-4">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Accesos Rápidos</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'contabilidad:cuentas_por_cobrar' %}" class="btn btn-outline-warning btn-block">
+                                <i class="fas fa-money-bill-wave me-2"></i>
+                                Cuentas por Cobrar
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'contabilidad:cuentas_por_pagar' %}" class="btn btn-outline-danger btn-block">
+                                <i class="fas fa-credit-card me-2"></i>
+                                Cuentas por Pagar
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'contabilidad:flujo_caja' %}" class="btn btn-outline-info btn-block">
+                                <i class="fas fa-chart-area me-2"></i>
+                                Flujo de Caja
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'contabilidad:conciliacion_bancaria' %}" class="btn btn-outline-success btn-block">
+                                <i class="fas fa-university me-2"></i>
+                                Conciliación Bancaria
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'contabilidad:control_gastos' %}" class="btn btn-outline-secondary btn-block">
+                                <i class="fas fa-shopping-cart me-2"></i>
+                                Control de Gastos
+                            </a>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <a href="{% url 'contabilidad:reportes_contables' %}" class="btn btn-outline-primary btn-block">
+                                <i class="fas fa-chart-line me-2"></i>
+                                Reportes Contables
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Últimos movimientos -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Últimos Asientos Contables</h6>
+                </div>
+                <div class="card-body">
+                    {% if ultimos_asientos %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Número</th>
+                                        <th>Fecha</th>
+                                        <th>Concepto</th>
+                                        <th>Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for asiento in ultimos_asientos %}
+                                    <tr>
+                                        <td>{{ asiento.numero }}</td>
+                                        <td>{{ asiento.fecha|date:"d/m/Y" }}</td>
+                                        <td>{{ asiento.concepto|truncatechars:30 }}</td>
+                                        <td>${{ asiento.total_debe|floatformat:2 }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">No hay movimientos registrados</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cuentas bancarias -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Cuentas Bancarias</h6>
+                </div>
+                <div class="card-body">
+                    {% if cuentas_bancarias %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Banco</th>
+                                        <th>Nombre de Cuenta</th>
+                                        <th>Número</th>
+                                        <th>Tipo</th>
+                                        <th class="text-end">Saldo Actual</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for cuenta in cuentas_bancarias %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ cuenta.banco }}</strong>
+                                        </td>
+                                        <td>{{ cuenta.nombre }}</td>
+                                        <td>{{ cuenta.numero_cuenta }}</td>
+                                        <td>
+                                            <span class="badge bg-secondary">{{ cuenta.get_tipo_display }}</span>
+                                        </td>
+                                        <td class="text-end">
+                                            <strong>${{ cuenta.saldo_actual|floatformat:2 }}</strong>
+                                        </td>
+                                        <td>
+                                            {% if cuenta.activa %}
+                                                <span class="badge bg-success">Activa</span>
+                                            {% else %}
+                                                <span class="badge bg-danger">Inactiva</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center">No hay cuentas bancarias registradas</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

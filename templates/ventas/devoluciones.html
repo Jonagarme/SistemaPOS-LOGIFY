@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_css %}
+<link href="{% static 'css/datatables.min.css' %}" rel="stylesheet">
+<style>
+.stats-card {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.devolucion-card {
+    border-left: 4px solid #dc3545;
+    transition: all 0.3s ease;
+}
+
+.devolucion-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-2px);
+}
+
+.motivo-badge {
+    font-size: 0.8em;
+    padding: 0.25rem 0.5rem;
+}
+
+.motivo-defectuoso { background-color: #dc3545; }
+.motivo-cambio { background-color: #ffc107; color: #000; }
+.motivo-error { background-color: #fd7e14; }
+.motivo-cliente { background-color: #17a2b8; }
+
+.filtros-panel {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.btn-buscar-venta {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    border: none;
+    color: white;
+    font-weight: bold;
+}
+
+.btn-buscar-venta:hover {
+    background: linear-gradient(135deg, #20c997 0%, #28a745 100%);
+    color: white;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2><i class="fas fa-undo-alt text-danger"></i> {{ titulo }}</h2>
+            <p class="text-muted mb-0">{{ subtitulo }}</p>
+        </div>
+        <div>
+            <a href="{% url 'ventas:crear_devolucion' %}" class="btn btn-buscar-venta btn-lg">
+                <i class="fas fa-plus"></i> Nueva Devolución
+            </a>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="mb-1">{{ total_devoluciones }}</h3>
+                        <p class="mb-0">Total Devoluciones</p>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="fas fa-list fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="stats-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="mb-1">$ {{ total_monto_devuelto|floatformat:2 }}</h3>
+                        <p class="mb-0">Monto Total Devuelto</p>
+                    </div>
+                    <div class="stats-icon">
+                        <i class="fas fa-money-bill-wave fa-2x opacity-75"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Panel de Filtros -->
+    <div class="filtros-panel">
+        <form method="get" id="filtros-form">
+            <div class="row">
+                <div class="col-md-3">
+                    <label for="numero_devolucion" class="form-label">Número Devolución</label>
+                    <input type="text" class="form-control" id="numero_devolucion" name="numero_devolucion" 
+                           value="{{ filtros.numero_devolucion }}" placeholder="DEV-20251028-0001">
+                </div>
+                <div class="col-md-3">
+                    <label for="numero_factura" class="form-label">Número Factura</label>
+                    <input type="text" class="form-control" id="numero_factura" name="numero_factura" 
+                           value="{{ filtros.numero_factura }}" placeholder="FAC-20251028-0001">
+                </div>
+                <div class="col-md-3">
+                    <label for="cliente" class="form-label">Cliente</label>
+                    <input type="text" class="form-control" id="cliente" name="cliente" 
+                           value="{{ filtros.cliente }}" placeholder="Nombre del cliente">
+                </div>
+                <div class="col-md-3">
+                    <label for="motivo" class="form-label">Motivo</label>
+                    <select class="form-select" id="motivo" name="motivo">
+                        <option value="">Todos los motivos</option>
+                        {% for motivo_code, motivo_display in motivos_disponibles %}
+                            <option value="{{ motivo_code }}" {% if filtros.motivo == motivo_code %}selected{% endif %}>
+                                {{ motivo_display }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-3">
+                    <label for="usuario" class="form-label">Usuario</label>
+                    <input type="text" class="form-control" id="usuario" name="usuario" 
+                           value="{{ filtros.usuario }}" placeholder="Nombre de usuario">
+                </div>
+                <div class="col-md-3">
+                    <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
+                    <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" 
+                           value="{{ filtros.fecha_inicio }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="fecha_fin" class="form-label">Fecha Fin</label>
+                    <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" 
+                           value="{{ filtros.fecha_fin }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <div class="btn-group w-100">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Filtrar
+                        </button>
+                        <a href="{% url 'ventas:devoluciones' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-times"></i> Limpiar
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Lista de Devoluciones -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-list"></i> Lista de Devoluciones
+                <span class="badge bg-secondary ms-2">{{ page_obj.paginator.count }}</span>
+            </h5>
+        </div>
+        <div class="card-body p-0">
+            {% if page_obj %}
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Número Devolución</th>
+                                <th>Factura Original</th>
+                                <th>Cliente</th>
+                                <th>Fecha</th>
+                                <th>Motivo</th>
+                                <th>Usuario</th>
+                                <th>Monto Devuelto</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for devolucion in page_obj %}
+                            <tr class="devolucion-card">
+                                <td>
+                                    <strong class="text-danger">{{ devolucion.numero_devolucion }}</strong>
+                                </td>
+                                <td>
+                                    <span class="text-primary">{{ devolucion.factura_original.numeroFactura }}</span>
+                                    <br>
+                                    <small class="text-muted">{{ devolucion.factura_original.fechaEmision|date:"d/m/Y H:i" }}</small>
+                                </td>
+                                <td>
+                                    {% if devolucion.factura_original.cliente_nombre %}
+                                        <strong>{{ devolucion.factura_original.cliente_nombre }}</strong>
+                                        <br>
+                                        <small class="text-muted">{{ devolucion.factura_original.cliente_cedula|default:"Sin documento" }}</small>
+                                    {% else %}
+                                        <span class="text-muted">Cliente Genérico</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span>{{ devolucion.fecha|date:"d/m/Y" }}</span>
+                                    <br>
+                                    <small class="text-muted">{{ devolucion.fecha|date:"H:i" }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge motivo-{{ devolucion.motivo }} motivo-badge">
+                                        {{ devolucion.get_motivo_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="text-info">{{ devolucion.usuario.get_full_name|default:devolucion.usuario.username }}</span>
+                                </td>
+                                <td>
+                                    <strong class="text-success">$ {{ devolucion.total_devolucion|floatformat:2 }}</strong>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'ventas:detalle_devolucion' devolucion.pk %}" 
+                                           class="btn btn-outline-primary" title="Ver Detalles">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <button class="btn btn-outline-secondary" title="Imprimir" onclick="imprimirDevolucion({{ devolucion.pk }})">
+                                            <i class="fas fa-print"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                {% if page_obj.has_other_pages %}
+                <div class="card-footer">
+                    <nav aria-label="Navegación de devoluciones">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                        <i class="fas fa-angle-double-left"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                        <i class="fas fa-angle-left"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if page_obj.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                        <i class="fas fa-angle-right"></i>
+                                    </a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                                        <i class="fas fa-angle-double-right"></i>
+                                    </a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-undo-alt fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No se encontraron devoluciones</h5>
+                    <p class="text-muted">No hay devoluciones que coincidan con los filtros aplicados.</p>
+                    <a href="{% url 'ventas:crear_devolucion' %}" class="btn btn-buscar-venta">
+                        <i class="fas fa-plus"></i> Crear Primera Devolución
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function imprimirDevolucion(devolucionId) {
+    // Función para imprimir devolución
+    window.open(`/ventas/devolucion/${devolucionId}/imprimir/`, '_blank', 'width=800,height=600');
+}
+
+// Auto-submit del formulario de filtros cuando cambian los valores
+document.addEventListener('DOMContentLoaded', function() {
+    const filtros = ['motivo', 'fecha_inicio', 'fecha_fin'];
+    
+    filtros.forEach(function(filtro) {
+        const elemento = document.getElementById(filtro);
+        if (elemento) {
+            elemento.addEventListener('change', function() {
+                document.getElementById('filtros-form').submit();
+            });
+        }
+    });
+});
+</script>
+{% endblock %}

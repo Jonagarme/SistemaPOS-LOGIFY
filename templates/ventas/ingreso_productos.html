@@ -1,0 +1,1424 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .ingreso-header {
+        background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
+        color: white;
+        padding: 2rem 0;
+        margin-bottom: 2rem;
+        border-radius: 0 0 20px 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .import-card {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        overflow: hidden;
+        margin-bottom: 2rem;
+        transition: transform 0.3s ease;
+    }
+    
+    .import-card:hover {
+        transform: translateY(-5px);
+    }
+    
+    .import-icon {
+        font-size: 3rem;
+        margin-bottom: 1rem;
+    }
+    
+    .tab-content {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        padding: 2rem;
+        margin-top: 2rem;
+    }
+    
+    .nav-tabs .nav-link {
+        border-radius: 10px 10px 0 0;
+        border: none;
+        background: #f8f9fa;
+        color: #6c757d;
+        font-weight: 600;
+        margin-right: 0.5rem;
+    }
+    
+    .nav-tabs .nav-link.active {
+        background: #4e73df;
+        color: white;
+    }
+    
+    .file-upload-area {
+        border: 3px dashed #4e73df;
+        border-radius: 15px;
+        padding: 3rem;
+        text-align: center;
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    
+    .file-upload-area:hover {
+        border-color: #224abe;
+        background: rgba(78, 115, 223, 0.05);
+    }
+    
+    .file-upload-area.dragover {
+        border-color: #28a745;
+        background: rgba(40, 167, 69, 0.1);
+    }
+    
+    .clave-acceso-input {
+        font-family: 'Courier New', monospace;
+        font-size: 1.1rem;
+        letter-spacing: 1px;
+        text-align: center;
+    }
+    
+    .producto-row {
+        background: #ffffff;
+        border-radius: 15px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+        border: 1px solid #e3e6f0;
+        transition: all 0.3s ease;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    
+    .producto-row:hover {
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        transform: translateY(-2px);
+    }
+    
+    .producto-seleccionado {
+        background: rgba(40, 167, 69, 0.05);
+        border-color: #28a745;
+        box-shadow: 0 4px 20px rgba(40, 167, 69, 0.2);
+    }
+    
+    .producto-details {
+        background: #f8f9fc;
+        border-radius: 10px;
+        padding: 1.5rem;
+        margin-top: 1rem;
+        border: 1px solid #e3e6f0;
+    }
+    
+    .precio-input {
+        transition: all 0.3s ease;
+    }
+    
+    .precio-input:focus {
+        border-color: #4e73df;
+        box-shadow: 0 0 0 0.2rem rgba(78, 115, 223, 0.25);
+        transform: scale(1.02);
+    }
+    
+    .btn-procesar {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        border: none;
+        border-radius: 25px;
+        padding: 1rem 2rem;
+        color: white;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .btn-procesar:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(40, 167, 69, 0.3);
+    }
+    
+    .stats-box {
+        background: linear-gradient(135deg, #17a2b8 0%, #138496 100%);
+        color: white;
+        border-radius: 15px;
+        padding: 1.5rem;
+        text-align: center;
+        margin-bottom: 1rem;
+    }
+    
+    .loading-spinner {
+        display: none;
+    }
+    
+    .loading-spinner.show {
+        display: inline-block;
+    }
+
+    /* Progress Bar Styles */
+    #progressSection .card {
+        border: none;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+    }
+
+    #progressSection .spinner-border {
+        border-width: 0.3rem;
+    }
+
+    #progressSection .progress {
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        border-radius: 15px;
+        background-color: #e9ecef;
+    }
+
+    #progressSection .progress-bar {
+        font-size: 16px;
+        font-weight: 600;
+        line-height: 30px;
+        border-radius: 15px;
+        transition: width 0.4s ease;
+    }
+
+    #progressTitle {
+        color: #4e73df;
+        font-weight: 600;
+    }
+
+    #progressMessage {
+        font-size: 14px;
+        color: #6c757d;
+    }
+
+    #progressDetails {
+        font-size: 13px;
+        color: #858796;
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.6; }
+    }
+
+    #progressSection .spinner-border {
+        animation: pulse 2s ease-in-out infinite;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Header Principal -->
+<div class="ingreso-header">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h1 class="h2 mb-1">
+                    <i class="bi bi-box-seam me-3"></i>{{ titulo }}
+                </h1>
+                <p class="mb-0 opacity-75">{{ subtitulo }}</p>
+            </div>
+            <div class="col-md-4 text-end">
+                <div class="d-inline-block bg-white text-dark px-3 py-2 rounded-pill">
+                    <i class="bi bi-file-earmark-xml text-primary me-2"></i>
+                    <strong>Importación XML/SRI</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="container">
+    <!-- Navegación por Tabs -->
+    <ul class="nav nav-tabs" id="ingresoTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="cargar-factura-tab" data-bs-toggle="tab" data-bs-target="#cargar-factura" type="button" role="tab">
+                <i class="bi bi-upload me-2"></i>Cargar Factura
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="revisar-productos-tab" data-bs-toggle="tab" data-bs-target="#revisar-productos" type="button" role="tab">
+                <i class="bi bi-list-check me-2"></i>Revisar Productos
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="resultado-tab" data-bs-toggle="tab" data-bs-target="#resultado" type="button" role="tab">
+                <i class="bi bi-check-circle me-2"></i>Resultado
+            </button>
+        </li>
+    </ul>
+
+    <!-- Contenido de Tabs -->
+    <div class="tab-content" id="ingresoTabsContent">
+        <!-- Tab 1: Cargar Factura -->
+        <div class="tab-pane fade show active" id="cargar-factura" role="tabpanel">
+            <div class="row">
+                <!-- Importar XML -->
+                <div class="col-md-6">
+                    <div class="import-card">
+                        <div class="card-header bg-primary text-white text-center">
+                            <i class="bi bi-file-earmark-xml import-icon"></i>
+                            <h5>Importar Archivo XML</h5>
+                            <p class="mb-0">Seleccione el archivo XML de la factura electrónica</p>
+                        </div>
+                        <div class="card-body">
+                            <div class="file-upload-area" id="xmlUploadArea">
+                                <i class="bi bi-cloud-upload text-primary" style="font-size: 3rem;"></i>
+                                <h6 class="mt-3">Arrastra el archivo XML aquí</h6>
+                                <p class="text-muted">o haz clic para seleccionar</p>
+                                <input type="file" id="xmlFileInput" accept=".xml" style="display: none;">
+                                <div class="mt-3">
+                                    <button type="button" class="btn btn-primary" onclick="document.getElementById('xmlFileInput').click()">
+                                        <i class="bi bi-folder2-open me-2"></i>Examinar
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mt-3" id="xmlFileName" style="display: none;">
+                                <div class="alert alert-info">
+                                    <i class="bi bi-file-earmark-xml me-2"></i>
+                                    <span id="fileName"></span>
+                                </div>
+                            </div>
+                            <div class="text-center mt-3">
+                                <button type="button" class="btn btn-success" id="procesarXmlBtn" disabled>
+                                    <span class="loading-spinner spinner-border spinner-border-sm me-2"></span>
+                                    <i class="bi bi-gear me-2"></i>Procesar XML
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Consultar por Clave -->
+                <div class="col-md-6">
+                    <div class="import-card">
+                        <div class="card-header bg-info text-white text-center">
+                            <i class="bi bi-key import-icon"></i>
+                            <h5>Consultar por Clave de Acceso</h5>
+                            <p class="mb-0">Ingrese la clave de acceso de 49 dígitos</p>
+                        </div>
+                        <div class="card-body">
+                            <form id="claveAccesoForm">
+                                <div class="mb-3">
+                                    <label class="form-label fw-bold">Clave de Acceso:</label>
+                                    <input type="text" class="form-control clave-acceso-input" id="claveAccesoInput" 
+                                           placeholder="1610202501099280734200120010060000056661234567813" 
+                                           maxlength="49" pattern="[0-9]{49}">
+                                    <div class="form-text">
+                                        Debe contener exactamente 49 dígitos numéricos
+                                    </div>
+                                </div>
+                                <div class="text-center">
+                                    <button type="submit" class="btn btn-info" id="consultarClaveBtn">
+                                        <span class="loading-spinner spinner-border spinner-border-sm me-2"></span>
+                                        <i class="bi bi-search me-2"></i>Consultar SRI
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 2: Revisar Productos -->
+        <div class="tab-pane fade" id="revisar-productos" role="tabpanel">
+            <!-- Progress Bar para verificación de duplicados -->
+            <div id="progressSection" style="display: none;">
+                <div class="card mb-4">
+                    <div class="card-body text-center py-5">
+                        <div class="mb-3">
+                            <div class="spinner-border text-primary" role="status" style="width: 3rem; height: 3rem;">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                        </div>
+                        <h5 class="mb-3">
+                            <i class="bi bi-search me-2"></i>
+                            <span id="progressTitle">Verificando productos duplicados...</span>
+                        </h5>
+                        <div class="progress mb-3" style="height: 30px;">
+                            <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" 
+                                 style="width: 0%;" 
+                                 aria-valuenow="0" 
+                                 aria-valuemin="0" 
+                                 aria-valuemax="100">
+                                <span id="progressText">0%</span>
+                            </div>
+                        </div>
+                        <p class="text-muted mb-0">
+                            <span id="progressMessage">Analizando similitud de nombres...</span>
+                        </p>
+                        <small class="text-muted">
+                            <span id="progressDetails">Procesando <span id="progressCurrent">0</span> de <span id="progressTotal">0</span> productos</span>
+                        </small>
+                    </div>
+                </div>
+            </div>
+
+            <div id="productosSection" style="display: none;">
+                <!-- Información del Proveedor -->
+                <div class="row mb-4" id="proveedorInfo">
+                    <div class="col-md-12">
+                        <div class="alert alert-primary">
+                            <h6><i class="bi bi-building me-2"></i>Información del Proveedor</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <strong>Razón Social:</strong> <span id="proveedorRazonSocial"></span>
+                                </div>
+                                <div class="col-md-6">
+                                    <strong>RUC:</strong> <span id="proveedorRuc"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Estadísticas -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="stats-box">
+                            <div class="h4 mb-0" id="totalProductos">0</div>
+                            <div>Productos a Ingresar</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-box">
+                            <div class="h4 mb-0" id="productosNuevos">0</div>
+                            <div>Nuevos</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-box">
+                            <div class="h4 mb-0" id="productosActualizar">0</div>
+                            <div>A Actualizar</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stats-box">
+                            <div class="h4 mb-0">$<span id="totalValor">0.00</span></div>
+                            <div>Total</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Métricas de Precios y Costos - Resumen Global -->
+                <div class="card mb-4" style="border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+                    <div class="card-header" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; border-radius: 10px 10px 0 0;">
+                        <h6 class="mb-0">
+                            <i class="bi bi-calculator me-2"></i>Resumen de Precios y Costos
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <!-- Métricas principales -->
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="text-center p-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; color: white;">
+                                    <div class="h5 mb-1" id="margenGlobalPromedio">0.00%</div>
+                                    <small>Margen Promedio</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 10px; color: white;">
+                                    <div class="h5 mb-1">$<span id="gananciaGlobalTotal">0.00</span></div>
+                                    <small>Ganancia Total</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 10px; color: white;">
+                                    <div class="h5 mb-1">$<span id="costoGlobalTotal">0.00</span></div>
+                                    <small>Costo Total</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="text-center p-3" style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); border-radius: 10px; color: white;">
+                                    <div class="h5 mb-1">$<span id="ventaGlobalTotal">0.00</span></div>
+                                    <small>Venta Total</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones de Control -->
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h5><i class="bi bi-list-ul me-2"></i>Productos a Ingresar</h5>
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <button type="button" class="btn btn-outline-primary" id="seleccionarTodoBtn">
+                            <i class="bi bi-check-all me-2"></i>Seleccionar Todo
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="deseleccionarTodoBtn">
+                            <i class="bi bi-x-square me-2"></i>Deseleccionar Todo
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Lista de Productos -->
+                <div id="listaProductos">
+                    <!-- Los productos se cargarán dinámicamente aquí -->
+                </div>
+
+                <!-- Botón Procesar -->
+                <div class="text-center mt-4">
+                    <button type="button" class="btn btn-procesar" id="procesarIngresoBtn" disabled>
+                        <span class="loading-spinner spinner-border spinner-border-sm me-2"></span>
+                        <i class="bi bi-plus-circle me-2"></i>Procesar Ingreso
+                    </button>
+                </div>
+            </div>
+
+            <div id="noProductosMessage" class="text-center py-5">
+                <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+                <h5 class="text-muted mt-3">No hay productos para revisar</h5>
+                <p class="text-muted">Primero debe cargar una factura XML o consultar por clave de acceso</p>
+            </div>
+        </div>
+
+        <!-- Tab 3: Resultado -->
+        <div class="tab-pane fade" id="resultado" role="tabpanel">
+            <div id="resultadoSection" style="display: none;">
+                <div class="text-center">
+                    <i class="bi bi-check-circle-fill text-success" style="font-size: 5rem;"></i>
+                    <h3 class="text-success mt-3">¡Ingreso Completado!</h3>
+                    <div id="resultadoMensaje" class="alert alert-success mt-4">
+                        <!-- Mensaje de resultado -->
+                    </div>
+                    <div class="mt-4">
+                        <button type="button" class="btn btn-primary me-3" onclick="window.location.reload()">
+                            <i class="bi bi-arrow-clockwise me-2"></i>Nuevo Ingreso
+                        </button>
+                        <a href="{% url 'productos:lista' %}" class="btn btn-outline-primary">
+                            <i class="bi bi-box-seam me-2"></i>Ver Productos
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div id="noResultadoMessage" class="text-center py-5">
+                <i class="bi bi-hourglass-split text-muted" style="font-size: 4rem;"></i>
+                <h5 class="text-muted mt-3">Esperando procesamiento</h5>
+                <p class="text-muted">Complete los pasos anteriores para ver el resultado</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let productosData = [];
+    let proveedorData = {};
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeFileUpload();
+        initializeClaveAccesoForm();
+        initializeProductControls();
+    });
+
+    function initializeFileUpload() {
+        const uploadArea = document.getElementById('xmlUploadArea');
+        const fileInput = document.getElementById('xmlFileInput');
+        const procesarBtn = document.getElementById('procesarXmlBtn');
+
+        // Drag & Drop
+        uploadArea.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', function(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        uploadArea.addEventListener('click', function() {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                handleFileSelect(this.files[0]);
+            }
+        });
+
+        procesarBtn.addEventListener('click', procesarXML);
+    }
+
+    function initializeClaveAccesoForm() {
+        const form = document.getElementById('claveAccesoForm');
+        const input = document.getElementById('claveAccesoInput');
+
+        // Solo permitir números
+        input.addEventListener('input', function() {
+            this.value = this.value.replace(/[^0-9]/g, '');
+        });
+
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            consultarClaveAcceso();
+        });
+    }
+
+    function initializeProductControls() {
+        document.getElementById('seleccionarTodoBtn').addEventListener('click', seleccionarTodos);
+        document.getElementById('deseleccionarTodoBtn').addEventListener('click', deseleccionarTodos);
+        document.getElementById('procesarIngresoBtn').addEventListener('click', procesarIngreso);
+    }
+
+    function handleFileSelect(file) {
+        if (!file.name.toLowerCase().endsWith('.xml')) {
+            alert('Por favor seleccione un archivo XML válido');
+            return;
+        }
+
+        document.getElementById('fileName').textContent = file.name;
+        document.getElementById('xmlFileName').style.display = 'block';
+        document.getElementById('procesarXmlBtn').disabled = false;
+    }
+
+    function procesarXML() {
+        const fileInput = document.getElementById('xmlFileInput');
+        const btn = document.getElementById('procesarXmlBtn');
+        
+        if (!fileInput.files.length) {
+            alert('Por favor seleccione un archivo XML');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('xml_file', fileInput.files[0]);
+
+        btn.disabled = true;
+        btn.querySelector('.loading-spinner').classList.add('show');
+
+        fetch('{% url "ventas:procesar_xml" %}', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                productosData = data.productos;
+                proveedorData = data.proveedor;
+                // INTEGRACIÓN: Verificar duplicados antes de mostrar
+                verificarDuplicadosYMostrar();
+                mostrarAlerta('success', data.mensaje);
+                // Cambiar a tab de productos
+                document.getElementById('revisar-productos-tab').click();
+            } else {
+                mostrarAlerta('error', data.error);
+            }
+        })
+        .catch(error => {
+            mostrarAlerta('error', 'Error al procesar el archivo XML');
+            console.error('Error:', error);
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.querySelector('.loading-spinner').classList.remove('show');
+        });
+    }
+
+    function consultarClaveAcceso() {
+        const input = document.getElementById('claveAccesoInput');
+        const btn = document.getElementById('consultarClaveBtn');
+        const claveAcceso = input.value.trim();
+
+        if (claveAcceso.length !== 49) {
+            alert('La clave de acceso debe tener exactamente 49 dígitos');
+            return;
+        }
+
+        btn.disabled = true;
+        btn.querySelector('.loading-spinner').classList.add('show');
+
+        fetch('{% url "ventas:consultar_clave" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({ clave_acceso: claveAcceso })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                productosData = data.productos;
+                proveedorData = data.proveedor;
+                // INTEGRACIÓN: Verificar duplicados antes de mostrar
+                verificarDuplicadosYMostrar();
+                mostrarAlerta('success', data.mensaje);
+                // Cambiar a tab de productos
+                document.getElementById('revisar-productos-tab').click();
+            } else {
+                mostrarAlerta('error', data.error);
+            }
+        })
+        .catch(error => {
+            mostrarAlerta('error', 'Error al consultar la clave de acceso');
+            console.error('Error:', error);
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.querySelector('.loading-spinner').classList.remove('show');
+        });
+    }
+
+    // ========================================
+    // NUEVA FUNCIÓN: Verificar Duplicados
+    // ========================================
+    let productosProcesados = [];
+    let indexActualVerificacion = 0;
+
+    async function verificarDuplicadosYMostrar() {
+        if (!productosData.length) {
+            mostrarProductos();
+            return;
+        }
+
+        // Mostrar progress bar
+        mostrarProgressBar(productosData.length);
+
+        // OPTIMIZACIÓN: Buscar todos los productos en una sola petición pero SIN mostrar modales
+        try {
+            // Actualizar mensaje
+            actualizarProgress(10, 'Enviando productos al servidor...', 0, productosData.length);
+            
+            const response = await fetch('/productos/api/duplicados/buscar-lote/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                },
+                body: JSON.stringify({
+                    productos: productosData.map(p => ({
+                        nombre: p.descripcion,
+                        codigo: p.codigo
+                    })),
+                    umbral: 0.50,  // Umbral reducido para detectar nombres parciales (ej: "bonfie" -> "BONFIEST")
+                    solo_nombre: true  // Solo buscar por nombre, más rápido
+                })
+            });
+
+            // Actualizar progreso
+            actualizarProgress(50, 'Analizando similitudes...', 0, productosData.length);
+
+            const data = await response.json();
+            
+            console.log('📦 Respuesta del API de duplicados:', data);
+            console.log(`   Total procesados: ${data.total_procesados || 0}`);
+            
+            if (data.success) {
+                // Actualizar progreso
+                actualizarProgress(80, 'Procesando resultados...', 0, productosData.length);
+                
+                // Contar productos con similares
+                const productosConSimilares = data.resultados.filter(r => r.tiene_similares).length;
+                console.log(`🔍 Productos con similares detectados: ${productosConSimilares}/${data.total_procesados}`);
+                
+                // Agregar información de similares a cada producto (sin procesar aún)
+                for (let i = 0; i < productosData.length; i++) {
+                    const resultado = data.resultados[i];
+                    
+                    if (resultado && resultado.tiene_similares && resultado.similares.length > 0) {
+                        // Marcar que tiene similares y guardar la información
+                        productosData[i].tiene_similares = true;
+                        productosData[i].similares = resultado.similares;
+                        console.log(`✅ Producto "${productosData[i].descripcion}" tiene ${resultado.similares.length} similares`);
+                    } else {
+                        // Marcar como nuevo
+                        productosData[i].tiene_similares = false;
+                        productosData[i].similares = [];
+                        productosData[i].es_existente = false;
+                    }
+                }
+                
+                // Finalizar progreso
+                actualizarProgress(100, '¡Completado! Revisa los productos con botón "Vincular"', productosData.length, productosData.length);
+                
+                // Pequeño delay para que se vea el mensaje
+                setTimeout(() => {
+                    ocultarProgressBar();
+                    mostrarProductos();
+                }, 1000);
+                
+            } else {
+                console.error('Error al buscar duplicados:', data.error);
+                ocultarProgressBar();
+                // En caso de error, mostrar productos sin verificar
+                mostrarProductos();
+                mostrarAlerta('warning', 'No se pudieron verificar duplicados, mostrando productos sin verificar');
+            }
+            
+        } catch (error) {
+            console.error('Error en verificación de duplicados:', error);
+            ocultarProgressBar();
+            // En caso de error, mostrar productos sin verificar
+            mostrarProductos();
+            mostrarAlerta('warning', 'Error al verificar duplicados, mostrando productos sin verificar');
+        }
+    }
+
+    // Funciones auxiliares para el progress bar
+    function mostrarProgressBar(totalProductos) {
+        document.getElementById('progressSection').style.display = 'block';
+        document.getElementById('productosSection').style.display = 'none';
+        document.getElementById('noProductosMessage').style.display = 'none';
+        document.getElementById('progressTotal').textContent = totalProductos;
+        document.getElementById('progressCurrent').textContent = '0';
+        actualizarProgress(0, 'Iniciando verificación...', 0, totalProductos);
+    }
+
+    function ocultarProgressBar() {
+        document.getElementById('progressSection').style.display = 'none';
+    }
+
+    function actualizarProgress(percent, message, current, total) {
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const progressMessage = document.getElementById('progressMessage');
+        const progressCurrent = document.getElementById('progressCurrent');
+        
+        progressBar.style.width = percent + '%';
+        progressBar.setAttribute('aria-valuenow', percent);
+        progressText.textContent = Math.round(percent) + '%';
+        progressMessage.textContent = message;
+        progressCurrent.textContent = current;
+        
+        // Cambiar color según el progreso
+        progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated';
+        if (percent >= 100) {
+            progressBar.classList.add('bg-success');
+        } else if (percent >= 50) {
+            progressBar.classList.add('bg-info');
+        } else {
+            progressBar.classList.add('bg-primary');
+        }
+    }
+
+    // Nueva función para mostrar modal y esperar decisión del usuario
+    function mostrarModalYEsperarDecision(productoOriginal, similares) {
+        return new Promise((resolve) => {
+            // Actualizar datos del producto de factura
+            document.getElementById('factura-codigo').textContent = productoOriginal.codigo || 'Sin código';
+            document.getElementById('factura-nombre').textContent = productoOriginal.descripcion;
+            document.getElementById('factura-cantidad').textContent = productoOriginal.cantidad;
+            document.getElementById('factura-precio').textContent = '$' + parseFloat(productoOriginal.precio_unitario).toFixed(2);
+            
+            // Llenar el select con los productos similares
+            const select = document.getElementById('select-producto-destino');
+            select.innerHTML = '<option value="nuevo" data-accion="crear">✨ Crear como nuevo producto</option>';
+            
+            similares.forEach(similar => {
+                const option = document.createElement('option');
+                option.value = similar.id;
+                option.dataset.producto = JSON.stringify(similar);
+                option.dataset.accion = 'usar';
+                
+                // Determinar clase según score
+                if (similar.score_total >= 75) {
+                    option.className = 'producto-similitud-alta';
+                } else if (similar.score_total >= 60) {
+                    option.className = 'producto-similitud-media';
+                } else {
+                    option.className = 'producto-similitud-baja';
+                }
+                
+                option.textContent = `${similar.nombre} (Stock: ${similar.stock}) - ${similar.score_total}% similar`;
+                select.appendChild(option);
+            });
+            
+            // Manejar cambio de selección para mostrar detalles
+            select.onchange = function() {
+                const detallesDiv = document.getElementById('detalles-producto-seleccionado');
+                if (this.value === 'nuevo') {
+                    detallesDiv.style.display = 'none';
+                } else {
+                    const selectedOption = this.options[this.selectedIndex];
+                    const producto = JSON.parse(selectedOption.dataset.producto);
+                    
+                    document.getElementById('detalle-stock').textContent = producto.stock;
+                    document.getElementById('detalle-precio').textContent = '$' + parseFloat(producto.precio).toFixed(2);
+                    document.getElementById('detalle-similitud').textContent = producto.score_total + '%';
+                    
+                    detallesDiv.style.display = 'block';
+                }
+            };
+            
+            // Mostrar modal
+            const modal = new bootstrap.Modal(document.getElementById('modalProductosDuplicados'));
+            modal.show();
+            
+            // Manejar confirmación
+            const btnConfirmar = document.getElementById('btn-confirmar-seleccion');
+            const handlerConfirmar = function() {
+                const select = document.getElementById('select-producto-destino');
+                const selectedOption = select.options[select.selectedIndex];
+                
+                let productoExistente = null;
+                if (selectedOption.value !== 'nuevo') {
+                    productoExistente = JSON.parse(selectedOption.dataset.producto);
+                }
+                
+                modal.hide();
+                btnConfirmar.removeEventListener('click', handlerConfirmar);
+                resolve(productoExistente);
+            };
+            
+            btnConfirmar.addEventListener('click', handlerConfirmar);
+            
+            // Manejar cierre sin selección (tratar como crear nuevo)
+            document.getElementById('modalProductosDuplicados').addEventListener('hidden.bs.modal', function handler() {
+                this.removeEventListener('hidden.bs.modal', handler);
+                btnConfirmar.removeEventListener('click', handlerConfirmar);
+                resolve(null);
+            }, { once: true });
+        });
+    }
+
+    // Función para vincular un producto cuando el usuario hace clic en el botón "Vincular"
+    async function vincularProducto(index) {
+        const producto = productosData[index];
+        
+        if (!producto.tiene_similares || !producto.similares || producto.similares.length === 0) {
+            mostrarAlerta('info', 'Este producto no tiene similares detectados');
+            return;
+        }
+        
+        console.log(`🔗 Intentando vincular producto: ${producto.descripcion}`);
+        console.log(`   Similares disponibles:`, producto.similares);
+        
+        // Mostrar modal y esperar decisión
+        const productoExistente = await mostrarModalYEsperarDecision(producto, producto.similares);
+        
+        if (productoExistente) {
+            // Usuario eligió vincular con un producto existente
+            console.log(`✅ Vinculado con: ${productoExistente.nombre}`);
+            
+            // Actualizar el producto en productosData
+            productosData[index] = {
+                ...producto,
+                producto_id: productoExistente.id,
+                producto_nombre: productoExistente.nombre,
+                producto_stock_actual: productoExistente.stock,
+                es_existente: true,
+                codigo_vinculado: true,
+                tiene_similares: false  // Ya no mostrar el botón vincular
+            };
+            
+            // Recargar la visualización de productos
+            mostrarProductos();
+            mostrarAlerta('success', `Producto vinculado con "${productoExistente.nombre}"`);
+        } else {
+            // Usuario eligió crear como nuevo
+            console.log(`✨ Usuario decidió crear como nuevo producto`);
+            productosData[index] = {
+                ...producto,
+                es_existente: false,
+                codigo_vinculado: false,
+                tiene_similares: false  // Ya no mostrar el botón vincular
+            };
+            
+            // Recargar la visualización
+            mostrarProductos();
+            mostrarAlerta('info', 'Se creará como producto nuevo');
+        }
+    }
+
+    async function procesarSiguienteProducto() {
+        // FUNCIÓN OBSOLETA - Reemplazada por verificarDuplicadosYMostrar optimizado
+        // Se mantiene por compatibilidad pero ya no se usa
+        if (indexActualVerificacion >= productosData.length) {
+            productosData = productosProcesados;
+            mostrarProductos();
+            return;
+        }
+
+        const productoActual = productosData[indexActualVerificacion];
+        
+        detectorDuplicados.verificarProducto({
+            codigo: productoActual.codigo,
+            nombre: productoActual.descripcion,
+            cantidad: productoActual.cantidad,
+            precio: productoActual.precio_unitario
+        }, function(accion, productoExistente) {
+            if (accion === 'usar_existente') {
+                const productoConVinculo = {
+                    ...productoActual,
+                    producto_id: productoExistente.id,
+                    producto_nombre: productoExistente.nombre,
+                    producto_stock_actual: productoExistente.stock,
+                    es_existente: true,
+                    codigo_vinculado: true
+                };
+                productosProcesados.push(productoConVinculo);
+            } else {
+                const productoNuevo = {
+                    ...productoActual,
+                    es_existente: false,
+                    codigo_vinculado: false
+                };
+                productosProcesados.push(productoNuevo);
+            }
+            
+            indexActualVerificacion++;
+            setTimeout(() => procesarSiguienteProducto(), 100);
+        });
+    }
+
+    function mostrarProductos() {
+        if (!productosData.length) return;
+
+        // Mostrar información del proveedor
+        document.getElementById('proveedorRazonSocial').textContent = proveedorData.razon_social || 'N/A';
+        document.getElementById('proveedorRuc').textContent = proveedorData.ruc || 'N/A';
+
+        // Actualizar estadísticas
+        document.getElementById('totalProductos').textContent = productosData.length;
+        document.getElementById('productosNuevos').textContent = productosData.length; // Simplificado por ahora
+        document.getElementById('productosActualizar').textContent = '0';
+        
+        const totalValor = productosData.reduce((sum, p) => sum + p.total, 0);
+        document.getElementById('totalValor').textContent = totalValor.toFixed(2);
+
+        // Generar lista de productos
+        const listaContainer = document.getElementById('listaProductos');
+        listaContainer.innerHTML = '';
+
+        productosData.forEach((producto, index) => {
+            const productoRow = document.createElement('div');
+            productoRow.className = 'producto-row border rounded mb-3 p-3';
+            productoRow.style.background = '#ffffff';
+            productoRow.style.boxShadow = '0 2px 10px rgba(0,0,0,0.1)';
+            
+            // Determinar el badge de estado y botón vincular
+            let estadoBadge = '';
+            let btnVincular = '';
+            
+            if (producto.es_existente) {
+                estadoBadge = `<span class="badge bg-success ms-2" title="Producto existente en inventario">
+                    <i class="bi bi-check-circle"></i> EXISTENTE - Stock: ${producto.producto_stock_actual}
+                </span>`;
+            } else if (producto.tiene_similares && producto.similares && producto.similares.length > 0) {
+                // Tiene similares pero no ha sido vinculado
+                estadoBadge = `<span class="badge bg-warning text-dark ms-2">
+                    <i class="bi bi-exclamation-triangle"></i> NUEVO - ${producto.similares.length} similar(es)
+                </span>`;
+                btnVincular = `<button type="button" class="btn btn-sm btn-primary ms-2" 
+                                       onclick="vincularProducto(${index})" 
+                                       id="btnVincular${index}">
+                    <i class="bi bi-link-45deg"></i> Vincular
+                </button>`;
+            } else {
+                estadoBadge = `<span class="badge bg-info ms-2">
+                    <i class="bi bi-plus-circle"></i> NUEVO
+                </span>`;
+            }
+            
+            productoRow.innerHTML = `
+                <div class="form-check mb-3">
+                    <input class="form-check-input producto-checkbox" type="checkbox" value="${index}" id="producto${index}" checked>
+                    <label class="form-check-label w-100" for="producto${index}">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                <strong class="text-primary">${producto.codigo}</strong>${estadoBadge}${btnVincular}<br>
+                                <small class="text-muted">${producto.descripcion.substring(0, 50)}...</small>
+                                ${producto.es_existente ? `<br><small class="text-success"><strong>→ ${producto.producto_nombre}</strong></small>` : ''}
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <span class="badge bg-info">${producto.cantidad} unidades</span>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <small>Precio Factura</small><br>
+                                <strong>$${producto.precio_unitario.toFixed(2)}</strong>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <small>Subtotal</small><br>
+                                <strong>$${producto.subtotal.toFixed(2)}</strong>
+                            </div>
+                            <div class="col-md-2 text-center">
+                                <small>Total Factura</small><br>
+                                <strong class="text-success">$${producto.total.toFixed(2)}</strong>
+                            </div>
+                            <div class="col-md-1 text-center">
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="toggleProductDetails(${index})">
+                                    <i class="bi bi-chevron-down" id="toggleIcon${index}"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+                
+                <!-- Panel de detalles expandible -->
+                <div class="producto-details" id="details${index}" style="display: none;">
+                    <hr>
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <h6 class="text-primary mb-3">
+                                <i class="bi bi-calculator me-2"></i>Configuración de Precios y Costos
+                            </h6>
+                        </div>
+                    </div>
+                    
+                    <!-- Campos de entrada -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Costo por Unidad <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control costo-unidad" 
+                                       id="costoUnidad${index}" 
+                                       placeholder="0.00" 
+                                       step="0.01" 
+                                       min="0"
+                                       value="${producto.precio_unitario.toFixed(2)}"
+                                       data-index="${index}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Costo por Caja</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control costo-caja" 
+                                       id="costoCaja${index}" 
+                                       placeholder="0.00" 
+                                       step="0.01" 
+                                       min="0"
+                                       data-index="${index}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">PVP Unidad</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control pvp-unidad" 
+                                       id="pvpUnidad${index}" 
+                                       placeholder="0.00" 
+                                       step="0.01" 
+                                       min="0"
+                                       data-index="${index}">
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Precio de Venta <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control precio-venta" 
+                                       id="precioVenta${index}" 
+                                       placeholder="0.00" 
+                                       step="0.01" 
+                                       min="0"
+                                       value="${(producto.precio_unitario * 1.3).toFixed(2)}"
+                                       data-index="${index}">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Métricas calculadas -->
+                    <div class="row">
+                        <div class="col-md-3">
+                            <div class="text-center p-2" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px; color: white;">
+                                <div class="h6 mb-1" id="margen${index}">30.00%</div>
+                                <small>Margen</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-2" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 8px; color: white;">
+                                <div class="h6 mb-1">$<span id="ganancia${index}">${(producto.precio_unitario * 0.3).toFixed(2)}</span></div>
+                                <small>Ganancia/Unidad</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-2" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); border-radius: 8px; color: white;">
+                                <div class="h6 mb-1">$<span id="valorInventario${index}">${(producto.precio_unitario * producto.cantidad).toFixed(2)}</span></div>
+                                <small>Valor Inventario</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="text-center p-2" style="border-radius: 8px; color: white;" id="estadoContainer${index}">
+                                <div class="h6 mb-1" id="estado${index}">Bueno</div>
+                                <small>Estado</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            listaContainer.appendChild(productoRow);
+        });
+
+        // Mostrar sección de productos
+        document.getElementById('productosSection').style.display = 'block';
+        document.getElementById('noProductosMessage').style.display = 'none';
+        
+        // Habilitar botón de procesar
+        actualizarBotonProcesar();
+        
+        // Event listeners para checkboxes
+        document.querySelectorAll('.producto-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const row = this.closest('.producto-row');
+                if (this.checked) {
+                    row.classList.add('producto-seleccionado');
+                } else {
+                    row.classList.remove('producto-seleccionado');
+                }
+                actualizarBotonProcesar();
+                actualizarResumenGlobal();
+            });
+        });
+
+        // Event listeners para campos de precios individuales
+        document.querySelectorAll('.costo-unidad, .costo-caja, .pvp-unidad, .precio-venta').forEach(input => {
+            input.addEventListener('input', function() {
+                const index = this.dataset.index;
+                calcularMetricasProducto(index);
+                actualizarResumenGlobal();
+            });
+        });
+
+        // Calcular métricas iniciales para todos los productos
+        productosData.forEach((producto, index) => {
+            calcularMetricasProducto(index);
+        });
+
+        // Actualizar resumen global
+        actualizarResumenGlobal();
+    }
+
+    function toggleProductDetails(index) {
+        const details = document.getElementById(`details${index}`);
+        const icon = document.getElementById(`toggleIcon${index}`);
+        
+        if (details.style.display === 'none') {
+            details.style.display = 'block';
+            icon.className = 'bi bi-chevron-up';
+        } else {
+            details.style.display = 'none';
+            icon.className = 'bi bi-chevron-down';
+        }
+    }
+
+    function calcularMetricasProducto(index) {
+        const costoUnidad = parseFloat(document.getElementById(`costoUnidad${index}`).value) || 0;
+        const costoCaja = parseFloat(document.getElementById(`costoCaja${index}`).value) || 0;
+        const pvpUnidad = parseFloat(document.getElementById(`pvpUnidad${index}`).value) || 0;
+        const precioVenta = parseFloat(document.getElementById(`precioVenta${index}`).value) || 0;
+        const cantidad = productosData[index].cantidad;
+
+        // Calcular margen de ganancia
+        let margen = 0;
+        if (costoUnidad > 0 && precioVenta > 0) {
+            margen = ((precioVenta - costoUnidad) / costoUnidad) * 100;
+        }
+
+        // Calcular ganancia por unidad
+        const ganancia = precioVenta - costoUnidad;
+
+        // Calcular valor de inventario
+        const valorInventario = costoUnidad * cantidad;
+
+        // Determinar estado
+        let estado = 'Bajo';
+        let colorEstado = '#e74c3c';
+        if (margen > 50) {
+            estado = 'Óptimo';
+            colorEstado = '#2ecc71';
+        } else if (margen > 30) {
+            estado = 'Bueno';
+            colorEstado = '#3498db';
+        } else if (margen > 10) {
+            estado = 'Regular';
+            colorEstado = '#f39c12';
+        }
+
+        // Actualizar la interfaz
+        document.getElementById(`margen${index}`).textContent = margen.toFixed(2) + '%';
+        document.getElementById(`ganancia${index}`).textContent = ganancia.toFixed(2);
+        document.getElementById(`valorInventario${index}`).textContent = valorInventario.toFixed(2);
+        document.getElementById(`estado${index}`).textContent = estado;
+        document.getElementById(`estadoContainer${index}`).style.background = colorEstado;
+
+        // Guardar en los datos del producto
+        productosData[index].costo_unidad = costoUnidad;
+        productosData[index].costo_caja = costoCaja;
+        productosData[index].pvp_unidad = pvpUnidad;
+        productosData[index].precio_venta = precioVenta;
+        productosData[index].margen = margen;
+        productosData[index].ganancia = ganancia;
+        productosData[index].valor_inventario = valorInventario;
+    }
+
+    function actualizarResumenGlobal() {
+        const productosSeleccionados = [];
+        document.querySelectorAll('.producto-checkbox:checked').forEach(checkbox => {
+            const index = parseInt(checkbox.value);
+            productosSeleccionados.push(productosData[index]);
+        });
+
+        if (productosSeleccionados.length === 0) {
+            document.getElementById('margenGlobalPromedio').textContent = '0.00%';
+            document.getElementById('gananciaGlobalTotal').textContent = '0.00';
+            document.getElementById('costoGlobalTotal').textContent = '0.00';
+            document.getElementById('ventaGlobalTotal').textContent = '0.00';
+            return;
+        }
+
+        // Calcular totales
+        let costoTotal = 0;
+        let ventaTotal = 0;
+        let gananciaTotal = 0;
+        let margenPromedio = 0;
+
+        productosSeleccionados.forEach(producto => {
+            const costo = producto.costo_unidad || 0;
+            const venta = producto.precio_venta || 0;
+            const cantidad = producto.cantidad || 1;
+
+            costoTotal += costo * cantidad;
+            ventaTotal += venta * cantidad;
+            gananciaTotal += (venta - costo) * cantidad;
+        });
+
+        // Calcular margen promedio
+        if (costoTotal > 0) {
+            margenPromedio = ((ventaTotal - costoTotal) / costoTotal) * 100;
+        }
+
+        // Actualizar interfaz
+        document.getElementById('margenGlobalPromedio').textContent = margenPromedio.toFixed(2) + '%';
+        document.getElementById('gananciaGlobalTotal').textContent = gananciaTotal.toFixed(2);
+        document.getElementById('costoGlobalTotal').textContent = costoTotal.toFixed(2);
+        document.getElementById('ventaGlobalTotal').textContent = ventaTotal.toFixed(2);
+    }
+
+    function seleccionarTodos() {
+        document.querySelectorAll('.producto-checkbox').forEach(checkbox => {
+            checkbox.checked = true;
+            checkbox.closest('.producto-row').classList.add('producto-seleccionado');
+        });
+        actualizarBotonProcesar();
+        actualizarResumenGlobal();
+    }
+
+    function deseleccionarTodos() {
+        document.querySelectorAll('.producto-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+            checkbox.closest('.producto-row').classList.remove('producto-seleccionado');
+        });
+        actualizarBotonProcesar();
+        actualizarResumenGlobal();
+    }
+
+    function actualizarBotonProcesar() {
+        const seleccionados = document.querySelectorAll('.producto-checkbox:checked').length;
+        const btn = document.getElementById('procesarIngresoBtn');
+        btn.disabled = seleccionados === 0;
+    }
+
+    function procesarIngreso() {
+        const checkboxes = document.querySelectorAll('.producto-checkbox:checked');
+        const productosSeleccionados = Array.from(checkboxes).map(cb => productosData[cb.value]);
+        
+        if (productosSeleccionados.length === 0) {
+            alert('Debe seleccionar al menos un producto');
+            return;
+        }
+
+        const btn = document.getElementById('procesarIngresoBtn');
+        btn.disabled = true;
+        btn.querySelector('.loading-spinner').classList.add('show');
+
+        fetch('{% url "ventas:procesar_ingreso" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                productos: productosSeleccionados,
+                proveedor: proveedorData
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                mostrarResultado(data);
+                document.getElementById('resultado-tab').click();
+            } else {
+                mostrarAlerta('error', data.error);
+            }
+        })
+        .catch(error => {
+            mostrarAlerta('error', 'Error al procesar el ingreso');
+            console.error('Error:', error);
+        })
+        .finally(() => {
+            btn.disabled = false;
+            btn.querySelector('.loading-spinner').classList.remove('show');
+        });
+    }
+
+    function mostrarResultado(data) {
+        const mensaje = `
+            <h5>Procesamiento Completado</h5>
+            <p>${data.mensaje}</p>
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>Productos Creados:</strong> ${data.productos_creados}
+                </div>
+                <div class="col-md-4">
+                    <strong>Productos Actualizados:</strong> ${data.productos_actualizados}
+                </div>
+                <div class="col-md-4">
+                    <strong>Códigos Vinculados:</strong> ${data.codigos_vinculados || 0}
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('resultadoMensaje').innerHTML = mensaje;
+        document.getElementById('resultadoSection').style.display = 'block';
+        document.getElementById('noResultadoMessage').style.display = 'none';
+    }
+
+    function mostrarAlerta(tipo, mensaje) {
+        // Crear alerta temporal
+        const alertClass = tipo === 'error' ? 'alert-danger' : 'alert-success';
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert ${alertClass} alert-dismissible fade show`;
+        alertDiv.innerHTML = `
+            ${mensaje}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        // Insertar al inicio del container
+        const container = document.querySelector('.container');
+        container.insertBefore(alertDiv, container.firstChild);
+        
+        // Auto-dismiss después de 5 segundos
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+</script>
+
+<!-- Modal de Detección de Duplicados -->
+{% include 'inventario/modal_duplicados.html' %}
+
+<!-- Detector de Duplicados -->
+<script src="{% static 'js/detector_duplicados.js' %}"></script>
+
+<!-- CSRF Token -->
+{% csrf_token %}
+{% endblock %}

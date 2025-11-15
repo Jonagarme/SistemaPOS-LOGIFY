@@ -1,0 +1,579 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Nueva Orden de Compra a Proveedor{% endblock %}
+
+{% block extra_css %}
+<style>
+    .producto-search {
+        position: relative;
+    }
+    .btn-remove {
+        padding: 2px 8px;
+        font-size: 0.9em;
+    }
+    .table-productos {
+        margin-top: 20px;
+    }
+    .total-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-top: 20px;
+    }
+    .whatsapp-btn {
+        background: #25D366;
+        color: white;
+        border: none;
+    }
+    .whatsapp-btn:hover {
+        background: #1fb855;
+        color: white;
+    }
+    .modal-producto-item {
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    .modal-producto-item:hover {
+        background: #e9ecef;
+    }
+    .producto-codigo {
+        font-family: monospace;
+        font-weight: bold;
+        color: #0066cc;
+    }
+    .producto-stock {
+        font-size: 0.85em;
+    }
+    .producto-stock.bajo {
+        color: #dc3545;
+    }
+    .producto-stock.normal {
+        color: #28a745;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">
+                <i class="fas fa-file-invoice"></i> Nueva Orden de Compra a Proveedor
+            </h4>
+        </div>
+        
+        <div class="card-body">
+            <form id="formOrden">
+                <!-- Selección de Proveedor -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-truck"></i> Proveedor *
+                        </label>
+                        <select class="form-select" id="proveedor_id" name="proveedor_id" required>
+                            <option value="">-- Seleccione un proveedor --</option>
+                            {% for proveedor in proveedores %}
+                            <option value="{{ proveedor.id }}" 
+                                    data-whatsapp="{{ proveedor.whatsapp_formateado }}"
+                                    data-telefono="{{ proveedor.telefono }}">
+                                {{ proveedor.ruc }} - {{ proveedor.razon_social }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <div id="info_proveedor" class="mt-2 text-muted small" style="display: none;">
+                            <div><strong>RUC:</strong> <span id="prov_ruc"></span></div>
+                            <div><strong>Teléfono:</strong> <span id="prov_telefono"></span></div>
+                            <div><strong>Email:</strong> <span id="prov_email"></span></div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Fecha Entrega Estimada</label>
+                        <input type="date" class="form-control" id="fecha_entrega" name="fecha_entrega">
+                    </div>
+                    
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold">Estado</label>
+                        <input type="text" class="form-control" value="BORRADOR" readonly>
+                    </div>
+                </div>
+                
+                <hr>
+                
+                <!-- Búsqueda de Productos -->
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold">
+                            <i class="fas fa-search"></i> Buscar Producto
+                        </label>
+                        <div class="input-group">
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="buscar_producto" 
+                                   placeholder="Escribe el nombre o código del producto..."
+                                   autocomplete="off">
+                            <button class="btn btn-primary" type="button" id="btn_buscar">
+                                <i class="fas fa-search"></i> Buscar
+                            </button>
+                        </div>
+                        <small class="text-muted">
+                            Escribe al menos 2 caracteres y presiona Enter o click en Buscar
+                        </small>
+                    </div>
+                </div>
+                
+                <!-- Tabla de Productos -->
+                <div class="table-responsive table-productos">
+                    <table class="table table-bordered table-hover" id="tabla_productos">
+                        <thead class="table-dark">
+                            <tr>
+                                <th width="5%">#</th>
+                                <th width="15%">Código</th>
+                                <th width="35%">Producto</th>
+                                <th width="10%">Cantidad</th>
+                                <th width="15%">Precio Unit.</th>
+                                <th width="15%">Subtotal</th>
+                                <th width="5%">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="productos_tbody">
+                            <tr id="empty_row">
+                                <td colspan="7" class="text-center text-muted">
+                                    No hay productos agregados. Use el buscador para agregar productos.
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Totales -->
+                <div class="row">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold">Observaciones</label>
+                        <textarea class="form-control" 
+                                  id="observaciones" 
+                                  name="observaciones" 
+                                  rows="3" 
+                                  placeholder="Ingrese observaciones adicionales..."></textarea>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="total-section">
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>Subtotal:</span>
+                                <span id="subtotal_display" class="fw-bold">$0.00</span>
+                            </div>
+                            <div class="d-flex justify-content-between mb-2">
+                                <span>IVA (15%):</span>
+                                <span id="iva_display" class="fw-bold">$0.00</span>
+                            </div>
+                            <hr>
+                            <div class="d-flex justify-content-between">
+                                <span class="fs-5 fw-bold">TOTAL:</span>
+                                <span id="total_display" class="fs-5 fw-bold text-primary">$0.00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Botones de Acción -->
+                <div class="row mt-4">
+                    <div class="col-md-12 text-end">
+                        <a href="{% url 'proveedores:lista_ordenes' %}" class="btn btn-secondary">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Guardar Orden
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Inputs ocultos para datos -->
+<input type="hidden" id="productos_data" value="[]">
+
+<!-- Modal de Búsqueda de Productos -->
+<div class="modal fade" id="modalProductos" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-search"></i> Resultados de Búsqueda
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="loading_productos" class="text-center py-4" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Buscando...</span>
+                    </div>
+                    <p class="mt-2">Buscando productos...</p>
+                </div>
+                
+                <div id="resultados_productos">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="tabla_resultados">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="15%">Código</th>
+                                    <th width="45%">Nombre</th>
+                                    <th width="12%">Stock</th>
+                                    <th width="13%">P. Compra</th>
+                                    <th width="13%">P. Venta</th>
+                                    <th width="2%"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody_resultados">
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted">
+                                        No hay productos para mostrar
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let productosSeleccionados = [];
+let modalProductos;
+
+$(document).ready(function() {
+    // Inicializar modal
+    modalProductos = new bootstrap.Modal(document.getElementById('modalProductos'));
+    
+    // Búsqueda al presionar Enter
+    $('#buscar_producto').on('keypress', function(e) {
+        if (e.which === 13) {
+            e.preventDefault();
+            buscarProductos();
+        }
+    });
+    
+    // Búsqueda al hacer click en botón
+    $('#btn_buscar').on('click', function() {
+        buscarProductos();
+    });
+    
+    // Cargar info del proveedor
+    $('#proveedor_id').on('change', function() {
+        const proveedorId = $(this).val();
+        if (proveedorId) {
+            cargarInfoProveedor(proveedorId);
+        } else {
+            $('#info_proveedor').hide();
+        }
+    });
+    
+    // Enviar formulario
+    $('#formOrden').on('submit', function(e) {
+        e.preventDefault();
+        guardarOrden();
+    });
+});
+
+function buscarProductos() {
+    const query = $('#buscar_producto').val().trim();
+    
+    if (query.length < 2) {
+        alert('Debes escribir al menos 2 caracteres');
+        return;
+    }
+    
+    // Mostrar modal y loading
+    modalProductos.show();
+    $('#loading_productos').show();
+    $('#resultados_productos').hide();
+    
+    $.ajax({
+        url: '{% url "proveedores:api_buscar_productos" %}',
+        method: 'GET',
+        data: { q: query },
+        success: function(response) {
+            $('#loading_productos').hide();
+            $('#resultados_productos').show();
+            mostrarResultadosModal(response.productos);
+        },
+        error: function(xhr) {
+            $('#loading_productos').hide();
+            alert('Error al buscar productos');
+            console.error('Error:', xhr);
+        }
+    });
+}
+
+function mostrarResultadosModal(productos) {
+    const tbody = $('#tbody_resultados');
+    tbody.html('');
+    
+    if (productos.length === 0) {
+        tbody.html(`
+            <tr>
+                <td colspan="6" class="text-center text-muted py-4">
+                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                    <p>No se encontraron productos con esos criterios</p>
+                </td>
+            </tr>
+        `);
+        return;
+    }
+    
+    productos.forEach(function(producto) {
+        const stockClass = producto.stock > 10 ? 'normal' : 'bajo';
+        const yaAgregado = productosSeleccionados.find(p => p.id === producto.id);
+        
+        const html = `
+            <tr class="modal-producto-item" ${!yaAgregado ? `onclick="seleccionarProducto(${producto.id})"` : ''}>
+                <td><span class="producto-codigo">${producto.codigo_principal || 'Sin código'}</span></td>
+                <td><strong>${producto.nombre}</strong></td>
+                <td>
+                    <span class="producto-stock ${stockClass}">
+                        <i class="fas fa-box"></i> ${parseFloat(producto.stock).toFixed(2)}
+                    </span>
+                </td>
+                <td class="text-success"><strong>$${parseFloat(producto.precio_compra).toFixed(2)}</strong></td>
+                <td class="text-primary">$${parseFloat(producto.precio_venta).toFixed(2)}</td>
+                <td>
+                    ${yaAgregado ? 
+                        '<span class="badge bg-secondary"><i class="fas fa-check"></i> Agregado</span>' : 
+                        '<i class="fas fa-plus-circle text-success"></i>'}
+                </td>
+            </tr>
+        `;
+        tbody.append(html);
+    });
+}
+
+function seleccionarProducto(productoId) {
+    // Buscar el producto en los resultados actuales
+    $.ajax({
+        url: '{% url "proveedores:api_buscar_productos" %}',
+        method: 'GET',
+        data: { q: $('#buscar_producto').val() },
+        success: function(response) {
+            const producto = response.productos.find(p => p.id === productoId);
+            if (producto) {
+                agregarProducto(producto);
+                modalProductos.hide();
+                $('#buscar_producto').val('');
+            }
+        }
+    });
+}
+
+function agregarProducto(producto) {
+    // Verificar si ya está agregado
+    if (productosSeleccionados.find(p => p.id === producto.id)) {
+        alert('Este producto ya está agregado');
+        return;
+    }
+    
+    productosSeleccionados.push({
+        id: producto.id,
+        codigo: producto.codigo_principal,
+        nombre: producto.nombre,
+        cantidad: 1,
+        precio: producto.precio_compra || 0
+    });
+    
+    actualizarTabla();
+    calcularTotales();
+}
+
+function actualizarTabla() {
+    const tbody = $('#productos_tbody');
+    tbody.html('');
+    
+    if (productosSeleccionados.length === 0) {
+        tbody.html(`
+            <tr id="empty_row">
+                <td colspan="7" class="text-center text-muted">
+                    No hay productos agregados
+                </td>
+            </tr>
+        `);
+        return;
+    }
+    
+    productosSeleccionados.forEach((producto, index) => {
+        const subtotal = producto.cantidad * producto.precio;
+        const html = `
+            <tr>
+                <td>${index + 1}</td>
+                <td>${producto.codigo || ''}</td>
+                <td>${producto.nombre}</td>
+                <td>
+                    <input type="number" 
+                           class="form-control form-control-sm" 
+                           value="${producto.cantidad}"
+                           min="0.01"
+                           step="0.01"
+                           data-index="${index}"
+                           onchange="actualizarCantidad(${index}, this.value)">
+                </td>
+                <td>
+                    <input type="number" 
+                           class="form-control form-control-sm" 
+                           value="${producto.precio}"
+                           min="0"
+                           step="0.01"
+                           data-index="${index}"
+                           onchange="actualizarPrecio(${index}, this.value)">
+                </td>
+                <td class="text-end">$${subtotal.toFixed(2)}</td>
+                <td class="text-center">
+                    <button type="button" 
+                            class="btn btn-sm btn-danger btn-remove" 
+                            onclick="eliminarProducto(${index})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        tbody.append(html);
+    });
+}
+
+function actualizarCantidad(index, nuevaCantidad) {
+    productosSeleccionados[index].cantidad = parseFloat(nuevaCantidad) || 0;
+    calcularTotales();
+    actualizarTabla();
+}
+
+function actualizarPrecio(index, nuevoPrecio) {
+    productosSeleccionados[index].precio = parseFloat(nuevoPrecio) || 0;
+    calcularTotales();
+    actualizarTabla();
+}
+
+function eliminarProducto(index) {
+    productosSeleccionados.splice(index, 1);
+    actualizarTabla();
+    calcularTotales();
+}
+
+function calcularTotales() {
+    let subtotal = 0;
+    productosSeleccionados.forEach(p => {
+        subtotal += p.cantidad * p.precio;
+    });
+    
+    const iva = subtotal * 0.15;
+    const total = subtotal + iva;
+    
+    $('#subtotal_display').text('$' + subtotal.toFixed(2));
+    $('#iva_display').text('$' + iva.toFixed(2));
+    $('#total_display').text('$' + total.toFixed(2));
+}
+
+function cargarInfoProveedor(proveedorId) {
+    $.ajax({
+        url: `/proveedores/api/proveedor/${proveedorId}/`,
+        method: 'GET',
+        success: function(proveedor) {
+            $('#prov_ruc').text(proveedor.ruc);
+            $('#prov_telefono').text(proveedor.telefono || 'No registrado');
+            $('#prov_email').text(proveedor.email || 'No registrado');
+            $('#info_proveedor').show();
+        }
+    });
+}
+
+function guardarOrden() {
+    if (!$('#proveedor_id').val()) {
+        alert('Debe seleccionar un proveedor');
+        return;
+    }
+    
+    if (productosSeleccionados.length === 0) {
+        alert('Debe agregar al menos un producto');
+        return;
+    }
+    
+    const data = {
+        proveedor_id: $('#proveedor_id').val(),
+        fecha_entrega: $('#fecha_entrega').val(),
+        observaciones: $('#observaciones').val(),
+        productos: productosSeleccionados.map(p => ({
+            producto_id: p.id,
+            cantidad: p.cantidad,
+            precio: p.precio
+        }))
+    };
+    
+    $.ajax({
+        url: '{% url "proveedores:crear_orden" %}',
+        method: 'POST',
+        data: JSON.stringify(data),
+        contentType: 'application/json',
+        headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        success: function(response) {
+            if (response.success) {
+                // Mostrar opciones de envío
+                mostrarOpcionesEnvio(response.orden_id, response.numero_orden);
+            } else {
+                alert('Error: ' + response.error);
+            }
+        },
+        error: function(xhr) {
+            alert('Error al guardar la orden');
+            console.error(xhr);
+        }
+    });
+}
+
+function mostrarOpcionesEnvio(ordenId, numeroOrden) {
+    const proveedor = $('#proveedor_id option:selected');
+    const whatsapp = proveedor.data('whatsapp');
+    const telefono = proveedor.data('telefono');
+    
+    let htmlOpciones = `
+        <div class="alert alert-success">
+            <h5><i class="fas fa-check-circle"></i> Orden ${numeroOrden} creada exitosamente</h5>
+            <p>¿Qué desea hacer ahora?</p>
+            <div class="btn-group-vertical w-100" role="group">
+                <a href="/proveedores/ordenes/${ordenId}/pdf/" class="btn btn-danger mb-2" target="_blank">
+                    <i class="fas fa-file-pdf"></i> Descargar PDF
+                </a>
+                <a href="/proveedores/ordenes/${ordenId}/excel/" class="btn btn-success mb-2">
+                    <i class="fas fa-file-excel"></i> Descargar Excel
+                </a>
+    `;
+    
+    if (whatsapp || telefono) {
+        const numero = whatsapp || telefono;
+        const mensaje = encodeURIComponent(`Hola, le enviamos la orden de compra ${numeroOrden}. Por favor revísela y confírmenos.`);
+        htmlOpciones += `
+                <a href="https://wa.me/${numero}?text=${mensaje}" 
+                   class="btn whatsapp-btn mb-2" 
+                   target="_blank">
+                    <i class="fab fa-whatsapp"></i> Enviar por WhatsApp
+                </a>
+        `;
+    }
+    
+    htmlOpciones += `
+                <a href="/proveedores/ordenes/" class="btn btn-primary">
+                    <i class="fas fa-list"></i> Ver todas las órdenes
+                </a>
+            </div>
+        </div>
+    `;
+    
+    $('#formOrden').html(htmlOpciones);
+}
+</script>
+{% endblock %}

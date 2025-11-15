@@ -1,0 +1,221 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-chart-bar"></i> {{ titulo }}
+        </h1>
+        <div>
+            <a href="{% url 'caja:lista' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver a Lista
+            </a>
+            <button onclick="window.location.reload()" class="btn btn-info">
+                <i class="fas fa-sync-alt"></i> Actualizar
+            </button>
+        </div>
+    </div>
+
+    <!-- Estadísticas Generales -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total Cajas
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_cajas }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-boxes fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Cajas Activas
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ cajas_activas }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Cajas Abiertas
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ cajas_abiertas }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-unlock fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Estado Sistema
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% if cajas_abiertas > 0 %}
+                                    <span class="text-success">En Operación</span>
+                                {% elif cajas_activas > 0 %}
+                                    <span class="text-warning">Disponible</span>
+                                {% else %}
+                                    <span class="text-danger">Sin Cajas</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-server fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estado Detallado de Cajas -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-tachometer-alt"></i> Estado Detallado de Cajas
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if cajas %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Caja</th>
+                                <th>Estado</th>
+                                <th>En Uso</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for caja in cajas %}
+                                <tr>
+                                    <td>
+                                        <div>
+                                            <strong class="text-primary">{{ caja.codigo }}</strong><br>
+                                            <small class="text-muted">{{ caja.nombre }}</small>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {% if not caja.activa %}
+                                            <span class="badge badge-secondary">
+                                                <i class="fas fa-ban"></i> Inactiva
+                                            </span>
+                                        {% elif caja.id in estados_cajas %}
+                                            <span class="badge badge-success">
+                                                <i class="fas fa-unlock"></i> Abierta
+                                            </span>
+                                        {% else %}
+                                            <span class="badge badge-warning">
+                                                <i class="fas fa-lock"></i> Cerrada
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if caja.id in estados_cajas %}
+                                            <span class="text-success">
+                                                <i class="fas fa-user"></i> Sí
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted">
+                                                <i class="fas fa-user-slash"></i> No
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            {% if caja.id in estados_cajas %}
+                                                <a href="{% url 'caja:estado' %}" class="btn btn-sm btn-info" title="Ver Detalles">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="{% url 'caja:cerrar' %}" class="btn btn-sm btn-warning" title="Cerrar Caja">
+                                                    <i class="fas fa-lock"></i>
+                                                </a>
+                                            {% elif caja.activa %}
+                                                <a href="{% url 'caja:abrir' %}?caja={{ caja.id }}" class="btn btn-sm btn-success" title="Abrir Caja">
+                                                    <i class="fas fa-unlock"></i>
+                                                </a>
+                                            {% else %}
+                                                <span class="text-muted">Sin acciones</span>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-gray-300 mb-3"></i>
+                    <h5 class="text-gray-500">No hay cajas registradas</h5>
+                    <p class="text-gray-400">Debe crear al menos una caja para ver el estado.</p>
+                    <a href="{% url 'caja:crear' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Crear Primera Caja
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Alertas y Recomendaciones -->
+    {% if cajas_abiertas == 0 and cajas_activas > 0 %}
+        <div class="alert alert-warning">
+            <h5><i class="fas fa-exclamation-triangle"></i> Sistema Listo</h5>
+            <p class="mb-0">
+                Tiene {{ cajas_activas }} caja(s) activa(s) pero ninguna abierta. 
+                Para comenzar a realizar ventas, debe abrir al menos una caja.
+            </p>
+        </div>
+    {% elif cajas_abiertas > 3 %}
+        <div class="alert alert-info">
+            <h5><i class="fas fa-info-circle"></i> Múltiples Cajas Abiertas</h5>
+            <p class="mb-0">
+                Tiene {{ cajas_abiertas }} cajas abiertas simultáneamente. 
+                Considere cerrar las cajas que no esté utilizando para un mejor control.
+            </p>
+        </div>
+    {% endif %}
+</div>
+
+<script>
+// Actualizar página cada 2 minutos
+setInterval(function() {
+    window.location.reload();
+}, 120000);
+</script>
+{% endblock %}

@@ -1,0 +1,330 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Convertir Cotización a Venta{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" rel="stylesheet">
+<style>
+    .conversion-header {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        border-radius: 15px;
+        margin-bottom: 2rem;
+    }
+    .product-summary {
+        background: #f8f9fa;
+        border-radius: 10px;
+        border: 1px solid #dee2e6;
+    }
+    .step-indicator {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 2rem;
+    }
+    .step {
+        padding: 10px 20px;
+        border-radius: 25px;
+        background: #e9ecef;
+        color: #6c757d;
+        margin: 0 10px;
+        font-weight: 500;
+    }
+    .step.active {
+        background: #28a745;
+        color: white;
+    }
+    .summary-card {
+        border: none;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        border-radius: 15px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="conversion-header p-4">
+        <div class="row align-items-center">
+            <div class="col-md-8">
+                <h2 class="mb-2">
+                    <i class="bi bi-arrow-right-circle me-2"></i>
+                    Convertir Cotización a Venta
+                </h2>
+                <p class="mb-1">Cotización: <strong>#{{ cotizacion.numero }}</strong></p>
+                <p class="mb-0">Cliente: <strong>{{ cotizacion.cliente.nombre_completo }}</strong></p>
+            </div>
+            <div class="col-md-4 text-end">
+                <h3 class="mb-0">Total: $ {{ cotizacion.total|floatformat:2 }}</h3>
+                <small>{{ cotizacion.detalles.count }} producto{{ cotizacion.detalles.count|pluralize }}</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Indicador de pasos -->
+    <div class="step-indicator">
+        <div class="step active">1. Revisión</div>
+        <div class="step">2. Configuración</div>
+        <div class="step">3. Confirmación</div>
+    </div>
+
+    <form method="post" id="conversion-form">
+        {% csrf_token %}
+        
+        <div class="row">
+            <!-- Información de la cotización -->
+            <div class="col-lg-8">
+                <!-- Resumen de productos -->
+                <div class="card summary-card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-box me-2"></i>Productos a Convertir</h5>
+                    </div>
+                    <div class="card-body">
+                        {% for detalle in cotizacion.detalles.all %}
+                        <div class="product-summary p-3 mb-3">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <h6 class="mb-1">{{ detalle.producto.nombre }}</h6>
+                                    <small class="text-muted">Código: {{ detalle.producto.codigo }}</small>
+                                    
+                                    <!-- Verificar stock disponible -->
+                                    {% if detalle.producto.stock < detalle.cantidad %}
+                                    <br><span class="badge bg-warning text-dark">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>
+                                        Stock insuficiente (Disponible: {{ detalle.producto.stock }})
+                                    </span>
+                                    {% elif detalle.producto.stock < detalle.cantidad|add:"10" %}
+                                    <br><span class="badge bg-info">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Stock bajo (Disponible: {{ detalle.producto.stock }})
+                                    </span>
+                                    {% else %}
+                                    <br><span class="badge bg-success">
+                                        <i class="bi bi-check-circle me-1"></i>
+                                        Stock disponible ({{ detalle.producto.stock }})
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-2 text-center">
+                                    <strong>{{ detalle.cantidad|floatformat:0 }}</strong>
+                                    <br><small class="text-muted">Cantidad</small>
+                                </div>
+                                <div class="col-md-2 text-center">
+                                    <strong>$ {{ detalle.precio_unitario|floatformat:2 }}</strong>
+                                    <br><small class="text-muted">Precio c/u</small>
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    <strong class="text-primary">$ {{ detalle.subtotal|floatformat:2 }}</strong>
+                                    {% if detalle.descuento > 0 %}
+                                    <br><small class="text-success">Desc: {{ detalle.descuento }}%</small>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Alertas de stock -->
+                {% if stock_insuficiente %}
+                <div class="alert alert-warning">
+                    <h6><i class="bi bi-exclamation-triangle me-2"></i>Advertencia de Stock</h6>
+                    <p class="mb-0">Algunos productos no tienen stock suficiente. La venta se puede crear pero será necesario ajustar las cantidades o abastecer los productos.</p>
+                </div>
+                {% endif %}
+
+                <!-- Información adicional -->
+                {% if cotizacion.observaciones %}
+                <div class="card summary-card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-chat-text me-2"></i>Observaciones de la Cotización</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">{{ cotizacion.observaciones|linebreaks }}</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Panel de configuración -->
+            <div class="col-lg-4">
+                <!-- Configuración de la venta -->
+                <div class="card summary-card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-gear me-2"></i>Configuración de Venta</h5>
+                    </div>
+                    <div class="card-body">
+                        <!-- Fecha de la venta -->
+                        <div class="form-floating mb-3">
+                            <input type="date" class="form-control" name="fecha_venta" 
+                                   value="{{ fecha_actual|date:'Y-m-d' }}" required>
+                            <label>Fecha de Venta *</label>
+                        </div>
+
+                        <!-- Tipo de pago -->
+                        <div class="form-floating mb-3">
+                            <select class="form-select" name="tipo_pago" required>
+                                <option value="efectivo">Efectivo</option>
+                                <option value="tarjeta">Tarjeta</option>
+                                <option value="transferencia">Transferencia</option>
+                                <option value="credito">Crédito</option>
+                                <option value="mixto">Mixto</option>
+                            </select>
+                            <label>Tipo de Pago *</label>
+                        </div>
+
+                        <!-- Estado de la venta -->
+                        <div class="form-floating mb-3">
+                            <select class="form-select" name="estado_venta">
+                                <option value="completada">Completada</option>
+                                <option value="pendiente">Pendiente</option>
+                            </select>
+                            <label>Estado de la Venta</label>
+                        </div>
+
+                        <!-- Observaciones adicionales -->
+                        <div class="form-floating mb-3">
+                            <textarea class="form-control" name="observaciones_venta" 
+                                      style="height: 100px" placeholder="Observaciones adicionales..."></textarea>
+                            <label>Observaciones para la Venta</label>
+                        </div>
+
+                        <!-- Notificar al cliente -->
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" name="notificar_cliente" id="notificar_cliente">
+                            <label class="form-check-label" for="notificar_cliente">
+                                Notificar al cliente por email
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resumen de totales -->
+                <div class="card summary-card mb-4">
+                    <div class="card-body">
+                        <h6 class="mb-3"><i class="bi bi-calculator me-2"></i>Resumen de Totales</h6>
+                        
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Subtotal:</span>
+                            <span>$ {{ cotizacion.subtotal|floatformat:2 }}</span>
+                        </div>
+                        
+                        {% if cotizacion.descuento_global > 0 %}
+                        <div class="d-flex justify-content-between mb-2 text-success">
+                            <span>Descuento Global:</span>
+                            <span>- $ {{ cotizacion.descuento_global_monto|floatformat:2 }}</span>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="d-flex justify-content-between mb-2">
+                            <span>Impuesto (15%):</span>
+                            <span>$ {{ cotizacion.impuesto|floatformat:2 }}</span>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between">
+                            <h5>Total:</h5>
+                            <h5 class="text-success">$ {{ cotizacion.total|floatformat:2 }}</h5>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Botones de acción -->
+                <div class="card summary-card">
+                    <div class="card-body">
+                        <h6 class="mb-3"><i class="bi bi-check-circle me-2"></i>Confirmar Conversión</h6>
+                        
+                        <button type="submit" class="btn btn-success w-100 mb-2" 
+                                {% if stock_insuficiente %}
+                                onclick="return confirm('Hay productos con stock insuficiente. ¿Desea continuar de todas formas?')"
+                                {% endif %}>
+                            <i class="bi bi-arrow-right-circle me-2"></i>
+                            Convertir a Venta
+                        </button>
+                        
+                        <a href="{% url 'cotizaciones:detalle' cotizacion.pk %}" class="btn btn-outline-secondary w-100">
+                            <i class="bi bi-x-circle me-2"></i>Cancelar
+                        </a>
+                        
+                        <hr class="my-3">
+                        
+                        <small class="text-muted">
+                            <i class="bi bi-info-circle me-1"></i>
+                            Al convertir esta cotización:
+                            <ul class="mt-2 mb-0" style="font-size: 0.85rem;">
+                                <li>Se creará una nueva venta</li>
+                                <li>Se actualizará el stock de productos</li>
+                                <li>La cotización será marcada como "Convertida"</li>
+                                <li>Esta acción no se puede deshacer</li>
+                            </ul>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Modal de confirmación -->
+<div class="modal fade" id="modalConfirmacion" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Conversión</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Está seguro que desea convertir esta cotización a venta?</p>
+                <div class="alert alert-info">
+                    <small>
+                        <i class="bi bi-info-circle me-1"></i>
+                        Esta acción creará una nueva venta y actualizará el estado de la cotización. 
+                        No se puede deshacer.
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="confirmarConversion">
+                    <i class="bi bi-check-circle me-2"></i>Sí, Convertir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('conversion-form');
+    const modal = new bootstrap.Modal(document.getElementById('modalConfirmacion'));
+    
+    // Prevenir envío directo del formulario
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        modal.show();
+    });
+    
+    // Confirmar conversión
+    document.getElementById('confirmarConversion').addEventListener('click', function() {
+        modal.hide();
+        
+        // Mostrar indicador de carga
+        const submitBtn = this;
+        submitBtn.innerHTML = '<i class="spinner-border spinner-border-sm me-2"></i>Convirtiendo...';
+        submitBtn.disabled = true;
+        
+        // Enviar formulario
+        form.submit();
+    });
+    
+    // Actualizar pasos del indicador
+    setTimeout(function() {
+        document.querySelectorAll('.step')[1].classList.add('active');
+    }, 1000);
+});
+</script>
+{% endblock %}

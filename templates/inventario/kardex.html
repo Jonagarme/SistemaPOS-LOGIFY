@@ -1,0 +1,271 @@
+{% extends 'base.html' %}
+
+{% block title %}Kardex de Inventario - Sistema POS{% endblock %}
+
+{% block content %}
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Producto</label>
+                <select name="producto" class="form-select">
+                    <option value="">Todos los productos</option>
+                    {% for producto in productos %}
+                        <option value="{{ producto.id }}" {% if producto.id|stringformat:"s" == producto_id %}selected{% endif %}>
+                            {{ producto.codigo }} - {{ producto.nombre }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Fecha Desde</label>
+                <input type="date" name="fecha_desde" class="form-control" value="{{ fecha_desde }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Fecha Hasta</label>
+                <input type="date" name="fecha_hasta" class="form-control" value="{{ fecha_hasta }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Tipo</label>
+                <select name="tipo" class="form-select">
+                    <option value="">Todos</option>
+                    <option value="entrada" {% if tipo == 'entrada' %}selected{% endif %}>Entradas</option>
+                    <option value="salida" {% if tipo == 'salida' %}selected{% endif %}>Salidas</option>
+                    <option value="ajuste" {% if tipo == 'ajuste' %}selected{% endif %}>Ajustes</option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <button type="submit" class="btn btn-outline-primary me-2">
+                    <i class="fas fa-search"></i> Filtrar
+                </button>
+                <a href="{% url 'inventario:kardex' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times"></i> Limpiar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Resumen por producto -->
+{% if producto_seleccionado %}
+<div class="card mb-4">
+    <div class="card-header">
+        <h6 class="mb-0">
+            <i class="fas fa-box"></i> Resumen: {{ producto_seleccionado.codigo }} - {{ producto_seleccionado.nombre }}
+        </h6>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-3">
+                <div class="text-center">
+                    <h4 class="text-primary">{{ producto_seleccionado.stock_actual }}</h4>
+                    <small>Stock Actual</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center">
+                    <h4 class="text-success">{{ total_entradas|default:"0" }}</h4>
+                    <small>Total Entradas</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center">
+                    <h4 class="text-danger">{{ total_salidas|default:"0" }}</h4>
+                    <small>Total Salidas</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="text-center">
+                    <h4 class="text-info">$ {{ valor_inventario|floatformat:2|default:"0.00" }}</h4>
+                    <small>Valor Inventario</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Kardex -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">
+            <i class="fas fa-list"></i> Movimientos de Inventario
+        </h5>
+        <div>
+            <a href="{% url 'inventario:ajuste' %}" class="btn btn-sm btn-warning">
+                <i class="fas fa-edit"></i> Ajustar Inventario
+            </a>
+            <a href="{% url 'inventario:reporte_kardex' %}" class="btn btn-sm btn-info">
+                <i class="fas fa-file-pdf"></i> Exportar PDF
+            </a>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Producto</th>
+                            <th>Tipo</th>
+                            <th>Concepto</th>
+                            <th>Entrada</th>
+                            <th>Salida</th>
+                            <th>Saldo</th>
+                            <th>Costo Unit.</th>
+                            <th>Valor Total</th>
+                            <th>Documento</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for movimiento in page_obj %}
+                        <tr>
+                            <td>{{ movimiento.fecha|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                <small>
+                                    <strong>{{ movimiento.producto.codigo }}</strong><br>
+                                    {{ movimiento.producto.nombre|truncatechars:30 }}
+                                </small>
+                            </td>
+                            <td>
+                                {% if movimiento.tipo == 'entrada' %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-arrow-up"></i> Entrada
+                                    </span>
+                                {% elif movimiento.tipo == 'salida' %}
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-arrow-down"></i> Salida
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-edit"></i> Ajuste
+                                    </span>
+                                {% endif %}
+                            </td>
+                            <td>{{ movimiento.concepto }}</td>
+                            <td class="text-success">
+                                {% if movimiento.tipo == 'entrada' %}
+                                    <strong>{{ movimiento.cantidad }}</strong>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td class="text-danger">
+                                {% if movimiento.tipo == 'salida' %}
+                                    <strong>{{ movimiento.cantidad }}</strong>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                            <td>
+                                <strong>{{ movimiento.saldo_final }}</strong>
+                            </td>
+                            <td>$ {{ movimiento.costo_unitario|floatformat:2 }}</td>
+                            <td>$ {{ movimiento.valor_total|floatformat:2 }}</td>
+                            <td>
+                                {% if movimiento.numero_documento %}
+                                    <small>{{ movimiento.numero_documento }}</small>
+                                {% else %}
+                                    —
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Paginación -->
+            {% if page_obj.has_other_pages %}
+                <nav aria-label="Paginación de kardex">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page=1{% if request.GET.producto %}&producto={{ request.GET.producto }}{% endif %}{% if request.GET.fecha_desde %}&fecha_desde={{ request.GET.fecha_desde }}{% endif %}{% if request.GET.fecha_hasta %}&fecha_hasta={{ request.GET.fecha_hasta }}{% endif %}{% if request.GET.tipo %}&tipo={{ request.GET.tipo }}{% endif %}">
+                                    Primera
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.producto %}&producto={{ request.GET.producto }}{% endif %}{% if request.GET.fecha_desde %}&fecha_desde={{ request.GET.fecha_desde }}{% endif %}{% if request.GET.fecha_hasta %}&fecha_hasta={{ request.GET.fecha_hasta }}{% endif %}{% if request.GET.tipo %}&tipo={{ request.GET.tipo }}{% endif %}">
+                                    Anterior
+                                </a>
+                            </li>
+                        {% endif %}
+                        
+                        <li class="page-item active">
+                            <span class="page-link">
+                                Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                            </span>
+                        </li>
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.producto %}&producto={{ request.GET.producto }}{% endif %}{% if request.GET.fecha_desde %}&fecha_desde={{ request.GET.fecha_desde }}{% endif %}{% if request.GET.fecha_hasta %}&fecha_hasta={{ request.GET.fecha_hasta }}{% endif %}{% if request.GET.tipo %}&tipo={{ request.GET.tipo }}{% endif %}">
+                                    Siguiente
+                                </a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.producto %}&producto={{ request.GET.producto }}{% endif %}{% if request.GET.fecha_desde %}&fecha_desde={{ request.GET.fecha_desde }}{% endif %}{% if request.GET.fecha_hasta %}&fecha_hasta={{ request.GET.fecha_hasta }}{% endif %}{% if request.GET.tipo %}&tipo={{ request.GET.tipo }}{% endif %}">
+                                    Última
+                                </a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            {% endif %}
+            
+            <!-- Resumen general -->
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <h5>{{ page_obj.paginator.count }}</h5>
+                            <small>Total Movimientos</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <h5>{{ movimientos_entrada|default:"0" }}</h5>
+                            <small>Entradas</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body text-center">
+                            <h5>{{ movimientos_salida|default:"0" }}</h5>
+                            <small>Salidas</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body text-center">
+                            <h5>{{ movimientos_ajuste|default:"0" }}</h5>
+                            <small>Ajustes</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-list fa-3x text-muted mb-3"></i>
+                <h5>No hay movimientos de inventario</h5>
+                <p class="text-muted">Los movimientos aparecerán cuando realice compras, ventas o ajustes</p>
+                <div>
+                    <a href="{% url 'inventario:compra' %}" class="btn btn-primary me-2">
+                        <i class="fas fa-plus"></i> Registrar Compra
+                    </a>
+                    <a href="{% url 'inventario:ajuste' %}" class="btn btn-warning">
+                        <i class="fas fa-edit"></i> Ajustar Inventario
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

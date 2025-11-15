@@ -1,0 +1,214 @@
+{% extends 'base.html' %}
+
+{% block title %}Crear Proveedor - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-truck"></i> Crear Nuevo Proveedor
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <!-- Información empresarial -->
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-building"></i> Información Empresarial
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <label for="codigo" class="form-label">
+                                    Código <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="codigo" name="codigo" required
+                                       placeholder="Ej: PROV001">
+                                <div class="form-text">Código único del proveedor</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="razon_social" class="form-label">
+                                    Razón Social <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="razon_social" name="razon_social" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="nombre_comercial" class="form-label">
+                                    Nombre Comercial <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="nombre_comercial" name="nombre_comercial" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="rtn" class="form-label">RTN</label>
+                                <input type="text" class="form-control" id="rtn" name="rtn" 
+                                       placeholder="Ej: 08011990123456">
+                            </div>
+                        </div>
+                        
+                        <!-- Información de contacto -->
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-phone"></i> Información de Contacto
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <label for="contacto_principal" class="form-label">Contacto Principal</label>
+                                <input type="text" class="form-control" id="contacto_principal" name="contacto_principal">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="telefono" class="form-label">
+                                    Teléfono <span class="text-danger">*</span>
+                                </label>
+                                <input type="tel" class="form-control" id="telefono" name="telefono" required>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="telefono_secundario" class="form-label">Teléfono Secundario</label>
+                                <input type="tel" class="form-control" id="telefono_secundario" name="telefono_secundario">
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="email" name="email">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="direccion" class="form-label">Dirección</label>
+                        <textarea class="form-control" id="direccion" name="direccion" rows="3"></textarea>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="row">
+                        <!-- Términos comerciales -->
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-handshake"></i> Términos Comerciales
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <label for="dias_credito" class="form-label">Días de Crédito</label>
+                                <input type="number" class="form-control" id="dias_credito" 
+                                       name="dias_credito" min="0" value="0">
+                                <div class="form-text">0 = Solo contado</div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="limite_credito" class="form-label">Límite de Crédito</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="limite_credito" 
+                                           name="limite_credito" step="0.01" min="0" value="0.00">
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="descuento_obtenido" class="form-label">Descuento Obtenido (%)</label>
+                                <input type="number" class="form-control" id="descuento_obtenido" 
+                                       name="descuento_obtenido" step="0.01" min="0" max="100" value="0">
+                            </div>
+                        </div>
+                        
+                        <!-- Configuraciones -->
+                        <div class="col-md-6">
+                            <h6 class="text-primary mb-3">
+                                <i class="fas fa-cog"></i> Configuraciones
+                            </h6>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="activo" name="activo" checked>
+                                    <label class="form-check-label" for="activo">
+                                        Proveedor Activo
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="proveedor_preferido" name="proveedor_preferido">
+                                    <label class="form-check-label" for="proveedor_preferido">
+                                        Proveedor Preferido
+                                    </label>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="observaciones" class="form-label">Observaciones</label>
+                                <textarea class="form-control" id="observaciones" name="observaciones" rows="4"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'proveedores:lista' %}" class="btn btn-secondary me-md-2">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Guardar Proveedor
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Validación del formulario
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const codigo = document.getElementById('codigo').value;
+        const razonSocial = document.getElementById('razon_social').value;
+        const nombreComercial = document.getElementById('nombre_comercial').value;
+        const telefono = document.getElementById('telefono').value;
+        
+        if (!codigo.trim()) {
+            e.preventDefault();
+            alert('El código es obligatorio');
+            document.getElementById('codigo').focus();
+            return false;
+        }
+        
+        if (!razonSocial.trim()) {
+            e.preventDefault();
+            alert('La razón social es obligatoria');
+            document.getElementById('razon_social').focus();
+            return false;
+        }
+        
+        if (!nombreComercial.trim()) {
+            e.preventDefault();
+            alert('El nombre comercial es obligatorio');
+            document.getElementById('nombre_comercial').focus();
+            return false;
+        }
+        
+        if (!telefono.trim()) {
+            e.preventDefault();
+            alert('El teléfono es obligatorio');
+            document.getElementById('telefono').focus();
+            return false;
+        }
+    });
+    
+    // Auto-completar nombre comercial con razón social
+    document.getElementById('razon_social').addEventListener('blur', function() {
+        const nombreComercial = document.getElementById('nombre_comercial');
+        if (!nombreComercial.value && this.value) {
+            nombreComercial.value = this.value;
+        }
+    });
+});
+</script>
+{% endblock %}

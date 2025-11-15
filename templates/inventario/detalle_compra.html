@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Detalle de Compra - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="mb-0">
+                            <i class="fas fa-file-invoice"></i> Compra {{ compra.numero_compra }}
+                        </h5>
+                    </div>
+                    <div class="col-auto">
+                        <a href="{% url 'inventario:compras' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Volver a Compras
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <!-- Información de la Compra -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="fas fa-info-circle"></i> Información General</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-borderless">
+                                    <tr>
+                                        <td><strong>Número de Compra:</strong></td>
+                                        <td>{{ compra.numero_compra }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Factura del Proveedor:</strong></td>
+                                        <td>{{ compra.numero_factura_proveedor|default:"N/A" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Fecha de Compra:</strong></td>
+                                        <td>{{ compra.fecha|date:"d/m/Y H:i" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Fecha de Factura:</strong></td>
+                                        <td>{{ compra.fecha_factura|date:"d/m/Y" }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Proveedor:</strong></td>
+                                        <td>{{ compra.proveedor.nombre_comercial }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Tipo de Pago:</strong></td>
+                                        <td>{{ compra.get_tipo_pago_display }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Estado:</strong></td>
+                                        <td>
+                                            <span class="badge 
+                                                {% if compra.estado == 'completada' %}bg-success
+                                                {% elif compra.estado == 'pendiente' %}bg-warning
+                                                {% elif compra.estado == 'anulada' %}bg-danger
+                                                {% else %}bg-info{% endif %}">
+                                                {{ compra.get_estado_display }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Usuario:</strong></td>
+                                        <td>{{ compra.usuario.get_full_name|default:compra.usuario.username }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0"><i class="fas fa-calculator"></i> Resumen Financiero</h6>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-borderless">
+                                    <tr>
+                                        <td><strong>Subtotal:</strong></td>
+                                        <td class="text-end">${{ compra.subtotal|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Descuento:</strong></td>
+                                        <td class="text-end">-${{ compra.descuento|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Impuesto (IVA):</strong></td>
+                                        <td class="text-end">${{ compra.impuesto|floatformat:2 }}</td>
+                                    </tr>
+                                    <tr class="table-primary">
+                                        <td><strong>Total:</strong></td>
+                                        <td class="text-end"><strong>${{ compra.total|floatformat:2 }}</strong></td>
+                                    </tr>
+                                    {% if compra.saldo_pendiente > 0 %}
+                                    <tr class="table-warning">
+                                        <td><strong>Saldo Pendiente:</strong></td>
+                                        <td class="text-end"><strong>${{ compra.saldo_pendiente|floatformat:2 }}</strong></td>
+                                    </tr>
+                                    {% endif %}
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Productos de la Compra -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-boxes"></i> Productos Comprados</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Producto</th>
+                                        <th class="text-center">Cantidad</th>
+                                        <th class="text-end">Precio Unit.</th>
+                                        <th class="text-end">Descuento</th>
+                                        <th class="text-end">Subtotal</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for detalle in compra.detalles.all %}
+                                    <tr>
+                                        <td>{{ detalle.producto.codigo_principal|default:"S/C" }}</td>
+                                        <td>
+                                            <strong>{{ detalle.producto.nombre }}</strong>
+                                            {% if detalle.producto.descripcion %}
+                                            <br><small class="text-muted">{{ detalle.producto.descripcion|truncatechars:50 }}</small>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">{{ detalle.cantidad }}</td>
+                                        <td class="text-end">${{ detalle.precio_unitario|floatformat:2 }}</td>
+                                        <td class="text-end">${{ detalle.descuento_linea|floatformat:2 }}</td>
+                                        <td class="text-end"><strong>${{ detalle.subtotal|floatformat:2 }}</strong></td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted">No hay productos en esta compra</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Observaciones -->
+                {% if compra.observaciones %}
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-comment"></i> Observaciones</h6>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">{{ compra.observaciones }}</p>
+                    </div>
+                </div>
+                {% endif %}
+                
+                <!-- Historial de Pagos -->
+                {% if compra.pagos.exists %}
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-money-bill"></i> Historial de Pagos</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Método</th>
+                                        <th class="text-end">Monto</th>
+                                        <th>Referencia</th>
+                                        <th>Usuario</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for pago in compra.pagos.all %}
+                                    <tr>
+                                        <td>{{ pago.fecha|date:"d/m/Y H:i" }}</td>
+                                        <td>{{ pago.get_metodo_pago_display }}</td>
+                                        <td class="text-end">${{ pago.monto|floatformat:2 }}</td>
+                                        <td>{{ pago.referencia|default:"N/A" }}</td>
+                                        <td>{{ pago.usuario.get_full_name|default:pago.usuario.username }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

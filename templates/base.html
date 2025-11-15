@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Sistema POS{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    {% load static %}
+    <link href="{% static 'css/custom.css' %}" rel="stylesheet">
+    
+    <!-- Navbar Dropdown Fix -->
+    <style>
+        /* Asegurar que los dropdowns no se salgan del viewport */
+        .navbar .dropdown-menu {
+            max-width: 300px;
+            min-width: 200px;
+        }
+        
+        .navbar .dropdown-menu-end {
+            right: 0 !important;
+            left: auto !important;
+        }
+        
+        /* Responsive dropdown positioning */
+        @media (max-width: 768px) {
+            .navbar .dropdown-menu {
+                position: static !important;
+                transform: none !important;
+                border: none;
+                box-shadow: none;
+                background-color: rgba(0, 0, 0, 0.05);
+                margin-top: 0.5rem;
+            }
+        }
+        
+        /* Fix para evitar overflow en dropdowns largos */
+        .navbar .dropdown-menu {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        /* Estilos para el modal de logout */
+        #logoutModal .modal-content {
+            border-radius: 15px;
+            overflow: hidden;
+        }
+        
+        #logoutModal .modal-header {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            padding: 1rem 1.5rem;
+        }
+        
+        #logoutModal .modal-body {
+            background: linear-gradient(145deg, #f8f9fa 0%, #ffffff 100%);
+        }
+        
+        #logoutModal .modal-footer {
+            background: #f8f9fa;
+            padding: 1rem 1.5rem;
+        }
+        
+        #logoutModal .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            border: none;
+            transition: all 0.3s ease;
+        }
+        
+        #logoutModal .btn-danger:hover {
+            background: linear-gradient(135deg, #c82333 0%, #a71e2a 100%);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(220, 53, 69, 0.3);
+        }
+        
+        #logoutModal .btn-secondary {
+            transition: all 0.3s ease;
+        }
+        
+        #logoutModal .btn-secondary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(108, 117, 125, 0.3);
+        }
+        
+        /* Animación del modal */
+        #logoutModal.fade .modal-dialog {
+            transform: translate(0, -50px);
+            transition: transform 0.3s ease-out;
+        }
+        
+        #logoutModal.show .modal-dialog {
+            transform: translate(0, 0);
+        }
+        
+        /* Padding superior para compensar navbar fijo */
+        body {
+            padding-top: 56px; /* Altura aproximada del navbar */
+        }
+        
+        /* Ocultar menú horizontal cuando está en modo vertical */
+        {% if tipo_menu == 'vertical' %}
+        .navbar-nav.me-auto {
+            display: none !important;
+        }
+        
+        /* Asegurar que el contenido sea responsive */
+        .content-with-sidebar .container-fluid {
+            max-width: 100%;
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+        
+        .content-with-sidebar .card {
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        
+        .content-with-sidebar table {
+            max-width: 100%;
+        }
+        
+        /* Ajustes para formularios */
+        .content-with-sidebar .form-control,
+        .content-with-sidebar .form-select {
+            max-width: 100%;
+        }
+        
+        /* Responsive para tablas */
+        @media (max-width: 768px) {
+            .content-with-sidebar .table-responsive {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+        }
+        {% endif %}
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Menú Vertical (si está configurado) -->
+    {% if tipo_menu == 'vertical' and user.is_authenticated %}
+        {% include 'includes/menu_vertical.html' %}
+    {% endif %}
+    
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary fixed-top" style="z-index: 1050;">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'usuarios:dashboard' %}">
+                <i class="fas fa-cash-register"></i> Sistema POS
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                {% if user.is_authenticated %}
+                <ul class="navbar-nav me-auto">
+                    <!-- Menú Productos -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-box"></i> Productos
+                        </a>
+                        <ul class="dropdown-menu">
+                            <!-- Gestión de Productos -->
+                            <li><h6 class="dropdown-header">Gestión de Productos</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'productos:lista' %}">
+                                <i class="fas fa-th-list"></i> Ver Productos
+                            </a></li>
+                            <!-- <li><a class="dropdown-item" href="{% url 'productos:lista_simple' %}">
+                                <i class="fas fa-database"></i> Ver Productos (MySQL)
+                            </a></li> -->
+                            <li><a class="dropdown-item" href="{% url 'productos:crear' %}">
+                                <i class="fas fa-plus-circle"></i> Nuevo Producto
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Ubicaciones -->
+                            <li><h6 class="dropdown-header">Ubicaciones</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'productos:ubicaciones_productos' %}">
+                                <i class="fas fa-map-marker-alt"></i> Ubicaciones en Perchas
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Clasificación -->
+                            <li><h6 class="dropdown-header">Clasificación</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'productos:categorias' %}">
+                                <i class="fas fa-tags"></i> Categorías
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'productos:marcas' %}">
+                                <i class="fas fa-award"></i> Marcas
+                            </a></li>
+                        </ul>
+                    </li>
+                    
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-shopping-cart"></i> Ventas
+                        </a>
+                        <ul class="dropdown-menu">
+                            <!-- Punto de Venta -->
+                            <li><h6 class="dropdown-header">Punto de Venta</h6></li>
+                            <li><a class="dropdown-item punto-venta-destacado" href="{% url 'ventas:crear' %}">
+                                <i class="fas fa-cash-register text-success"></i> Punto de Venta
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Gestión de Ventas -->
+                            <li><h6 class="dropdown-header">Gestión de Ventas</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'ventas:lista' %}">
+                                <i class="fas fa-list-alt"></i> Ver Ventas
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'ventas:devoluciones' %}">
+                                <i class="fas fa-undo"></i> Devoluciones
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Facturación -->
+                            <li><h6 class="dropdown-header">Facturación</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'ventas:facturas_electronicas' %}">
+                                <i class="fas fa-file-invoice-dollar"></i> Facturas Electrónicas
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'ventas:ingreso_productos' %}">
+                                <i class="fas fa-box-open"></i> Ingreso de Productos
+                            </a></li>
+                        </ul>
+                    </li>
+                    
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-file-contract"></i> Cotizaciones
+                        </a>
+                        <ul class="dropdown-menu">
+                            <!-- Gestión de Cotizaciones -->
+                            <li><h6 class="dropdown-header">Gestión de Cotizaciones</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'cotizaciones:lista' %}">
+                                <i class="fas fa-list-alt"></i> Ver Cotizaciones
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'cotizaciones:crear' %}">
+                                <i class="fas fa-plus-circle"></i> Nueva Cotización
+                            </a></li>
+                        </ul>
+                    </li>
+                    
+                    <!-- Menús adicionales del sistema -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-users"></i> Clientes
+                        </a>
+                        <ul class="dropdown-menu">
+                            <!-- Gestión de Clientes -->
+                            <li><h6 class="dropdown-header">Gestión de Clientes</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'clientes:lista' %}">
+                                <i class="fas fa-list-alt"></i> Ver Clientes
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'clientes:crear' %}">
+                                <i class="fas fa-user-plus"></i> Nuevo Cliente
+                            </a></li>
+                        </ul>
+                    </li>
+
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-truck"></i> Proveedores
+                        </a>
+                        <ul class="dropdown-menu">
+                            <!-- Gestión de Proveedores -->
+                            <li><h6 class="dropdown-header">Gestión de Proveedores</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'proveedores:lista' %}">
+                                <i class="fas fa-list-alt"></i> Ver Proveedores
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'proveedores:crear' %}">
+                                <i class="fas fa-plus-circle"></i> Nuevo Proveedor
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Órdenes de Compra -->
+                            <li><h6 class="dropdown-header">Órdenes de Compra</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'proveedores:lista_ordenes' %}">
+                                <i class="fas fa-file-invoice"></i> Ver Órdenes
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'proveedores:crear_orden' %}">
+                                <i class="fas fa-plus-square"></i> Nueva Orden
+                            </a></li>
+                        </ul>
+                    </li>
+                    
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-warehouse"></i> Inventario
+                        </a>
+                        <ul class="dropdown-menu">
+                            <!-- Gestión de Stock -->
+                            <li><h6 class="dropdown-header">Gestión de Stock</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'inventario:kardex' %}">
+                                <i class="fas fa-list-alt"></i> Kardex
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'inventario:ajustes' %}">
+                                <i class="fas fa-balance-scale"></i> Ajustes de Inventario
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'inventario:configuracion_stock' %}">
+                                <i class="fas fa-cog"></i> Configuración de Stock
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Compras y Órdenes -->
+                            <li><h6 class="dropdown-header">Compras y Órdenes</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'inventario:compras' %}">
+                                <i class="fas fa-shopping-cart"></i> Compras
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'inventario:lista_ordenes_compra' %}">
+                                <i class="fas fa-file-invoice"></i> Órdenes de Compra (PO)
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'inventario:crear_orden_compra' %}">
+                                <i class="fas fa-plus-circle"></i> Nueva Orden de Compra
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Transferencias -->
+                            <li><h6 class="dropdown-header">Transferencias</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'inventario:lista_transferencias' %}">
+                                <i class="fas fa-exchange-alt"></i> Transferencias de Stock
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'inventario:crear_transferencia' %}">
+                                <i class="fas fa-arrow-right"></i> Nueva Transferencia
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'inventario:ubicaciones' %}">
+                                <i class="fas fa-map-marker-alt"></i> Gestionar Ubicaciones
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Reportes -->
+                            <li><h6 class="dropdown-header">Reportes</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'inventario:reportes' %}">
+                                <i class="fas fa-chart-line"></i> Reportes de Inventario
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'inventario:reporte_productos_caducados' %}">
+                                <i class="fas fa-exclamation-triangle text-warning"></i> Productos Caducados
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'inventario:inventario_valorado' %}">
+                                <i class="fas fa-dollar-sign"></i> Inventario Valorado
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Automatización -->
+                            <li><a class="dropdown-item" href="{% url 'inventario:generar_ordenes_automaticas' %}" 
+                               onclick="return confirm('¿Generar órdenes automáticas basadas en stock mínimo?')">
+                                <i class="fas fa-magic text-warning"></i> Generar Órdenes Automáticas
+                            </a></li>
+                        </ul>
+                    </li>
+                    
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-cash-register"></i> Caja
+                        </a>
+                        <ul class="dropdown-menu">
+                            <!-- Gestión de Cajas -->
+                            <li><h6 class="dropdown-header">Gestión de Cajas</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'caja:lista' %}">
+                                <i class="fas fa-cogs"></i> Gestión de Cajas
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Operaciones de Caja -->
+                            <li><h6 class="dropdown-header">Operaciones de Caja</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'caja:estado' %}">
+                                <i class="fas fa-eye"></i> Estado de Caja
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'caja:movimientos' %}">
+                                <i class="fas fa-exchange-alt"></i> Movimientos
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'caja:aperturas' %}">
+                                <i class="fas fa-unlock"></i> Aperturas
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'caja:cierres' %}">
+                                <i class="fas fa-lock"></i> Cierres
+                            </a></li>
+                        </ul>
+                    </li>
+                    
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-calculator"></i> Contabilidad
+                        </a>
+                        <ul class="dropdown-menu">
+                            <!-- Dashboard -->
+                            <li><h6 class="dropdown-header">Dashboard</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'contabilidad:dashboard' %}">
+                                <i class="fas fa-tachometer-alt"></i> Dashboard
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Cuentas -->
+                            <li><h6 class="dropdown-header">Cuentas</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'contabilidad:cuentas_por_cobrar' %}">
+                                <i class="fas fa-coins"></i> Cuentas por Cobrar
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'contabilidad:cuentas_por_pagar' %}">
+                                <i class="fas fa-credit-card"></i> Cuentas por Pagar
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Finanzas -->
+                            <li><h6 class="dropdown-header">Finanzas</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'contabilidad:flujo_caja' %}">
+                                <i class="fas fa-chart-line"></i> Flujo de Caja
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'contabilidad:conciliacion_bancaria' %}">
+                                <i class="fas fa-university"></i> Conciliación Bancaria
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'contabilidad:control_gastos' %}">
+                                <i class="fas fa-receipt"></i> Control de Gastos
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Reportes -->
+                            <li><h6 class="dropdown-header">Reportes</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'contabilidad:reportes_contables' %}">
+                                <i class="fas fa-file-alt"></i> Reportes Contables
+                            </a></li>
+                        </ul>
+                    </li>
+                    
+                    <!-- Menú Usuarios -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-users"></i> Usuarios
+                        </a>
+                        <ul class="dropdown-menu">
+                            <!-- Gestión de Usuarios -->
+                            <li><h6 class="dropdown-header">Gestión de Usuarios</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'usuarios:lista_usuarios' %}">
+                                <i class="fas fa-list"></i> Lista de Usuarios
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'usuarios:crear_usuario' %}">
+                                <i class="fas fa-user-plus"></i> Crear Usuario
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Gestión de Roles -->
+                            <li><h6 class="dropdown-header">Roles y Permisos</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'usuarios:lista_roles' %}">
+                                <i class="fas fa-user-tag"></i> Lista de Roles
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'usuarios:crear_rol' %}">
+                                <i class="fas fa-plus-circle"></i> Crear Rol
+                            </a></li>
+                        </ul>
+                    </li>
+
+                    <!-- Menú Reportes -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-chart-bar"></i> Reportes
+                        </a>
+                        <ul class="dropdown-menu">
+                            <!-- Dashboard de Reportes -->
+                            <li><h6 class="dropdown-header">Centro de Reportes</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'reportes:dashboard' %}">
+                                <i class="fas fa-tachometer-alt"></i> Dashboard Reportes
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'reportes:estadisticas' %}">
+                                <i class="fas fa-chart-line"></i> Estadísticas del Sistema
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Exportaciones -->
+                            <li><h6 class="dropdown-header">Exportar Datos</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'reportes:exportar_productos' %}?formato=csv">
+                                <i class="fas fa-pills"></i> Exportar Productos
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'reportes:exportar_clientes' %}?formato=csv">
+                                <i class="fas fa-users"></i> Exportar Clientes
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'reportes:exportar_proveedores' %}?formato=csv">
+                                <i class="fas fa-truck"></i> Exportar Proveedores
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <!-- Indicador de estado de caja -->
+                    {% if user.is_authenticated %}
+                    <li class="nav-item me-3">
+                        {% if caja_abierta %}
+                        <a class="nav-link" href="{% url 'caja:estado' %}" title="Caja Abierta">
+                            <span class="badge bg-success">
+                                <i class="fas fa-unlock"></i> Caja Abierta
+                            </span>
+                        </a>
+                        {% else %}
+                        <a class="nav-link" href="{% url 'caja:abrir' %}" title="Abrir Caja">
+                            <span class="badge bg-secondary">
+                                <i class="fas fa-lock"></i> Caja Cerrada
+                            </span>
+                        </a>
+                        {% endif %}
+                    </li>
+                    {% endif %}
+                </ul>
+                
+                <!-- User Menu - Aligned to right -->
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i> {{ user.get_full_name|default:user.username }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <!-- Perfil de Usuario -->
+                            <li><h6 class="dropdown-header">Perfil de Usuario</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'usuarios:perfil' %}">
+                                <i class="fas fa-user-edit"></i> Mi Perfil
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Configuración -->
+                            <li><h6 class="dropdown-header">Configuración</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'usuarios:configuracion_empresa' %}">
+                                <i class="fas fa-building"></i> Configuración Empresa
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Sesión -->
+                            <li>
+                                <a class="dropdown-item" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">
+                                    <i class="fas fa-sign-out-alt text-danger"></i> Cerrar Sesión
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid pt-3 {% if tipo_menu == 'vertical' %}content-with-sidebar{% endif %}">
+        <!-- Breadcrumb -->
+        {% block breadcrumb %}{% endblock %}
+        
+        <!-- Messages -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        <!-- Page Header -->
+        {% block page_header %}
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3">{% block page_title %}{{ titulo }}{% endblock %}</h1>
+                {% block page_actions %}{% endblock %}
+            </div>
+        {% endblock %}
+        
+        <!-- Content -->
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Modal de Logout -->
+    <div class="modal fade" id="logoutModal" tabindex="-1" aria-labelledby="logoutModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header bg-gradient-danger text-white border-0">
+                    <h5 class="modal-title" id="logoutModalLabel">
+                        <i class="fas fa-sign-out-alt me-2"></i>Cerrar Sesión
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <div class="mb-3">
+                        <i class="fas fa-user-circle text-primary" style="font-size: 3rem;"></i>
+                    </div>
+                    
+                    {% if user.is_authenticated %}
+                        <h6 class="mb-2">{{ user.get_full_name|default:user.username }}</h6>
+                        <p class="text-muted small mb-3">
+                            {% if user.usuario_sistema_id %}
+                                <i class="fas fa-user-tag me-1"></i>
+                                <span id="userRole">{{ user.rol_nombre|default:"Usuario" }}</span>
+                            {% endif %}
+                        </p>
+                    {% endif %}
+                    
+                    <p class="text-dark mb-4">
+                        <i class="fas fa-question-circle text-warning me-2"></i>
+                        ¿Estás seguro de que deseas cerrar tu sesión?
+                    </p>
+                    
+                    <div class="alert alert-info py-2 mb-0" role="alert">
+                        <small>
+                            <i class="fas fa-info-circle me-1"></i>
+                            Tu sesión se cerrará de forma segura y serás redirigido al login.
+                        </small>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 justify-content-center">
+                    <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-2"></i>Cancelar
+                    </button>
+                    <a href="{% url 'usuarios:logout' %}" class="btn btn-danger px-4">
+                        <i class="fas fa-sign-out-alt me-2"></i>Sí, Cerrar Sesión
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="{% static 'js/custom.js' %}"></script>
+    
+    <!-- Sistema Offline POS -->
+    <script src="{% static 'js/offline-manager.js' %}"></script>
+    
+    <!-- Script para el modal de logout -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Actualizar información del usuario en el modal cuando se abre
+            const logoutModal = document.getElementById('logoutModal');
+            if (logoutModal) {
+                logoutModal.addEventListener('show.bs.modal', function() {
+                    // Agregar efecto de sonido (opcional)
+                    // new Audio('/static/sounds/notification.mp3').play().catch(() => {});
+                    
+                    // Obtener información actualizada del usuario si es necesario
+                    {% if user.is_authenticated and user.usuario_sistema_id %}
+                        fetch('{% url "usuarios:usuario_info" %}')
+                            .then(response => response.json())
+                            .then(data => {
+                                if (data.success) {
+                                    const roleElement = document.getElementById('userRole');
+                                    if (roleElement && data.usuario.rol) {
+                                        roleElement.textContent = data.usuario.rol;
+                                    }
+                                }
+                            })
+                            .catch(() => {
+                                // Silenciar errores - no es crítico
+                            });
+                    {% endif %}
+                });
+                
+                // Agregar efecto al confirmar logout
+                const logoutBtn = logoutModal.querySelector('a[href*="logout"]');
+                if (logoutBtn) {
+                    logoutBtn.addEventListener('click', function(e) {
+                        // Mostrar loading en el botón
+                        this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Cerrando sesión...';
+                        this.classList.add('disabled');
+                        
+                        // Pequeño delay para mejor UX
+                        setTimeout(() => {
+                            window.location.href = this.href;
+                        }, 500);
+                        
+                        e.preventDefault();
+                    });
+                }
+            }
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

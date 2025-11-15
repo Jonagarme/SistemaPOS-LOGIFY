@@ -1,0 +1,525 @@
+{% extends 'base.html' %}
+
+{% block title %}Inventario Valorado - Sistema POS{% endblock %}
+
+{% block page_title %}Inventario Valorado{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-dollar-sign"></i> Inventario Valorado
+                    </h5>
+                    {% if page_obj.has_other_pages %}
+                        <small class="text-muted">
+                            Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }} 
+                            ({{ page_obj.start_index }}-{{ page_obj.end_index }} de {{ page_obj.paginator.count }} productos)
+                        </small>
+                    {% endif %}
+                </div>
+                <div>
+                    <button class="btn btn-success btn-sm" onclick="exportarExcel()">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </button>
+                    <button class="btn btn-primary btn-sm" onclick="imprimirReporte()">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Resumen Total -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card border-primary">
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-primary">
+                                    <i class="fas fa-boxes"></i> Total Productos
+                                </h5>
+                                <h3>{{ total_productos }}</h3>
+                                <small class="text-muted">En toda la base de datos</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-info">
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-info">
+                                    <i class="fas fa-file-alt"></i> Esta Página
+                                </h5>
+                                <h3>{{ productos|length }}</h3>
+                                <small class="text-muted">Productos mostrados</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-success">
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-success">
+                                    <i class="fas fa-cubes"></i> Total Unidades
+                                </h5>
+                                <h3 id="total-unidades">--</h3>
+                                <small class="text-muted">En esta página</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card border-warning">
+                            <div class="card-body text-center">
+                                <h5 class="card-title text-warning">
+                                    <i class="fas fa-dollar-sign"></i> Valor Página
+                                </h5>
+                                <h3 id="valor-total">--</h3>
+                                <small class="text-muted">Valor en esta página</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filtros -->
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Buscar Producto</label>
+                        <input type="text" class="form-control" id="buscarProducto" placeholder="Nombre o código del producto" value="{{ request.GET.buscar }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Categoría</label>
+                        <select class="form-control" id="filtroCategoria">
+                            <option value="">Todas las categorías</option>
+                            <!-- Se llenarán dinámicamente -->
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Ordenar por</label>
+                        <select class="form-control" id="ordenar">
+                            <option value="nombre" {% if request.GET.ordenar == 'nombre' %}selected{% endif %}>Nombre</option>
+                            <option value="stock" {% if request.GET.ordenar == 'stock' %}selected{% endif %}>Stock</option>
+                            <option value="valor" {% if request.GET.ordenar == 'valor' %}selected{% endif %}>Valor Total</option>
+                            <option value="codigo" {% if request.GET.ordenar == 'codigo' %}selected{% endif %}>Código</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Por página</label>
+                        <select class="form-control" id="porPagina">
+                            <option value="25" {% if productos_por_pagina == 25 %}selected{% endif %}>25</option>
+                            <option value="50" {% if productos_por_pagina == 50 %}selected{% endif %}>50</option>
+                            <option value="100" {% if productos_por_pagina == 100 %}selected{% endif %}>100</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">&nbsp;</label>
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-primary" onclick="aplicarFiltros()">
+                                <i class="fas fa-filter"></i> Filtrar
+                            </button>
+                            <button class="btn btn-secondary" onclick="limpiarFiltros()">
+                                <i class="fas fa-times"></i> Limpiar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabla de Inventario -->
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="tablaInventario">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Código</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th class="text-end">Stock</th>
+                                <th class="text-end">Costo Unit.</th>
+                                <th class="text-end">Precio Venta</th>
+                                <th class="text-end">Valor Total</th>
+                                <th class="text-end">Margen</th>
+                                <th>Estado Stock</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for producto in productos %}
+                            <tr data-producto="{{ producto.id }}" 
+                                data-stock="{{ producto.stock }}" 
+                                data-costo="{{ producto.costo_unidad }}" 
+                                data-precio="{{ producto.precio_venta }}">
+                                <td>
+                                    <code>{{ producto.codigo_principal|default:"N/A" }}</code>
+                                </td>
+                                <td>
+                                    <strong>{{ producto.nombre }}</strong>
+                                    {% if producto.descripcion %}
+                                        <br><small class="text-muted">{{ producto.descripcion|truncatechars:50 }}</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if producto.id_categoria %}
+                                        <span class="badge bg-secondary">{{ producto.id_categoria.nombre }}</span>
+                                    {% else %}
+                                        <span class="text-muted">Sin categoría</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end">
+                                    <span class="badge {% if producto.stock <= producto.stock_minimo %}bg-danger{% elif producto.stock <= producto.stock_minimo|add:'10' %}bg-warning{% else %}bg-success{% endif %}">
+                                        {{ producto.stock|floatformat:2 }}
+                                    </span>
+                                </td>
+                                <td class="text-end">
+                                    ${{ producto.costo_unidad|floatformat:2 }}
+                                </td>
+                                <td class="text-end">
+                                    ${{ producto.precio_venta|floatformat:2 }}
+                                </td>
+                                <td class="text-end">
+                                    <strong id="valor-{{ producto.id }}">$0.00</strong>
+                                </td>
+                                <td class="text-end">
+                                    <span id="margen-{{ producto.id }}" class="badge bg-secondary">N/A</span>
+                                </td>
+                                <td>
+                                    {% if producto.stock <= 0 %}
+                                        <span class="badge bg-danger">Sin Stock</span>
+                                    {% elif producto.stock <= producto.stock_minimo %}
+                                        <span class="badge bg-warning">Bajo Stock</span>
+                                    {% else %}
+                                        <span class="badge bg-success">Normal</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="9" class="text-center py-5">
+                                    <div class="text-muted">
+                                        <i class="fas fa-search fa-3x mb-3"></i>
+                                        <h5>No se encontraron productos</h5>
+                                        {% if request.GET.buscar or request.GET.categoria %}
+                                            <p>Intenta modificar los filtros de búsqueda.</p>
+                                            <button class="btn btn-outline-primary" onclick="limpiarFiltros()">
+                                                <i class="fas fa-times"></i> Limpiar Filtros
+                                            </button>
+                                        {% else %}
+                                            <p>No hay productos con stock disponible.</p>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                {% if page_obj.has_other_pages %}
+                <nav aria-label="Paginación de inventario" class="mt-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <p class="text-muted mb-0">
+                                Mostrando {{ page_obj.start_index }} - {{ page_obj.end_index }} de {{ page_obj.paginator.count }} productos
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <ul class="pagination justify-content-end mb-0">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=1{% if request.GET.buscar %}&buscar={{ request.GET.buscar }}{% endif %}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.ordenar %}&ordenar={{ request.GET.ordenar }}{% endif %}">
+                                            <i class="fas fa-angle-double-left"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.buscar %}&buscar={{ request.GET.buscar }}{% endif %}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.ordenar %}&ordenar={{ request.GET.ordenar }}{% endif %}">
+                                            <i class="fas fa-angle-left"></i>
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link"><i class="fas fa-angle-double-left"></i></span>
+                                    </li>
+                                    <li class="page-item disabled">
+                                        <span class="page-link"><i class="fas fa-angle-left"></i></span>
+                                    </li>
+                                {% endif %}
+
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                        <li class="page-item active">
+                                            <span class="page-link">{{ num }}</span>
+                                        </li>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}{% if request.GET.buscar %}&buscar={{ request.GET.buscar }}{% endif %}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.ordenar %}&ordenar={{ request.GET.ordenar }}{% endif %}">{{ num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.buscar %}&buscar={{ request.GET.buscar }}{% endif %}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.ordenar %}&ordenar={{ request.GET.ordenar }}{% endif %}">
+                                            <i class="fas fa-angle-right"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.buscar %}&buscar={{ request.GET.buscar }}{% endif %}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.ordenar %}&ordenar={{ request.GET.ordenar }}{% endif %}">
+                                            <i class="fas fa-angle-double-right"></i>
+                                        </a>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item disabled">
+                                        <span class="page-link"><i class="fas fa-angle-right"></i></span>
+                                    </li>
+                                    <li class="page-item disabled">
+                                        <span class="page-link"><i class="fas fa-angle-double-right"></i></span>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </div>
+                    </div>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    calcularValoresProductos();
+    calcularTotales();
+    inicializarFiltros();
+});
+
+function calcularValoresProductos() {
+    const filas = document.querySelectorAll('#tablaInventario tbody tr[data-producto]');
+    filas.forEach(function(fila) {
+        const stock = parseFloat(fila.dataset.stock) || 0;
+        const costo = parseFloat(fila.dataset.costo) || 0;
+        const precio = parseFloat(fila.dataset.precio) || 0;
+        const productoId = fila.dataset.producto;
+        
+        // Calcular valor total
+        const valorTotal = stock * costo;
+        const valorElement = document.getElementById('valor-' + productoId);
+        if (valorElement) {
+            valorElement.textContent = '$' + valorTotal.toLocaleString('es-ES', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        }
+        
+        // Calcular margen
+        const margenElement = document.getElementById('margen-' + productoId);
+        if (margenElement && costo > 0) {
+            const margen = ((precio - costo) / costo) * 100;
+            margenElement.textContent = margen.toFixed(1) + '%';
+            
+            // Aplicar color según margen
+            margenElement.className = 'badge ';
+            if (margen > 50) {
+                margenElement.className += 'bg-success';
+            } else if (margen > 20) {
+                margenElement.className += 'bg-warning';
+            } else {
+                margenElement.className += 'bg-danger';
+            }
+        }
+    });
+}
+
+function calcularTotales() {
+    let totalUnidades = 0;
+    let valorTotal = 0;
+    
+    const filas = document.querySelectorAll('#tablaInventario tbody tr[data-producto]');
+    filas.forEach(function(fila) {
+        const stock = parseFloat(fila.dataset.stock) || 0;
+        const costo = parseFloat(fila.dataset.costo) || 0;
+        
+        totalUnidades += stock;
+        valorTotal += stock * costo;
+    });
+    
+    document.getElementById('total-unidades').textContent = totalUnidades.toLocaleString('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+    
+    document.getElementById('valor-total').textContent = '$' + valorTotal.toLocaleString('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+function inicializarFiltros() {
+    // Filtro de búsqueda en tiempo real
+    const buscarInput = document.getElementById('buscarProducto');
+    buscarInput.addEventListener('input', function() {
+        filtrarTabla();
+    });
+    
+    // Filtro de categoría
+    const categoriasSelect = document.getElementById('filtroCategoria');
+    const categorias = new Set();
+    
+    // Extraer categorías únicas de la tabla
+    document.querySelectorAll('#tablaInventario tbody tr[data-producto] td:nth-child(3) .badge').forEach(function(badge) {
+        if (badge.textContent.trim() !== 'Sin categoría') {
+            categorias.add(badge.textContent.trim());
+        }
+    });
+    
+    // Llenar select de categorías
+    categorias.forEach(function(categoria) {
+        const option = document.createElement('option');
+        option.value = categoria;
+        option.textContent = categoria;
+        categoriasSelect.appendChild(option);
+    });
+}
+
+function filtrarTabla() {
+    const buscar = document.getElementById('buscarProducto').value.toLowerCase();
+    const categoria = document.getElementById('filtroCategoria').value;
+    
+    const filas = document.querySelectorAll('#tablaInventario tbody tr[data-producto]');
+    
+    filas.forEach(function(fila) {
+        const nombre = fila.cells[1].textContent.toLowerCase();
+        const codigo = fila.cells[0].textContent.toLowerCase();
+        const categoriaProducto = fila.cells[2].textContent.trim();
+        
+        const coincideBusqueda = nombre.includes(buscar) || codigo.includes(buscar);
+        const coincideCategoria = !categoria || categoriaProducto.includes(categoria);
+        
+        if (coincideBusqueda && coincideCategoria) {
+            fila.style.display = '';
+        } else {
+            fila.style.display = 'none';
+        }
+    });
+    
+    // Recalcular totales con productos filtrados
+    calcularTotalesVisibles();
+}
+
+function calcularTotalesVisibles() {
+    let totalUnidades = 0;
+    let valorTotal = 0;
+    let totalProductos = 0;
+    
+    const filas = document.querySelectorAll('#tablaInventario tbody tr[data-producto]');
+    filas.forEach(function(fila) {
+        if (fila.style.display !== 'none') {
+            const stock = parseFloat(fila.dataset.stock) || 0;
+            const costo = parseFloat(fila.dataset.costo) || 0;
+            
+            totalUnidades += stock;
+            valorTotal += stock * costo;
+            totalProductos++;
+        }
+    });
+    
+    document.getElementById('total-productos').textContent = totalProductos;
+    document.getElementById('total-unidades').textContent = totalUnidades.toLocaleString('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+    
+    document.getElementById('valor-total').textContent = '$' + valorTotal.toLocaleString('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+    });
+}
+
+function aplicarFiltros() {
+    const buscar = document.getElementById('buscarProducto').value;
+    const categoria = document.getElementById('filtroCategoria').value;
+    const ordenar = document.getElementById('ordenar').value;
+    const porPagina = document.getElementById('porPagina').value;
+    
+    // Construir URL con parámetros
+    let url = window.location.pathname + '?';
+    const params = [];
+    
+    if (buscar) params.push('buscar=' + encodeURIComponent(buscar));
+    if (categoria) params.push('categoria=' + encodeURIComponent(categoria));
+    if (ordenar) params.push('ordenar=' + encodeURIComponent(ordenar));
+    if (porPagina) params.push('por_pagina=' + encodeURIComponent(porPagina));
+    
+    url += params.join('&');
+    
+    // Redireccionar con filtros
+    window.location.href = url;
+}
+
+function limpiarFiltros() {
+    window.location.href = window.location.pathname;
+}
+
+function ordenarTabla() {
+    const orden = document.getElementById('ordenar').value;
+    const tbody = document.querySelector('#tablaInventario tbody');
+    const filas = Array.from(tbody.querySelectorAll('tr[data-producto]'));
+    
+    filas.sort(function(a, b) {
+        let valorA, valorB;
+        
+        switch(orden) {
+            case 'nombre':
+                valorA = a.cells[1].textContent.toLowerCase();
+                valorB = b.cells[1].textContent.toLowerCase();
+                return valorA.localeCompare(valorB);
+                
+            case 'stock':
+                valorA = parseFloat(a.dataset.stock) || 0;
+                valorB = parseFloat(b.dataset.stock) || 0;
+                return valorB - valorA; // Descendente
+                
+            case 'valor':
+                valorA = parseFloat(a.dataset.stock) * parseFloat(a.dataset.costo) || 0;
+                valorB = parseFloat(b.dataset.stock) * parseFloat(b.dataset.costo) || 0;
+                return valorB - valorA; // Descendente
+                
+            case 'codigo':
+                valorA = a.cells[0].textContent.toLowerCase();
+                valorB = b.cells[0].textContent.toLowerCase();
+                return valorA.localeCompare(valorB);
+                
+            default:
+                return 0;
+        }
+    });
+    
+    // Reordenar las filas en el DOM
+    filas.forEach(function(fila) {
+        tbody.appendChild(fila);
+    });
+}
+
+function exportarExcel() {
+    alert('Función en desarrollo: Exportar a Excel');
+    // Aquí se implementaría la exportación a Excel
+}
+
+function imprimirReporte() {
+    window.print();
+}
+</script>
+
+<style>
+@media print {
+    .btn, .card-header .btn-group {
+        display: none !important;
+    }
+    
+    .card {
+        border: none !important;
+        box-shadow: none !important;
+    }
+    
+    .table {
+        font-size: 12px;
+    }
+}
+</style>
+{% endblock %}

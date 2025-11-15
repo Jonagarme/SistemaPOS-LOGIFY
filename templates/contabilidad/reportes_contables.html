@@ -1,0 +1,294 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Reportes Contables{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-chart-line me-2"></i>Reportes Contables
+                    </h2>
+                    <p class="text-muted mb-0">Estados financieros y reportes contables</p>
+                </div>
+                <div>
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-primary" onclick="exportarPDF()">
+                            <i class="fas fa-file-pdf me-1"></i>Exportar PDF
+                        </button>
+                        <button class="btn btn-success" onclick="exportarExcel()">
+                            <i class="fas fa-file-excel me-1"></i>Exportar Excel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Selector de fecha -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Parámetros del Reporte</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="fecha_corte" class="form-label">Fecha de Corte</label>
+                    <input type="date" name="fecha_corte" id="fecha_corte" class="form-control" 
+                           value="{{ fecha_corte|date:'Y-m-d' }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-sync-alt me-1"></i>Actualizar Reportes
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabs de reportes -->
+    <div class="card shadow">
+        <div class="card-header">
+            <ul class="nav nav-tabs card-header-tabs" id="reporteTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="balance-tab" data-bs-toggle="tab" data-bs-target="#balance" type="button" role="tab">
+                        <i class="fas fa-balance-scale me-1"></i>Balance General
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="resultados-tab" data-bs-toggle="tab" data-bs-target="#resultados" type="button" role="tab">
+                        <i class="fas fa-chart-bar me-1"></i>Estado de Resultados
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="flujo-tab" data-bs-toggle="tab" data-bs-target="#flujo" type="button" role="tab">
+                        <i class="fas fa-water me-1"></i>Flujo de Efectivo
+                    </button>
+                </li>
+            </ul>
+        </div>
+        <div class="card-body">
+            <div class="tab-content" id="reporteTabsContent">
+                <!-- Balance General -->
+                <div class="tab-pane fade show active" id="balance" role="tabpanel">
+                    <h5 class="mb-4">Balance General al {{ fecha_corte|date:"d/m/Y" }}</h5>
+                    
+                    <div class="row">
+                        <!-- Activos -->
+                        <div class="col-md-6">
+                            <h6 class="text-primary">ACTIVOS</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <tbody>
+                                        {% for cuenta in activos %}
+                                        <tr>
+                                            <td>{{ cuenta.codigo }} - {{ cuenta.nombre }}</td>
+                                            <td class="text-end">${{ cuenta.saldo_actual|floatformat:2 }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                        <tr class="table-primary">
+                                            <td><strong>TOTAL ACTIVOS</strong></td>
+                                            <td class="text-end"><strong>${{ total_activos|floatformat:2 }}</strong></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <!-- Pasivos y Patrimonio -->
+                        <div class="col-md-6">
+                            <h6 class="text-warning">PASIVOS</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <tbody>
+                                        {% for cuenta in pasivos %}
+                                        <tr>
+                                            <td>{{ cuenta.codigo }} - {{ cuenta.nombre }}</td>
+                                            <td class="text-end">${{ cuenta.saldo_actual|floatformat:2 }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                        <tr class="table-warning">
+                                            <td><strong>TOTAL PASIVOS</strong></td>
+                                            <td class="text-end"><strong>${{ total_pasivos|floatformat:2 }}</strong></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <h6 class="text-success mt-4">PATRIMONIO</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <tbody>
+                                        {% for cuenta in patrimonio %}
+                                        <tr>
+                                            <td>{{ cuenta.codigo }} - {{ cuenta.nombre }}</td>
+                                            <td class="text-end">${{ cuenta.saldo_actual|floatformat:2 }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                        <tr>
+                                            <td>Utilidad del Ejercicio</td>
+                                            <td class="text-end">
+                                                {% if utilidad_neta >= 0 %}
+                                                    <span class="text-success">${{ utilidad_neta|floatformat:2 }}</span>
+                                                {% else %}
+                                                    <span class="text-danger">(${{ utilidad_neta|add:"-1"|floatformat:2 }})</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        <tr class="table-success">
+                                            <td><strong>TOTAL PATRIMONIO</strong></td>
+                                            <td class="text-end"><strong>${{ total_patrimonio|add:utilidad_neta|floatformat:2 }}</strong></td>
+                                        </tr>
+                                        <tr class="table-info">
+                                            <td><strong>TOTAL PASIVOS + PATRIMONIO</strong></td>
+                                            <td class="text-end"><strong>${{ total_pasivos|add:total_patrimonio|add:utilidad_neta|floatformat:2 }}</strong></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Estado de Resultados -->
+                <div class="tab-pane fade" id="resultados" role="tabpanel">
+                    <h5 class="mb-4">Estado de Resultados al {{ fecha_corte|date:"d/m/Y" }}</h5>
+                    
+                    <div class="row justify-content-center">
+                        <div class="col-md-8">
+                            <!-- Ingresos -->
+                            <h6 class="text-success">INGRESOS</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <tbody>
+                                        {% for cuenta in ingresos %}
+                                        <tr>
+                                            <td>{{ cuenta.codigo }} - {{ cuenta.nombre }}</td>
+                                            <td class="text-end">${{ cuenta.saldo_actual|floatformat:2 }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                        <tr class="table-success">
+                                            <td><strong>TOTAL INGRESOS</strong></td>
+                                            <td class="text-end"><strong>${{ total_ingresos|floatformat:2 }}</strong></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Gastos -->
+                            <h6 class="text-danger mt-4">GASTOS</h6>
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <tbody>
+                                        {% for cuenta in gastos %}
+                                        <tr>
+                                            <td>{{ cuenta.codigo }} - {{ cuenta.nombre }}</td>
+                                            <td class="text-end">${{ cuenta.saldo_actual|floatformat:2 }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                        <tr class="table-danger">
+                                            <td><strong>TOTAL GASTOS</strong></td>
+                                            <td class="text-end"><strong>${{ total_gastos|floatformat:2 }}</strong></td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- Utilidad Neta -->
+                            <div class="table-responsive mt-4">
+                                <table class="table">
+                                    <tbody>
+                                        <tr class="table-primary">
+                                            <td><strong>UTILIDAD/PÉRDIDA NETA</strong></td>
+                                            <td class="text-end">
+                                                <strong>
+                                                    {% if utilidad_neta >= 0 %}
+                                                        <span class="text-success">${{ utilidad_neta|floatformat:2 }}</span>
+                                                    {% else %}
+                                                        <span class="text-danger">(${{ utilidad_neta|add:"-1"|floatformat:2 }})</span>
+                                                    {% endif %}
+                                                </strong>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Flujo de Efectivo -->
+                <div class="tab-pane fade" id="flujo" role="tabpanel">
+                    <h5 class="mb-4">Estado de Flujo de Efectivo</h5>
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Este reporte está en desarrollo. Pronto incluirá el análisis completo del flujo de efectivo operativo, de inversión y financiamiento.
+                    </div>
+                    
+                    <div class="text-center py-5">
+                        <i class="fas fa-construction fa-3x text-gray-300 mb-3"></i>
+                        <p class="text-muted">Reporte en construcción</p>
+                        <a href="{% url 'contabilidad:flujo_caja' %}" class="btn btn-primary">
+                            <i class="fas fa-chart-area me-1"></i>Ver Flujo de Caja Proyectado
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen ejecutivo -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">Resumen Ejecutivo</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 text-center">
+                            <h6 class="text-muted">Total Activos</h6>
+                            <h4 class="text-primary">${{ total_activos|floatformat:2 }}</h4>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <h6 class="text-muted">Total Pasivos</h6>
+                            <h4 class="text-warning">${{ total_pasivos|floatformat:2 }}</h4>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <h6 class="text-muted">Patrimonio</h6>
+                            <h4 class="text-success">${{ total_patrimonio|add:utilidad_neta|floatformat:2 }}</h4>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <h6 class="text-muted">Utilidad Neta</h6>
+                            <h4 class="{% if utilidad_neta >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                {% if utilidad_neta >= 0 %}
+                                    ${{ utilidad_neta|floatformat:2 }}
+                                {% else %}
+                                    (${{ utilidad_neta|add:"-1"|floatformat:2 }})
+                                {% endif %}
+                            </h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function exportarPDF() {
+    // TODO: Implementar exportación a PDF
+    alert('Función de exportación a PDF en desarrollo');
+}
+
+function exportarExcel() {
+    // TODO: Implementar exportación a Excel
+    alert('Función de exportación a Excel en desarrollo');
+}
+</script>
+{% endblock %}

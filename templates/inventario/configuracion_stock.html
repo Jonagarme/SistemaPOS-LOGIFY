@@ -1,0 +1,365 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Configuración de Stock{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+    }
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
+        transform: translateY(-1px);
+    }
+    .alert-info {
+        border-left: 4px solid #17a2b8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="fas fa-cogs"></i> Configuración de Stock Automático</h2>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalConfigurarStock">
+            <i class="fas fa-plus"></i> Nueva Configuración
+        </button>
+    </div>
+
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endif %}
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="alert alert-info">
+                <h5><i class="fas fa-info-circle"></i> ¿Cómo funciona el stock automático?</h5>
+                <p>Configure niveles mínimos de stock para sus productos. Cuando el stock actual sea menor o igual al nivel mínimo, 
+                el sistema generará automáticamente órdenes de compra para mantener su inventario optimizado.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Buscar Producto</label>
+                    <input type="text" class="form-control" name="buscar" value="{{ request.GET.buscar }}" 
+                           placeholder="Nombre del producto...">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Estado</label>
+                    <select class="form-select" name="activo">
+                        <option value="">Todos</option>
+                        <option value="True" {% if request.GET.activo == 'True' %}selected{% endif %}>Activos</option>
+                        <option value="False" {% if request.GET.activo == 'False' %}selected{% endif %}>Inactivos</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Proveedor</label>
+                    <select class="form-select" name="proveedor">
+                        <option value="">Todos los proveedores</option>
+                        {% for proveedor in proveedores %}
+                            <option value="{{ proveedor.id }}" {% if request.GET.proveedor == proveedor.id|stringformat:"s" %}selected{% endif %}>
+                                {{ proveedor.nombre }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-outline-primary me-2">
+                        <i class="fas fa-search"></i> Filtrar
+                    </button>
+                    <a href="{% url 'inventario:configuracion_stock' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-times"></i> Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de configuraciones -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-list"></i> Configuraciones de Stock</h5>
+        </div>
+        <div class="card-body">
+            {% if configuraciones %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th>Stock Actual</th>
+                                <th>Stock Mínimo</th>
+                                <th>Cantidad a Pedir</th>
+                                <th>Proveedor Preferido</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for config in configuraciones %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ config.producto.nombre }}</strong><br>
+                                        <small class="text-muted">{{ config.producto.codigo }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge {% if config.producto.stock <= config.stock_minimo %}bg-danger{% elif config.producto.stock <= config.stock_minimo|add:10 %}bg-warning{% else %}bg-success{% endif %}">
+                                            {{ config.producto.stock }}
+                                        </span>
+                                    </td>
+                                    <td>{{ config.stock_minimo }}</td>
+                                    <td>{{ config.cantidad_pedido }}</td>
+                                    <td>
+                                        {% if config.proveedor_preferido %}
+                                            {{ config.proveedor_preferido.nombre }}
+                                        {% else %}
+                                            <small class="text-muted">No definido</small>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if config.activo %}
+                                            <span class="badge bg-success">Activo</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Inactivo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                onclick="editarConfiguracion({{ config.id }})" title="Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        {% if config.activo %}
+                                            <button type="button" class="btn btn-sm btn-outline-warning" 
+                                                    onclick="toggleEstado({{ config.id }}, false)" title="Desactivar">
+                                                <i class="fas fa-pause"></i>
+                                            </button>
+                                        {% else %}
+                                            <button type="button" class="btn btn-sm btn-outline-success" 
+                                                    onclick="toggleEstado({{ config.id }}, true)" title="Activar">
+                                                <i class="fas fa-play"></i>
+                                            </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                {% if configuraciones.has_other_pages %}
+                    <nav aria-label="Paginación">
+                        <ul class="pagination justify-content-center">
+                            {% if configuraciones.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ configuraciones.previous_page_number }}{% if request.GET.buscar %}&buscar={{ request.GET.buscar }}{% endif %}">Anterior</a>
+                                </li>
+                            {% endif %}
+                            
+                            {% for num in configuraciones.paginator.page_range %}
+                                {% if configuraciones.number == num %}
+                                    <li class="page-item active">
+                                        <span class="page-link">{{ num }}</span>
+                                    </li>
+                                {% else %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ num }}{% if request.GET.buscar %}&buscar={{ request.GET.buscar }}{% endif %}">{{ num }}</a>
+                                    </li>
+                                {% endif %}
+                            {% endfor %}
+                            
+                            {% if configuraciones.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ configuraciones.next_page_number }}{% if request.GET.buscar %}&buscar={{ request.GET.buscar }}{% endif %}">Siguiente</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-4">
+                    <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                    <h5>No hay configuraciones de stock</h5>
+                    <p class="text-muted">Configure niveles de stock automático para sus productos.</p>
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalConfigurarStock">
+                        <i class="fas fa-plus"></i> Agregar Primera Configuración
+                    </button>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal para configurar stock -->
+<div class="modal fade" id="modalConfigurarStock" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-cogs"></i> <span id="modal-title">Nueva Configuración de Stock</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="form-configuracion" method="POST">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="configuracion-id" name="configuracion_id">
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Producto *</label>
+                            <select class="form-select" id="producto" name="producto" required>
+                                <option value="">Seleccione un producto...</option>
+                                {% for producto in productos %}
+                                    <option value="{{ producto.id }}" data-stock="{{ producto.stock }}">
+                                        {{ producto.nombre }} ({{ producto.codigo }}) - Stock: {{ producto.stock }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Stock Actual</label>
+                            <input type="number" class="form-control" id="stock-actual" readonly>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Stock Mínimo *</label>
+                            <input type="number" class="form-control" id="stock-minimo" name="stock_minimo" 
+                                   min="1" required placeholder="Ej: 10">
+                            <div class="form-text">Cuando el stock llegue a este nivel, se generará una orden automática</div>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Cantidad a Pedir *</label>
+                            <input type="number" class="form-control" id="cantidad-pedido" name="cantidad_pedido" 
+                                   min="1" required placeholder="Ej: 50">
+                            <div class="form-text">Cantidad que se pedirá automáticamente</div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Proveedor Preferido</label>
+                            <select class="form-select" id="proveedor" name="proveedor_preferido">
+                                <option value="">Seleccione un proveedor...</option>
+                                {% for proveedor in proveedores %}
+                                    <option value="{{ proveedor.id }}">{{ proveedor.nombre }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Estado</label>
+                            <select class="form-select" id="activo" name="activo">
+                                <option value="True">Activo</option>
+                                <option value="False">Inactivo</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Guardar Configuración
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Actualizar stock actual cuando se selecciona un producto
+document.getElementById('producto').addEventListener('change', function() {
+    const selectedOption = this.options[this.selectedIndex];
+    const stockActual = selectedOption.getAttribute('data-stock') || '0';
+    document.getElementById('stock-actual').value = stockActual;
+});
+
+// Función para editar configuración
+function editarConfiguracion(id) {
+    fetch(`/inventario/api/configuracion-stock/${id}/`)
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('configuracion-id').value = data.id;
+            document.getElementById('producto').value = data.producto;
+            document.getElementById('stock-minimo').value = data.stock_minimo;
+            document.getElementById('cantidad-pedido').value = data.cantidad_pedido;
+            document.getElementById('proveedor').value = data.proveedor_preferido || '';
+            document.getElementById('activo').value = data.activo ? 'True' : 'False';
+            
+            // Actualizar stock actual
+            const productoOption = document.querySelector(`#producto option[value="${data.producto}"]`);
+            if (productoOption) {
+                document.getElementById('stock-actual').value = productoOption.getAttribute('data-stock');
+            }
+            
+            document.getElementById('modal-title').textContent = 'Editar Configuración de Stock';
+            
+            const modal = new bootstrap.Modal(document.getElementById('modalConfigurarStock'));
+            modal.show();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al cargar los datos de la configuración');
+        });
+}
+
+// Función para toggle estado
+function toggleEstado(id, nuevoEstado) {
+    if (confirm('¿Está seguro de cambiar el estado de esta configuración?')) {
+        fetch(`/inventario/api/configuracion-stock/${id}/toggle/`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify({
+                activo: nuevoEstado
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error al cambiar el estado');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error al cambiar el estado');
+        });
+    }
+}
+
+// Limpiar modal al cerrarlo
+document.getElementById('modalConfigurarStock').addEventListener('hidden.bs.modal', function () {
+    document.getElementById('form-configuracion').reset();
+    document.getElementById('configuracion-id').value = '';
+    document.getElementById('modal-title').textContent = 'Nueva Configuración de Stock';
+    document.getElementById('stock-actual').value = '';
+});
+</script>
+{% endblock %}

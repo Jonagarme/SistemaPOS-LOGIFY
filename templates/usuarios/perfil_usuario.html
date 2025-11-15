@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Perfil de Usuario{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-cog me-2"></i>Mi Perfil
+                    </h5>
+                </div>
+                
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="nombre_usuario" class="form-label">
+                                    Nombre de Usuario
+                                </label>
+                                <input type="text" class="form-control" id="nombre_usuario" 
+                                       value="{{ usuario.nombre_usuario }}" readonly disabled>
+                                <div class="form-text">No se puede cambiar el nombre de usuario</div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="nombre_completo" class="form-label">
+                                    Nombre Completo <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="nombre_completo" 
+                                       name="nombre_completo" value="{{ usuario.nombre_completo }}" required>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="email" class="form-label">
+                                    Email <span class="text-danger">*</span>
+                                </label>
+                                <input type="email" class="form-control" id="email" 
+                                       name="email" value="{{ usuario.email }}" required>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="rol" class="form-label">
+                                    Rol
+                                </label>
+                                <input type="text" class="form-control" id="rol" 
+                                       value="{{ usuario.rol }}" readonly disabled>
+                                <div class="form-text">Tu rol es asignado por un administrador</div>
+                            </div>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-key me-2"></i>Cambiar Contraseña (Opcional)
+                        </h6>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label for="password_actual" class="form-label">
+                                    Contraseña Actual
+                                </label>
+                                <input type="password" class="form-control" id="password_actual" 
+                                       name="password_actual">
+                                <div class="form-text">Requerida solo si cambias la contraseña</div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label for="nueva_password" class="form-label">
+                                    Nueva Contraseña
+                                </label>
+                                <input type="password" class="form-control" id="nueva_password" 
+                                       name="nueva_password">
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label for="confirmar_password" class="form-label">
+                                    Confirmar Nueva Contraseña
+                                </label>
+                                <input type="password" class="form-control" id="confirmar_password" 
+                                       name="confirmar_password">
+                            </div>
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'usuarios:dashboard' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Volver al Dashboard
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Actualizar Perfil
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Información adicional -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">
+                        <i class="fas fa-info-circle me-2"></i>Información de la Cuenta
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Fecha de Creación:</strong> 
+                               {% if usuario.fecha_creacion %}
+                                   {{ usuario.fecha_creacion|date:"d/m/Y" }}
+                               {% else %}
+                                   No disponible
+                               {% endif %}
+                            </p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Último Acceso:</strong> 
+                               {% if usuario.ultimo_acceso %}
+                                   {{ usuario.ultimo_acceso|date:"d/m/Y H:i" }}
+                               {% else %}
+                                   No disponible
+                               {% endif %}
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,149 @@
+<!-- Modal para detección de productos duplicados -->
+<div class="modal fade" id="modalProductosDuplicados" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i> Producto Similar Detectado
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Se encontró un producto similar en tu inventario.</strong>
+                    Por favor, selecciona qué acción deseas realizar.
+                </div>
+                
+                <div class="row">
+                    <!-- Producto de la Factura -->
+                    <div class="col-md-6 border-end">
+                        <h6 class="text-primary mb-3">
+                            <i class="fas fa-file-invoice"></i> Producto en Factura
+                        </h6>
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <table class="table table-sm table-borderless mb-0">
+                                    <tr>
+                                        <td class="fw-bold" width="120">Código:</td>
+                                        <td id="factura-codigo">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Nombre:</td>
+                                        <td id="factura-nombre">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Cantidad:</td>
+                                        <td id="factura-cantidad">-</td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold">Precio:</td>
+                                        <td id="factura-precio">-</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Productos Similares -->
+                    <div class="col-md-6">
+                        <h6 class="text-success mb-3">
+                            <i class="fas fa-search"></i> Productos Similares en Inventario
+                        </h6>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Selecciona una opción:</label>
+                            <select class="form-select form-select-lg" id="select-producto-destino" size="5">
+                                <option value="nuevo" data-accion="crear">
+                                    ✨ Crear como nuevo producto
+                                </option>
+                                <!-- Las opciones de productos similares se agregan dinámicamente -->
+                            </select>
+                        </div>
+                        
+                        <!-- Detalles del producto seleccionado -->
+                        <div id="detalles-producto-seleccionado" style="display: none;">
+                            <div class="card border-success">
+                                <div class="card-body">
+                                    <h6 class="card-title text-success mb-2">Detalles del Producto Seleccionado:</h6>
+                                    <table class="table table-sm table-borderless mb-0">
+                                        <tr>
+                                            <td class="fw-bold" width="120">Stock Actual:</td>
+                                            <td id="detalle-stock">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-bold">Precio Venta:</td>
+                                            <td id="detalle-precio">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="fw-bold">Similitud:</td>
+                                            <td>
+                                                <span id="detalle-similitud" class="badge bg-success">-</span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Opción de recordar -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="check-recordar-mapeo" checked>
+                            <label class="form-check-label" for="check-recordar-mapeo">
+                                <i class="fas fa-link"></i>
+                                <strong>Vincular este código automáticamente</strong>
+                                <small class="text-muted d-block">
+                                    Si activas esta opción, el código de la factura se guardará como código alternativo 
+                                    y las próximas veces se detectará automáticamente.
+                                </small>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <button type="button" class="btn btn-primary btn-lg" id="btn-confirmar-seleccion">
+                    <i class="fas fa-check"></i> Confirmar Selección
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+#select-producto-destino {
+    height: auto !important;
+    min-height: 200px;
+}
+
+#select-producto-destino option {
+    padding: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+#select-producto-destino option:hover {
+    background-color: #e7f3ff;
+}
+
+.producto-similitud-alta {
+    background-color: #d4edda !important;
+    font-weight: bold;
+}
+
+.producto-similitud-media {
+    background-color: #fff3cd !important;
+}
+
+.producto-similitud-baja {
+    background-color: #f8d7da !important;
+}
+</style>

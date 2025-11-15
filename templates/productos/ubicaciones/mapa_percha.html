@@ -1,0 +1,768 @@
+{% extends 'base.html' %}
+
+{% block title %}Mapa de Percha - {{ percha.nombre }} - Sistema POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .percha-grid {
+        display: grid;
+        gap: 2px;
+        background-color: #f8f9fa;
+        padding: 10px;
+        border-radius: 8px;
+        border: 2px solid {{ seccion.color }};
+    }
+    
+    .posicion {
+        aspect-ratio: 1;
+        border: 2px solid #dee2e6;
+        border-radius: 4px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        min-height: 80px;
+        font-size: 0.8em;
+        position: relative;
+    }
+    
+    .posicion:hover {
+        transform: scale(1.05);
+        z-index: 10;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+    
+    .posicion.libre {
+        background-color: #e7f3e7;
+        border-color: #28a745;
+    }
+    
+    .posicion.ocupada {
+        background-color: #fff3cd;
+        border-color: #ffc107;
+    }
+    
+    .posicion.ocupada:hover {
+        background-color: #ffeaa7;
+    }
+    
+    .posicion.libre:hover {
+        background-color: #d4edda;
+    }
+    
+    .posicion-label {
+        font-weight: bold;
+        font-size: 0.7em;
+        color: #666;
+        margin-bottom: 2px;
+    }
+    
+    .producto-info {
+        text-align: center;
+        font-size: 0.6em;
+        line-height: 1.1;
+        color: #333;
+        padding: 2px;
+    }
+    
+    .producto-codigo {
+        font-weight: bold;
+        color: #0066cc;
+    }
+    
+    .producto-nombre {
+        color: #666;
+        max-height: 2.2em;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+    }
+    
+    .leyenda {
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        padding: 10px;
+        background-color: #f8f9fa;
+        border-radius: 6px;
+        margin-bottom: 20px;
+    }
+    
+    .leyenda-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .leyenda-cuadro {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+        border: 2px solid;
+    }
+    
+    .filas-columnas {
+        background-color: #fff;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+        border: 1px solid #dee2e6;
+    }
+    
+    @media (max-width: 768px) {
+        .posicion {
+            min-height: 60px;
+            font-size: 0.7em;
+        }
+        
+        .producto-info {
+            font-size: 0.55em;
+        }
+        
+        .leyenda {
+            flex-direction: column;
+            gap: 10px;
+        }
+    }
+    
+    /* Estilos para la búsqueda mejorada */
+    #resultados-productos .list-group-item {
+        transition: all 0.2s ease;
+        border-left: 4px solid transparent;
+    }
+    
+    #resultados-productos .list-group-item:hover {
+        border-left-color: #007bff;
+        background-color: #f8f9fa !important;
+    }
+    
+    #resultados-productos .list-group-item.active {
+        border-left-color: #007bff;
+        background-color: #e3f2fd !important;
+    }
+    
+    #resultados-productos .list-group-item.list-group-item-warning {
+        border-left-color: #ffc107;
+    }
+    
+    mark {
+        padding: 1px 2px;
+        border-radius: 2px;
+        font-weight: 600;
+    }
+    
+    .badge {
+        font-size: 0.7em;
+    }
+    
+    /* Spinner de búsqueda */
+    #search-spinner .spinner-border-sm {
+        width: 1rem;
+        height: 1rem;
+    }
+    
+    /* Modal mejorada */
+    .modal-lg {
+        max-width: 900px;
+    }
+    
+    .form-label {
+        font-weight: 600;
+        color: #495057;
+    }
+    
+    .form-control:focus {
+        border-color: #007bff;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+    
+    /* Estilo para el área de resultados */
+    #resultados-productos {
+        border-radius: 8px;
+        max-height: 300px;
+        overflow-y: auto;
+    }
+    
+    #resultados-productos::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    #resultados-productos::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    
+    #resultados-productos::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+    
+    #resultados-productos::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'productos:ubicaciones_productos' %}">Ubicaciones</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'productos:gestionar_secciones' %}">Secciones</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'productos:gestionar_perchas' percha.seccion.id %}">{{ percha.seccion.nombre }}</a></li>
+                    <li class="breadcrumb-item active">{{ percha.nombre }}</li>
+                </ol>
+            </nav>
+            
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><i class="fas fa-map text-primary"></i> Mapa de Percha - {{ percha.nombre }}</h2>
+                    <p class="text-muted mb-0">{{ percha.descripcion }}</p>
+                </div>
+                <div>
+                    <a href="{% url 'productos:gestionar_perchas' percha.seccion.id %}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                    <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalUbicarProducto">
+                        <i class="fas fa-plus"></i> Ubicar Producto
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información de la Percha -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <div class="filas-columnas">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h4 class="text-primary">{{ percha.filas }}</h4>
+                            <small class="text-muted">Filas</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h4 class="text-primary">{{ percha.columnas }}</h4>
+                            <small class="text-muted">Columnas</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h4 class="text-success">{{ productos_ubicados }}</h4>
+                            <small class="text-muted">Ocupadas</small>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <h4 class="text-warning">{{ posiciones_libres }}</h4>
+                            <small class="text-muted">Libres</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="leyenda">
+                <div class="leyenda-item">
+                    <div class="leyenda-cuadro libre" style="background-color: #e7f3e7; border-color: #28a745;"></div>
+                    <span>Posición Libre</span>
+                </div>
+                <div class="leyenda-item">
+                    <div class="leyenda-cuadro ocupada" style="background-color: #fff3cd; border-color: #ffc107;"></div>
+                    <span>Posición Ocupada</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mapa de la Percha -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-th"></i> Mapa Visual - {{ percha.nombre }}</h5>
+                    <div>
+                        <button class="btn btn-sm btn-outline-primary" onclick="verModoLista()">
+                            <i class="fas fa-list"></i> Vista Lista
+                        </button>
+                        <button class="btn btn-sm btn-outline-success" onclick="refrescarMapa()">
+                            <i class="fas fa-sync"></i> Refrescar
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="percha-grid" style="grid-template-columns: repeat({{ percha.columnas }}, 1fr);" id="percha-grid">
+                        {% for fila_data in mapa_percha %}
+                            {% for posicion in fila_data %}
+                                <div class="posicion {% if posicion.ocupado %}ocupada{% else %}libre{% endif %}" 
+                                     data-fila="{{ posicion.fila }}" 
+                                     data-columna="{{ posicion.columna }}"
+                                     onclick="clickPosicion({{ posicion.fila }}, {{ posicion.columna }})">
+                                    <div class="posicion-label">F{{ posicion.fila }}C{{ posicion.columna }}</div>
+                                    {% if posicion.producto %}
+                                        <div class="producto-info">
+                                            <div class="producto-codigo">{{ posicion.producto.codigo }}</div>
+                                            <div class="producto-nombre">{{ posicion.producto.nombre|truncatechars:20 }}</div>
+                                        </div>
+                                    {% else %}
+                                        <div class="text-muted" style="font-size: 0.7em;">Libre</div>
+                                    {% endif %}
+                                </div>
+                            {% endfor %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ubicar Producto -->
+<div class="modal fade" id="modalUbicarProducto" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ubicar Producto en Percha</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="buscar-producto" class="form-label">
+                            <i class="fas fa-search"></i> Buscar Producto
+                        </label>
+                        <div class="position-relative">
+                            <!-- Input de búsqueda -->
+                            <input type="text" 
+                                   class="form-control" 
+                                   id="buscar-producto" 
+                                   placeholder="Escribe aquí para buscar productos..." 
+                                   autocomplete="off">
+                            
+                            <div class="position-absolute top-50 end-0 translate-middle-y me-2" id="search-spinner" style="display: none;">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                    <span class="visually-hidden">Buscando...</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="resultados-productos" class="mt-2" style="max-height: 300px; overflow-y: auto;"></div>
+                        <small class="text-muted">Escribe al menos 2 caracteres para buscar</small>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="fila-destino" class="form-label">Fila</label>
+                        <select class="form-select" id="fila-destino">
+                            {% for fila in range_filas %}
+                            <option value="{{ fila }}">Fila {{ fila }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="columna-destino" class="form-label">Columna</label>
+                        <select class="form-select" id="columna-destino">
+                            {% for columna in range_columnas %}
+                            <option value="{{ columna }}">Columna {{ columna }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                
+                <div id="producto-seleccionado" class="mt-3" style="display: none;">
+                    <div class="alert alert-info">
+                        <strong>Producto seleccionado:</strong>
+                        <div id="info-producto"></div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btn-ubicar" onclick="ubicarProducto()">
+                    Ubicar Producto
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalles de Posición -->
+<div class="modal fade" id="modalDetallesPosicion" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="titulo-posicion"></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="contenido-posicion">
+            </div>
+            <div class="modal-footer" id="footer-posicion">
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let productoSeleccionado = null;
+
+// Función simple de inicialización
+function inicializarBusqueda() {
+    console.log('Inicializando búsqueda...');
+    
+    const searchInput = document.getElementById('buscar-producto');
+    if (!searchInput) {
+        console.error('Input no encontrado');
+        return;
+    }
+    
+    console.log('Input encontrado, configurando...');
+    
+    // Asegurar que el input está habilitado
+    searchInput.disabled = false;
+    searchInput.readOnly = false;
+    
+    // Evento básico de input
+    searchInput.oninput = function() {
+        console.log('Texto ingresado:', this.value);
+        const termino = this.value.trim();
+        
+        if (termino.length >= 2) {
+            console.log('Buscando:', termino);
+            buscarProductosSimple(termino);
+        } else {
+            const resultados = document.getElementById('resultados-productos');
+            if (resultados) {
+                resultados.innerHTML = '';
+            }
+        }
+    };
+    
+    // Test básico
+    searchInput.onfocus = function() {
+        console.log('Input enfocado');
+    };
+    
+    console.log('Búsqueda configurada correctamente');
+}
+
+function buscarProductosSimple(termino) {
+    console.log('Ejecutando búsqueda para:', termino);
+    
+    // Mostrar spinner
+    const spinner = document.getElementById('search-spinner');
+    if (spinner) {
+        spinner.style.display = 'block';
+    }
+    
+    // CORREGIDO: usar 'termino' en lugar de 'search'
+    fetch(`/productos/ubicaciones/buscar-productos/?termino=${encodeURIComponent(termino)}`)
+    .then(response => {
+        console.log('Respuesta recibida, status:', response.status);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Datos recibidos:', data);
+        
+        // Ocultar spinner
+        if (spinner) {
+            spinner.style.display = 'none';
+        }
+        
+        mostrarResultadosSimple(data.productos || []);
+    })
+    .catch(error => {
+        console.error('Error en búsqueda:', error);
+        
+        // Ocultar spinner
+        if (spinner) {
+            spinner.style.display = 'none';
+        }
+        
+        const resultados = document.getElementById('resultados-productos');
+        if (resultados) {
+            resultados.innerHTML = 
+                '<div class="alert alert-danger">Error al buscar productos: ' + error.message + '</div>';
+        }
+    });
+}
+
+function mostrarResultadosSimple(productos) {
+    console.log('Mostrando resultados:', productos.length, 'productos');
+    const resultados = document.getElementById('resultados-productos');
+    
+    if (!resultados) {
+        console.error('Contenedor de resultados no encontrado');
+        return;
+    }
+    
+    if (productos.length > 0) {
+        let html = '<div class="list-group">';
+        productos.forEach(producto => {
+            // Verificar si tiene ubicación actual
+            const tieneUbicacion = producto.tiene_ubicacion || producto.ubicacion_id;
+            const badgeColor = tieneUbicacion ? 'bg-warning' : 'bg-success';
+            const badgeText = tieneUbicacion ? 'Ya ubicado' : 'Disponible';
+            
+            html += `
+                <a href="#" class="list-group-item list-group-item-action ${tieneUbicacion ? 'list-group-item-warning' : ''}" 
+                   onclick="seleccionarProductoSimple(${producto.id}, '${producto.codigo || ''}', '${producto.nombre || ''}', ${tieneUbicacion})">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <strong>${producto.codigo || 'Sin código'}</strong><br>
+                            <small>${producto.nombre || 'Sin nombre'}</small>
+                            ${producto.ubicacion_actual ? '<br><small class="text-info">Ubicado en: ' + producto.ubicacion_actual + '</small>' : ''}
+                        </div>
+                        <div class="text-end">
+                            <small class="text-muted">Stock: ${producto.stock || 0}</small><br>
+                            <span class="badge ${badgeColor}">${badgeText}</span>
+                        </div>
+                    </div>
+                </a>
+            `;
+        });
+        html += '</div>';
+        resultados.innerHTML = html;
+        console.log('Resultados mostrados correctamente');
+    } else {
+        resultados.innerHTML = '<div class="text-muted py-3 text-center">No se encontraron productos</div>';
+        console.log('No se encontraron productos');
+    }
+}
+
+function seleccionarProductoSimple(id, codigo, nombre, yaUbicado = false) {
+    console.log('Producto seleccionado:', id, codigo, nombre, yaUbicado);
+    productoSeleccionado = { id, codigo, nombre, yaUbicado };
+    
+    const infoElement = document.getElementById('info-producto');
+    const alertElement = document.getElementById('producto-seleccionado');
+    
+    if (infoElement) {
+        if (yaUbicado) {
+            infoElement.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <div>
+                        <strong>${codigo}</strong> - ${nombre}
+                    </div>
+                    <div class="ms-2">
+                        <span class="badge bg-warning text-dark">
+                            <i class="fas fa-exclamation-triangle"></i> Ya ubicado
+                        </span>
+                    </div>
+                </div>
+                <small class="text-warning d-block">
+                    Este producto ya está ubicado. Al ubicarlo aquí se moverá de su posición actual.
+                </small>
+            `;
+        } else {
+            infoElement.innerHTML = `<strong>${codigo}</strong> - ${nombre}`;
+        }
+    }
+    
+    if (alertElement) {
+        alertElement.style.display = 'block';
+        alertElement.className = yaUbicado ? 'alert alert-warning mt-3' : 'alert alert-info mt-3';
+    }
+    
+    const resultados = document.getElementById('resultados-productos');
+    const searchInput = document.getElementById('buscar-producto');
+    
+    if (resultados) resultados.innerHTML = '';
+    if (searchInput) searchInput.value = `${codigo} - ${nombre}`;
+}
+
+// Inicializar cuando el DOM esté listo
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inicializarBusqueda);
+} else {
+    inicializarBusqueda();
+}
+
+// También intentar después de un breve delay
+setTimeout(inicializarBusqueda, 500);
+
+function ubicarProducto() {
+    if (!productoSeleccionado) {
+        mostrarAlerta('Debes seleccionar un producto', 'warning');
+        return;
+    }
+    
+    const fila = document.getElementById('fila-destino').value;
+    const columna = document.getElementById('columna-destino').value;
+    
+    if (!fila || !columna) {
+        mostrarAlerta('Debes seleccionar una fila y columna', 'warning');
+        return;
+    }
+    
+    // Mostrar mensaje de confirmación si el producto ya está ubicado
+    if (productoSeleccionado.yaUbicado) {
+        if (!confirm(`El producto ${productoSeleccionado.codigo} ya está ubicado en otra posición. ¿Deseas moverlo a F${fila}C${columna}?`)) {
+            return;
+        }
+    }
+    
+    // Deshabilitar botón mientras se procesa
+    const btnUbicar = document.getElementById('btn-ubicar');
+    const textoOriginal = btnUbicar.innerHTML;
+    btnUbicar.disabled = true;
+    btnUbicar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ubicando...';
+    
+    const formData = new FormData();
+    formData.append('producto_id', productoSeleccionado.id);
+    formData.append('percha_id', {{ percha.id }});
+    formData.append('fila', fila);
+    formData.append('columna', columna);
+    
+    fetch('{% url "productos:ubicar_producto" %}', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        btnUbicar.disabled = false;
+        btnUbicar.innerHTML = textoOriginal;
+        
+        if (data.success) {
+            bootstrap.Modal.getInstance(document.getElementById('modalUbicarProducto')).hide();
+            mostrarAlerta(`Producto ${productoSeleccionado.codigo} ubicado exitosamente en F${fila}C${columna}`, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            mostrarAlerta('Error: ' + (data.error || 'No se pudo ubicar el producto'), 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        btnUbicar.disabled = false;
+        btnUbicar.innerHTML = textoOriginal;
+        mostrarAlerta('Error de conexión. Inténtalo de nuevo.', 'danger');
+    });
+}
+
+function mostrarAlerta(mensaje, tipo = 'info') {
+    // Crear o actualizar alerta temporal
+    let alertContainer = document.getElementById('alert-container');
+    if (!alertContainer) {
+        alertContainer = document.createElement('div');
+        alertContainer.id = 'alert-container';
+        alertContainer.style.position = 'fixed';
+        alertContainer.style.top = '20px';
+        alertContainer.style.right = '20px';
+        alertContainer.style.zIndex = '9999';
+        alertContainer.style.width = '300px';
+        document.body.appendChild(alertContainer);
+    }
+    
+    const alertElement = document.createElement('div');
+    alertElement.className = `alert alert-${tipo} alert-dismissible fade show`;
+    alertElement.innerHTML = `
+        ${mensaje}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    alertContainer.appendChild(alertElement);
+    
+    // Auto-remover después de 5 segundos
+    setTimeout(() => {
+        if (alertElement.parentNode) {
+            alertElement.remove();
+        }
+    }, 5000);
+}
+
+// Limpiar formulario cuando se abre la modal
+document.getElementById('modalUbicarProducto').addEventListener('show.bs.modal', function() {
+    limpiarSeleccion();
+    document.getElementById('fila-destino').value = '';
+    document.getElementById('columna-destino').value = '';
+});
+
+// Limpiar formulario cuando se cierra la modal
+document.getElementById('modalUbicarProducto').addEventListener('hide.bs.modal', function() {
+    limpiarSeleccion();
+});
+
+function clickPosicion(fila, columna) {
+    const posicion = document.querySelector(`[data-fila="${fila}"][data-columna="${columna}"]`);
+    const ocupada = posicion.classList.contains('ocupada');
+    
+    if (ocupada) {
+        // Mostrar detalles del producto
+        verDetallesPosicion(fila, columna);
+    } else {
+        // Abrir modal para ubicar producto
+        document.getElementById('fila-destino').value = fila;
+        document.getElementById('columna-destino').value = columna;
+        new bootstrap.Modal(document.getElementById('modalUbicarProducto')).show();
+    }
+}
+
+function verDetallesPosicion(fila, columna) {
+    fetch(`/productos/ubicaciones/percha/{{ percha.id }}/posicion/${fila}/${columna}/`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.producto) {
+            const producto = data.producto;
+            document.getElementById('titulo-posicion').textContent = `Posición F${fila}C${columna}`;
+            document.getElementById('contenido-posicion').innerHTML = `
+                <div class="mb-3">
+                    <strong>Producto:</strong> ${producto.codigo} - ${producto.nombre}<br>
+                    <strong>Precio:</strong> $${producto.precio}<br>
+                    <strong>Stock:</strong> ${producto.stock}<br>
+                    <strong>Categoría:</strong> ${producto.categoria || 'Sin categoría'}
+                </div>
+            `;
+            document.getElementById('footer-posicion').innerHTML = `
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-warning" onclick="removerProducto(${fila}, ${columna})">
+                    <i class="fas fa-times"></i> Remover Producto
+                </button>
+            `;
+            new bootstrap.Modal(document.getElementById('modalDetallesPosicion')).show();
+        }
+    });
+}
+
+function removerProducto(fila, columna) {
+    if (confirm('¿Remover el producto de esta posición?')) {
+        fetch(`/productos/ubicaciones/percha/{{ percha.id }}/remover/${fila}/${columna}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalDetallesPosicion')).hide();
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'No se pudo remover el producto'));
+            }
+        });
+    }
+}
+
+function refrescarMapa() {
+    location.reload();
+}
+
+function verModoLista() {
+    // Implementar vista en lista si es necesario
+    alert('Vista en lista - Por implementar');
+}
+</script>
+{% endblock %}

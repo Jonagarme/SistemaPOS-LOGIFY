@@ -1,0 +1,285 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ producto.nombre }} - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{% url 'usuarios:dashboard' %}">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="{% url 'productos:lista' %}">Productos</a></li>
+            <li class="breadcrumb-item active" aria-current="page">{{ producto.nombre|truncatewords:5 }}</li>
+        </ol>
+    </nav>
+
+    <!-- Encabezado -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="fas fa-box-open text-primary"></i>
+            Detalle del Producto
+        </h2>
+        <div>
+            <a href="{% url 'productos:lista' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+            <a href="{% url 'productos:editar' producto.id %}" class="btn btn-warning">
+                <i class="fas fa-edit"></i> Editar
+            </a>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Información Principal -->
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle"></i> Información General</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <h3 class="text-primary">{{ producto.nombre }}</h3>
+                            {% if producto.nombre_comercial %}
+                                <p class="text-muted mb-2">
+                                    <small><strong>Nombre Comercial:</strong> {{ producto.nombre_comercial }}</small>
+                                </p>
+                            {% endif %}
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            {% if producto.stock > 10 %}
+                                <span class="badge bg-success fs-6">
+                                    <i class="fas fa-check-circle"></i> En Stock
+                                </span>
+                            {% elif producto.stock > 0 %}
+                                <span class="badge bg-warning fs-6">
+                                    <i class="fas fa-exclamation-triangle"></i> Stock Bajo
+                                </span>
+                            {% else %}
+                                <span class="badge bg-danger fs-6">
+                                    <i class="fas fa-times-circle"></i> Sin Stock
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if producto.descripcion %}
+                    <div class="alert alert-light mb-4">
+                        <strong><i class="fas fa-file-alt"></i> Descripción:</strong><br>
+                        {{ producto.descripcion }}
+                    </div>
+                    {% endif %}
+
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <label class="text-muted small">Código Principal:</label>
+                                <p class="fw-bold">{{ producto.codigo_principal|default:"N/A" }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <label class="text-muted small">Código Auxiliar:</label>
+                                <p class="fw-bold">{{ producto.codigo_auxiliar|default:"N/A" }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <label class="text-muted small">Categoría:</label>
+                                <p class="fw-bold">
+                                    {% if producto.id_categoria %}
+                                        <i class="fas fa-folder text-primary"></i> {{ producto.id_categoria.nombre }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <label class="text-muted small">Subcategoría:</label>
+                                <p class="fw-bold">
+                                    {% if producto.id_subcategoria %}
+                                        {{ producto.id_subcategoria.nombre }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <label class="text-muted small">Marca:</label>
+                                <p class="fw-bold">
+                                    {% if producto.id_marca %}
+                                        <i class="fas fa-tag text-info"></i> {{ producto.id_marca.nombre }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <label class="text-muted small">Laboratorio:</label>
+                                <p class="fw-bold">
+                                    {% if producto.id_laboratorio %}
+                                        <i class="fas fa-flask text-success"></i> {{ producto.id_laboratorio.nombre }}
+                                    {% else %}
+                                        N/A
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <label class="text-muted small">Tipo de Producto:</label>
+                                <p class="fw-bold">{{ producto.id_tipo_producto.nombre|default:"N/A" }}</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <label class="text-muted small">Clase de Producto:</label>
+                                <p class="fw-bold">{{ producto.id_clase_producto.nombre|default:"N/A" }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Columna Derecha -->
+        <div class="col-lg-4">
+            <!-- Precios -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-dollar-sign"></i> Precios</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="text-muted small">Precio de Venta:</label>
+                        <h4 class="text-success mb-0">
+                            ${{ producto.precio_venta|floatformat:2 }}
+                        </h4>
+                    </div>
+                    <hr>
+                    <div class="mb-2">
+                        <label class="text-muted small">Precio de Compra:</label>
+                        <p class="fw-bold mb-0">
+                            ${{ producto.precio_compra|floatformat:2|default:"N/A" }}
+                        </p>
+                    </div>
+                    {% if producto.precio_venta and producto.precio_compra %}
+                    <hr>
+                    <div class="mb-2">
+                        <label class="text-muted small">Margen de Ganancia:</label>
+                        <p class="fw-bold text-success mb-0">
+                            ${% widthratio producto.precio_venta 1 1 as pv %}{% widthratio producto.precio_compra 1 1 as pc %}{{ producto.precio_venta|floatformat:2|add:"-"|add:producto.precio_compra|floatformat:2 }}
+                        </p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Stock -->
+            <div class="card shadow-sm mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h5 class="mb-0"><i class="fas fa-boxes"></i> Inventario</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="text-muted small">Stock Actual:</label>
+                        <h4 class="mb-0 
+                            {% if producto.stock > producto.stock_minimo %}text-success
+                            {% elif producto.stock > 0 %}text-warning
+                            {% else %}text-danger{% endif %}">
+                            {{ producto.stock|floatformat:0 }}
+                            {% if producto.unidad_medida %} {{ producto.unidad_medida }}{% endif %}
+                        </h4>
+                    </div>
+                    <hr>
+                    <div class="mb-2">
+                        <label class="text-muted small">Stock Mínimo:</label>
+                        <p class="fw-bold mb-0">{{ producto.stock_minimo|floatformat:0|default:"No definido" }}</p>
+                    </div>
+                    <div class="mb-2">
+                        <label class="text-muted small">Stock Máximo:</label>
+                        <p class="fw-bold mb-0">{{ producto.stock_maximo|floatformat:0|default:"No definido" }}</p>
+                    </div>
+                    {% if producto.stock <= producto.stock_minimo %}
+                    <div class="alert alert-danger mt-3 mb-0">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <small><strong>¡Atención!</strong> Stock bajo nivel mínimo</small>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Información Adicional -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-info"></i> Información Adicional</h5>
+                </div>
+                <div class="card-body">
+                    {% if producto.registro_sanitario %}
+                    <div class="mb-2">
+                        <label class="text-muted small">Registro Sanitario:</label>
+                        <p class="fw-bold">{{ producto.registro_sanitario }}</p>
+                    </div>
+                    {% endif %}
+                    {% if producto.lote %}
+                    <div class="mb-2">
+                        <label class="text-muted small">Lote:</label>
+                        <p class="fw-bold">{{ producto.lote }}</p>
+                    </div>
+                    {% endif %}
+                    {% if producto.fecha_vencimiento %}
+                    <div class="mb-2">
+                        <label class="text-muted small">Fecha de Vencimiento:</label>
+                        <p class="fw-bold">{{ producto.fecha_vencimiento|date:"d/m/Y" }}</p>
+                    </div>
+                    {% endif %}
+                    {% if producto.unidad_medida %}
+                    <div class="mb-2">
+                        <label class="text-muted small">Unidad de Medida:</label>
+                        <p class="fw-bold">{{ producto.unidad_medida }}</p>
+                    </div>
+                    {% endif %}
+                    <div class="mb-0">
+                        <label class="text-muted small">Estado:</label>
+                        <p class="mb-0">
+                            {% if producto.activo %}
+                                <span class="badge bg-success">Activo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactivo</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.info-item {
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #f8f9fa;
+}
+.info-item label {
+    margin-bottom: 5px;
+    display: block;
+}
+.info-item p {
+    margin-bottom: 0;
+}
+.card {
+    border: none;
+}
+.card-header {
+    border-bottom: 3px solid rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}

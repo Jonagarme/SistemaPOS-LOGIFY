@@ -1,0 +1,174 @@
+{% extends 'base.html' %}
+
+{% block title %}Abrir Caja - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-cash-register"></i> Abrir Caja
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="caja" class="form-label">
+                                    <i class="fas fa-box"></i> Seleccionar Caja <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-select" id="caja" name="caja" required>
+                                    <option value="">Seleccione una caja...</option>
+                                    {% for caja in cajas_disponibles %}
+                                        <option value="{{ caja.id }}">
+                                            {{ caja.codigo }} - {{ caja.nombre }}
+                                        </option>
+                                    {% endfor %}
+                                </select>
+                                <div class="form-text">
+                                    Caja que utilizará durante su turno
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="monto_inicial" class="form-label">
+                                    <i class="fas fa-money-bill"></i> Monto Inicial
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="monto_inicial" 
+                                           name="monto_inicial" step="0.01" min="0" value="0.00">
+                                </div>
+                                <div class="form-text">
+                                    Efectivo inicial en la caja
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="observaciones" class="form-label">
+                            <i class="fas fa-comment"></i> Observaciones
+                        </label>
+                        <textarea class="form-control" id="observaciones" name="observaciones" 
+                                  rows="3" placeholder="Observaciones adicionales (opcional)"></textarea>
+                    </div>
+                    
+                    <!-- Información importante -->
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle"></i> Información Importante:</h6>
+                        <ul class="mb-0">
+                            <li>Una vez abierta la caja, podrá realizar ventas y movimientos</li>
+                            <li>El monto inicial será registrado como movimiento de entrada</li>
+                            <li>Recuerde cerrar la caja al finalizar su turno</li>
+                            <li>Solo puede tener una caja abierta por usuario</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <a href="{% url 'usuarios:dashboard' %}" class="btn btn-secondary me-md-2">
+                            <i class="fas fa-times"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-lock-open"></i> Abrir Caja
+                        </button>
+                    </div>
+                </form>
+                
+                {% if not cajas_disponibles %}
+                <div class="alert alert-warning mt-3">
+                    <h6><i class="fas fa-exclamation-triangle"></i> No hay cajas disponibles</h6>
+                    <p>No se encontraron cajas activas en el sistema. Contacte al administrador para configurar las cajas.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Información de cajas disponibles -->
+        {% if cajas_disponibles %}
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-list"></i> Cajas Disponibles
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Caja</th>
+                                <th>Ubicación</th>
+                                <th>Descripción</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for caja in cajas_disponibles %}
+                            <tr>
+                                <td><strong>{{ caja.nombre }}</strong></td>
+                                <td>{{ caja.ubicacion }}</td>
+                                <td>{{ caja.descripcion|default:"—" }}</td>
+                                <td>
+                                    <span class="badge bg-success">Disponible</span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Validación del formulario
+    const form = document.querySelector('form');
+    const cajaSelect = document.getElementById('caja');
+    const montoInput = document.getElementById('monto_inicial');
+    
+    form.addEventListener('submit', function(e) {
+        if (!cajaSelect.value) {
+            e.preventDefault();
+            alert('Por favor seleccione una caja');
+            cajaSelect.focus();
+            return false;
+        }
+        
+        if (parseFloat(montoInput.value) < 0) {
+            e.preventDefault();
+            alert('El monto inicial no puede ser negativo');
+            montoInput.focus();
+            return false;
+        }
+        
+        // Confirmación
+        const confirmacion = confirm(
+            '¿Está seguro que desea abrir la caja con los datos ingresados?\n\n' +
+            'Caja: ' + cajaSelect.options[cajaSelect.selectedIndex].text + '\n' +
+            'Monto inicial: $ ' + parseFloat(montoInput.value).toFixed(2)
+        );
+        
+        if (!confirmacion) {
+            e.preventDefault();
+            return false;
+        }
+    });
+    
+    // Formatear monto al salir del campo
+    montoInput.addEventListener('blur', function() {
+        const valor = parseFloat(this.value) || 0;
+        this.value = valor.toFixed(2);
+    });
+});
+</script>
+{% endblock %}

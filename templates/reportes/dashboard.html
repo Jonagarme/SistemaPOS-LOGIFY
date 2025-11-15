@@ -1,0 +1,347 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Reportes del Sistema{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<style>
+    .card-report {
+        transition: transform 0.2s;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .card-report:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    .stat-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-radius: 10px;
+    }
+    .export-btn {
+        margin: 5px;
+    }
+    .download-section {
+        background: #f8f9fa;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-chart-bar text-primary"></i>
+                        {{ titulo }}
+                    </h1>
+                    <p class="text-muted">Genera y descarga reportes del sistema</p>
+                </div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'usuarios:dashboard' %}">Dashboard</a></li>
+                        <li class="breadcrumb-item active">Reportes</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-uppercase mb-1">
+                                Total Productos
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold">{{ total_productos }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-pills fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-uppercase mb-1">
+                                Total Clientes
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold">{{ total_clientes }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-users fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-uppercase mb-1">
+                                Total Proveedores
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold">{{ total_proveedores }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-truck fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card stat-card">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-uppercase mb-1">
+                                <a href="{% url 'reportes:estadisticas' %}" class="text-white text-decoration-none">
+                                    Ver Estadísticas
+                                </a>
+                            </div>
+                            <div class="h6 mb-0">
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-chart-line fa-2x"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de Descargas -->
+    <div class="row">
+        <!-- Productos -->
+        <div class="col-lg-4 mb-4">
+            <div class="card card-report h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-pills me-2"></i>
+                        Productos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Descarga la lista completa de productos activos con toda su información.</p>
+                    <div class="download-section">
+                        <h6 class="mb-3">Formatos disponibles:</h6>
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'reportes:exportar_productos' %}?formato=csv" 
+                               class="btn btn-outline-success export-btn">
+                                <i class="fas fa-file-csv me-2"></i>
+                                Descargar CSV
+                            </a>
+                            <a href="{% url 'reportes:exportar_productos' %}?formato=pdf" 
+                               class="btn btn-outline-danger export-btn">
+                                <i class="fas fa-file-pdf me-2"></i>
+                                Descargar PDF
+                            </a>
+                            <a href="{% url 'reportes:exportar_productos' %}?formato=txt" 
+                               class="btn btn-outline-secondary export-btn">
+                                <i class="fas fa-file-alt me-2"></i>
+                                Descargar TXT
+                            </a>
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i>
+                        Incluye: código, nombre, precios, stock, categoría, laboratorio, etc.
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Clientes -->
+        <div class="col-lg-4 mb-4">
+            <div class="card card-report h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-users me-2"></i>
+                        Clientes
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Descarga la lista completa de clientes activos con su información de contacto.</p>
+                    <div class="download-section">
+                        <h6 class="mb-3">Formatos disponibles:</h6>
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'reportes:exportar_clientes' %}?formato=csv" 
+                               class="btn btn-outline-success export-btn">
+                                <i class="fas fa-file-csv me-2"></i>
+                                Descargar CSV
+                            </a>
+                            <a href="{% url 'reportes:exportar_clientes' %}?formato=pdf" 
+                               class="btn btn-outline-danger export-btn">
+                                <i class="fas fa-file-pdf me-2"></i>
+                                Descargar PDF
+                            </a>
+                            <a href="{% url 'reportes:exportar_clientes' %}?formato=txt" 
+                               class="btn btn-outline-secondary export-btn">
+                                <i class="fas fa-file-alt me-2"></i>
+                                Descargar TXT
+                            </a>
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i>
+                        Incluye: nombre, RTN/identidad, teléfono, email, dirección, etc.
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Proveedores -->
+        <div class="col-lg-4 mb-4">
+            <div class="card card-report h-100">
+                <div class="card-header bg-warning text-white">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-truck me-2"></i>
+                        Proveedores
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="card-text">Descarga la lista completa de proveedores activos con su información comercial.</p>
+                    <div class="download-section">
+                        <h6 class="mb-3">Formatos disponibles:</h6>
+                        <div class="d-grid gap-2">
+                            <a href="{% url 'reportes:exportar_proveedores' %}?formato=csv" 
+                               class="btn btn-outline-success export-btn">
+                                <i class="fas fa-file-csv me-2"></i>
+                                Descargar CSV
+                            </a>
+                            <a href="{% url 'reportes:exportar_proveedores' %}?formato=pdf" 
+                               class="btn btn-outline-danger export-btn">
+                                <i class="fas fa-file-pdf me-2"></i>
+                                Descargar PDF
+                            </a>
+                            <a href="{% url 'reportes:exportar_proveedores' %}?formato=txt" 
+                               class="btn btn-outline-secondary export-btn">
+                                <i class="fas fa-file-alt me-2"></i>
+                                Descargar TXT
+                            </a>
+                        </div>
+                            </a>
+                            <a href="{% url 'reportes:exportar_proveedores' %}?formato=txt" 
+                               class="btn btn-outline-secondary export-btn">
+                                <i class="fas fa-file-alt me-2"></i>
+                                Descargar TXT
+                            </a>
+                        </div>
+                    </div>
+                    <small class="text-muted">
+                        <i class="fas fa-info-circle"></i>
+                        Incluye: nombre, RTN, teléfono, email, dirección, contacto, etc.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información adicional -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="card-title mb-0">
+                        <i class="fas fa-info-circle text-info me-2"></i>
+                        Información sobre los reportes
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <h6><i class="fas fa-file-csv text-success me-2"></i>Formato CSV</h6>
+                            <p class="small text-muted">Ideal para Excel y hojas de cálculo. Compatible con caracteres especiales.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="fas fa-file-pdf text-danger me-2"></i>Formato PDF</h6>
+                            <p class="small text-muted">Perfecto para impresión y presentaciones. Documento con formato profesional.</p>
+                        </div>
+                        <div class="col-md-4">
+                            <h6><i class="fas fa-file-alt text-secondary me-2"></i>Formato TXT</h6>
+                            <p class="small text-muted">Texto plano legible. Ideal para impresión y visualización simple.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Animación de descarga
+document.querySelectorAll('.export-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const icon = this.querySelector('i');
+        const originalClass = icon.className;
+        
+        // Cambiar a icono de descarga
+        icon.className = 'fas fa-spinner fa-spin me-2';
+        this.disabled = true;
+        
+        // Restaurar después de 2 segundos
+        setTimeout(() => {
+            icon.className = originalClass;
+            this.disabled = false;
+        }, 2000);
+    });
+});
+
+// Mostrar mensaje de descarga
+document.querySelectorAll('.export-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const tipo = this.closest('.card').querySelector('.card-title').textContent.trim();
+        const formato = this.textContent.includes('CSV') ? 'CSV' : 
+                       this.textContent.includes('JSON') ? 'JSON' : 'TXT';
+        
+        // Crear toast de notificación
+        const toast = document.createElement('div');
+        toast.className = 'toast show position-fixed';
+        toast.style.cssText = 'top: 20px; right: 20px; z-index: 9999;';
+        toast.innerHTML = `
+            <div class="toast-header">
+                <i class="fas fa-download text-success me-2"></i>
+                <strong class="me-auto">Descarga iniciada</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body">
+                Descargando ${tipo} en formato ${formato}...
+            </div>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        // Remover toast después de 3 segundos
+        setTimeout(() => {
+            toast.remove();
+        }, 3000);
+    });
+});
+</script>
+{% endblock %}

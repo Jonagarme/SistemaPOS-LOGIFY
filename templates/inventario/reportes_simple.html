@@ -1,0 +1,324 @@
+{% extends 'base.html' %}
+
+{% block title %}Reportes de Inventario - Sistema POS{% endblock %}
+
+{% block page_title %}Reportes de Inventario{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar"></i> Panel de Reportes de Inventario
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-4">
+                    <!-- Reportes de Stock -->
+                    <div class="col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-primary text-white">
+                                <h6 class="card-title mb-0">
+                                    <i class="fas fa-boxes"></i> Reportes de Stock
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="list-group list-group-flush">
+                                    <a href="{% url 'inventario:inventario_valorado' %}" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <div>
+                                                <i class="fas fa-dollar-sign text-success me-2"></i>
+                                                <strong>Inventario Valorado</strong>
+                                            </div>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </div>
+                                        <p class="mb-1 text-muted">Valor total del inventario actual</p>
+                                    </a>
+                                    
+                                    <a href="#" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <div>
+                                                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                                <strong>Productos Bajo Stock</strong>
+                                            </div>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </div>
+                                        <p class="mb-1 text-muted">Productos que necesitan reposición</p>
+                                    </a>
+                                    
+                                    <a href="#" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <div>
+                                                <i class="fas fa-times-circle text-danger me-2"></i>
+                                                <strong>Productos Sin Stock</strong>
+                                            </div>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </div>
+                                        <p class="mb-1 text-muted">Productos agotados</p>
+                                    </a>
+                                    
+                                    <a href="#" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <div>
+                                                <i class="fas fa-arrow-up text-info me-2"></i>
+                                                <strong>Exceso de Stock</strong>
+                                            </div>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </div>
+                                        <p class="mb-1 text-muted">Productos con stock excesivo</p>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Reportes de Movimientos -->
+                    <div class="col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-success text-white">
+                                <h6 class="card-title mb-0">
+                                    <i class="fas fa-exchange-alt"></i> Reportes de Movimientos
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="list-group list-group-flush">
+                                    <a href="#" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <div>
+                                                <i class="fas fa-list text-primary me-2"></i>
+                                                <strong>Movimientos de Inventario</strong>
+                                            </div>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </div>
+                                        <p class="mb-1 text-muted">Historial de movimientos de stock</p>
+                                    </a>
+                                    
+                                    <a href="{% url 'inventario:kardex' %}" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <div>
+                                                <i class="fas fa-clipboard-list text-info me-2"></i>
+                                                <strong>Kardex General</strong>
+                                            </div>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </div>
+                                        <p class="mb-1 text-muted">Registro detallado de entradas y salidas</p>
+                                    </a>
+                                    
+                                    <a href="{% url 'inventario:ajustes' %}" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <div>
+                                                <i class="fas fa-tools text-warning me-2"></i>
+                                                <strong>Ajustes de Inventario</strong>
+                                            </div>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </div>
+                                        <p class="mb-1 text-muted">Historial de ajustes manuales</p>
+                                    </a>
+                                    
+                                    <a href="{% url 'inventario:lista_transferencias' %}" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <div>
+                                                <i class="fas fa-truck text-success me-2"></i>
+                                                <strong>Transferencias</strong>
+                                            </div>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </div>
+                                        <p class="mb-1 text-muted">Movimientos entre ubicaciones</p>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Reportes de Compras -->
+                    <div class="col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-warning text-dark">
+                                <h6 class="card-title mb-0">
+                                    <i class="fas fa-shopping-cart"></i> Reportes de Compras
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="list-group list-group-flush">
+                                    <a href="#" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <div>
+                                                <i class="fas fa-industry text-primary me-2"></i>
+                                                <strong>Compras por Proveedor</strong>
+                                            </div>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </div>
+                                        <p class="mb-1 text-muted">Análisis de compras por proveedor</p>
+                                    </a>
+                                    
+                                    <a href="{% url 'inventario:compras' %}" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <div>
+                                                <i class="fas fa-receipt text-success me-2"></i>
+                                                <strong>Historial de Compras</strong>
+                                            </div>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </div>
+                                        <p class="mb-1 text-muted">Registro completo de compras</p>
+                                    </a>
+                                    
+                                    <a href="{% url 'inventario:lista_ordenes_compra' %}" class="list-group-item list-group-item-action">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <div>
+                                                <i class="fas fa-file-alt text-info me-2"></i>
+                                                <strong>Órdenes de Compra</strong>
+                                            </div>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </div>
+                                        <p class="mb-1 text-muted">Estado de órdenes pendientes</p>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Reportes de Análisis -->
+                    <div class="col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="card-title mb-0">
+                                    <i class="fas fa-chart-line"></i> Análisis y Tendencias
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="list-group list-group-flush">
+                                    <a href="#" class="list-group-item list-group-item-action" onclick="generarReporteRotacion()">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <div>
+                                                <i class="fas fa-sync text-primary me-2"></i>
+                                                <strong>Rotación de Inventario</strong>
+                                            </div>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </div>
+                                        <p class="mb-1 text-muted">Análisis de rotación de productos</p>
+                                    </a>
+                                    
+                                    <a href="#" class="list-group-item list-group-item-action" onclick="generarReporteABC()">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <div>
+                                                <i class="fas fa-sort-alpha-down text-success me-2"></i>
+                                                <strong>Análisis ABC</strong>
+                                            </div>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </div>
+                                        <p class="mb-1 text-muted">Clasificación ABC de productos</p>
+                                    </a>
+                                    
+                                    <a href="#" class="list-group-item list-group-item-action" onclick="generarReporteVencimientos()">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <div>
+                                                <i class="fas fa-calendar-times text-danger me-2"></i>
+                                                <strong>Próximos Vencimientos</strong>
+                                            </div>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </div>
+                                        <p class="mb-1 text-muted">Productos próximos a vencer</p>
+                                    </a>
+                                    
+                                    <a href="#" class="list-group-item list-group-item-action" onclick="exportarInventario()">
+                                        <div class="d-flex w-100 justify-content-between">
+                                            <div>
+                                                <i class="fas fa-download text-info me-2"></i>
+                                                <strong>Exportar Inventario</strong>
+                                            </div>
+                                            <i class="fas fa-chevron-right"></i>
+                                        </div>
+                                        <p class="mb-1 text-muted">Descargar inventario en Excel</p>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Resumen Rápido -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="card-title mb-0">
+                                    <i class="fas fa-tachometer-alt"></i> Resumen del Inventario
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row text-center">
+                                    <div class="col-md-3">
+                                        <div class="card border-primary">
+                                            <div class="card-body">
+                                                <h5 class="card-title text-primary">
+                                                    <i class="fas fa-boxes"></i>
+                                                </h5>
+                                                <h4>{{ total_productos }}</h4>
+                                                <p class="text-muted">Total Productos</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card border-success">
+                                            <div class="card-body">
+                                                <h5 class="card-title text-success">
+                                                    <i class="fas fa-dollar-sign"></i>
+                                                </h5>
+                                                <h4>${{ valor_inventario }}</h4>
+                                                <p class="text-muted">Valor Total</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card border-warning">
+                                            <div class="card-body">
+                                                <h5 class="card-title text-warning">
+                                                    <i class="fas fa-exclamation-triangle"></i>
+                                                </h5>
+                                                <h4>{{ bajo_stock }}</h4>
+                                                <p class="text-muted">Bajo Stock</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="card border-danger">
+                                            <div class="card-body">
+                                                <h5 class="card-title text-danger">
+                                                    <i class="fas fa-times-circle"></i>
+                                                </h5>
+                                                <h4>{{ sin_stock }}</h4>
+                                                <p class="text-muted">Sin Stock</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function generarReporteRotacion() {
+    alert('Función en desarrollo: Reporte de Rotación de Inventario');
+}
+
+function generarReporteABC() {
+    alert('Función en desarrollo: Análisis ABC');
+}
+
+function generarReporteVencimientos() {
+    alert('Función en desarrollo: Próximos Vencimientos');
+}
+
+function exportarInventario() {
+    alert('Función en desarrollo: Exportar Inventario');
+}
+</script>
+{% endblock %}

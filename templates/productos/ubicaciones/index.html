@@ -1,0 +1,603 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .header-ubicaciones {
+        background: linear-gradient(135deg, #6f42c1 0%, #007bff 100%);
+        color: white;
+        padding: 1.5rem 0;
+        margin-bottom: 1.5rem;
+        border-radius: 0 0 15px 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .stats-card {
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        transition: transform 0.2s;
+    }
+    
+    .stats-card:hover {
+        transform: translateY(-2px);
+    }
+    
+    .seccion-card {
+        border-radius: 10px;
+        border: 2px solid #e9ecef;
+        transition: all 0.3s;
+        cursor: pointer;
+    }
+    
+    .seccion-card:hover {
+        border-color: var(--seccion-color, #007bff);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .producto-item {
+        border-left: 4px solid #dc3545;
+        background: #fff;
+        border-radius: 8px;
+        margin-bottom: 0.5rem;
+        transition: all 0.2s;
+    }
+    
+    .producto-item:hover {
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        transform: translateX(2px);
+    }
+    
+    .badge-ubicacion {
+        background: linear-gradient(45deg, #28a745, #20c997);
+        color: white;
+        font-size: 0.75rem;
+    }
+    
+    .btn-ubicar {
+        background: linear-gradient(45deg, #6f42c1, #007bff);
+        border: none;
+        color: white;
+    }
+    
+    .btn-ubicar:hover {
+        background: linear-gradient(45deg, #5a36a3, #0056b3);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+    <!-- Header -->
+    <div class="header-ubicaciones">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h2 class="mb-0">
+                        <i class="fas fa-map-marked-alt"></i>
+                        Ubicaciones de Productos
+                    </h2>
+                    <p class="mb-0 opacity-75">Gestiona la ubicación de productos en perchas del establecimiento</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <a href="{% url 'productos:gestionar_secciones' %}" class="btn btn-light">
+                        <i class="fas fa-cog"></i> Gestionar Secciones
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Estadísticas -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card stats-card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <h4 class="mb-0">{{ estadisticas.total_productos }}</h4>
+                                <small>Total Productos</small>
+                            </div>
+                            <div class="fs-1 opacity-50">
+                                <i class="fas fa-boxes"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <h4 class="mb-0">{{ estadisticas.productos_ubicados }}</h4>
+                                <small>Productos Ubicados</small>
+                            </div>
+                            <div class="fs-1 opacity-50">
+                                <i class="fas fa-map-pin"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card bg-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <h4 class="mb-0">{{ estadisticas.productos_sin_ubicar }}</h4>
+                                <small>Sin Ubicar</small>
+                            </div>
+                            <div class="fs-1 opacity-50">
+                                <i class="fas fa-question-circle"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card stats-card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="flex-grow-1">
+                                <h4 class="mb-0">{{ estadisticas.total_perchas }}</h4>
+                                <small>Total Perchas</small>
+                            </div>
+                            <div class="fs-1 opacity-50">
+                                <i class="fas fa-th-large"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Secciones del Establecimiento -->
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-store"></i>
+                            Secciones del Establecimiento
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% if secciones %}
+                            <div class="row">
+                                {% for seccion in secciones %}
+                                <div class="col-md-4 mb-3">
+                                    <div class="seccion-card p-3" 
+                                         style="--seccion-color: {{ seccion.2 }};"
+                                         onclick="window.location.href='{% url 'productos:gestionar_perchas' seccion.0 %}'">
+                                        <div class="d-flex align-items-center mb-2">
+                                            <div class="rounded-circle me-2" 
+                                                 style="width: 20px; height: 20px; background-color: {{ seccion.2 }};"></div>
+                                            <h6 class="mb-0">{{ seccion.1 }}</h6>
+                                        </div>
+                                        <div class="row text-center">
+                                            <div class="col-6">
+                                                <small class="text-muted">Perchas</small>
+                                                <div class="fw-bold">{{ seccion.3 }}</div>
+                                            </div>
+                                            <div class="col-6">
+                                                <small class="text-muted">Productos</small>
+                                                <div class="fw-bold">0</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-store-slash text-muted" style="font-size: 3rem;"></i>
+                                <h5 class="text-muted mt-3">No hay secciones configuradas</h5>
+                                <p class="text-muted">Crea secciones para organizar tus productos</p>
+                                <a href="{% url 'productos:gestionar_secciones' %}" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Crear Primera Sección
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Productos Sin Ubicar -->
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-exclamation-triangle text-warning"></i>
+                            Sin Ubicar
+                        </h5>
+                        <span class="badge bg-warning">{{ productos_sin_ubicacion|length }}</span>
+                    </div>
+                    <div class="card-body p-0" style="max-height: 400px; overflow-y: auto;">
+                        {% if productos_sin_ubicacion %}
+                            {% for producto in productos_sin_ubicacion %}
+                            <div class="producto-item p-3 border-bottom">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div class="flex-grow-1">
+                                        <h6 class="mb-1">{{ producto.2 }}</h6>
+                                        <small class="text-muted">{{ producto.1 }}</small>
+                                        <div class="mt-1">
+                                            <span class="badge bg-secondary">Stock: {{ producto.3 }}</span>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm btn-ubicar ms-2" 
+                                            onclick="mostrarModalUbicar({{ producto.0 }}, '{{ producto.1 }}', '{{ producto.2|escapejs }}')">
+                                        <i class="fas fa-map-pin"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="text-center py-4">
+                                <i class="fas fa-check-circle text-success" style="font-size: 2rem;"></i>
+                                <p class="text-muted mt-2 mb-0">¡Todos los productos están ubicados!</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Panel de Búsqueda Rápida -->
+                <div class="card mt-3">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-search"></i>
+                            Búsqueda Rápida
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Buscar Producto</label>
+                            <input type="text" class="form-control" id="busquedaProducto" 
+                                   placeholder="Código o nombre del producto">
+                        </div>
+                        <div id="resultadosBusqueda"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para Ubicar Producto -->
+    <div class="modal fade" id="modalUbicarProducto" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-map-pin"></i>
+                        Ubicar Producto
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="contenidoModalUbicar">
+                        <!-- Contenido dinámico -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Búsqueda de productos
+    let timeoutBusqueda;
+    document.getElementById('busquedaProducto').addEventListener('input', function() {
+        clearTimeout(timeoutBusqueda);
+        const termino = this.value.trim();
+        
+        if (termino.length < 2) {
+            document.getElementById('resultadosBusqueda').innerHTML = '';
+            return;
+        }
+        
+        timeoutBusqueda = setTimeout(() => {
+            buscarProductos(termino);
+        }, 300);
+    });
+
+    function buscarProductos(termino) {
+        fetch(`{% url 'productos:buscar_productos_ajax' %}?termino=${encodeURIComponent(termino)}`)
+            .then(response => response.json())
+            .then(data => {
+                mostrarResultadosBusqueda(data.productos);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+    }
+
+    function mostrarResultadosBusqueda(productos) {
+        const container = document.getElementById('resultadosBusqueda');
+        
+        if (productos.length === 0) {
+            container.innerHTML = '<p class="text-muted mb-0">No se encontraron productos</p>';
+            return;
+        }
+        
+        let html = '';
+        productos.forEach(producto => {
+            const tieneUbicacion = producto.tiene_ubicacion;
+            const badgeClass = tieneUbicacion ? 'bg-success' : 'bg-warning';
+            const badgeText = tieneUbicacion ? 'Ubicado' : 'Sin ubicar';
+            
+            html += `
+                <div class="border rounded p-2 mb-2">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">${producto.nombre}</h6>
+                            <small class="text-muted">${producto.codigo}</small>
+                            <div class="mt-1">
+                                <span class="badge ${badgeClass}">${badgeText}</span>
+                                ${tieneUbicacion ? 
+                                    `<span class="badge bg-info ms-1">${producto.ubicacion_actual}</span>` : 
+                                    `<button class="btn btn-sm btn-primary ms-1" onclick="mostrarModalUbicar(${producto.id}, '${producto.codigo}', '${producto.nombre}')">
+                                        <i class="fas fa-map-pin"></i> Ubicar
+                                    </button>`
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+        
+        container.innerHTML = html;
+    }
+
+    function mostrarModalUbicar(productoId, codigo, nombre) {
+        // Cargar contenido del modal
+        document.getElementById('contenidoModalUbicar').innerHTML = `
+            <div class="text-center">
+                <div class="spinner-border" role="status">
+                    <span class="visually-hidden">Cargando secciones...</span>
+                </div>
+            </div>
+        `;
+        
+        // Mostrar modal
+        const modal = new bootstrap.Modal(document.getElementById('modalUbicarProducto'));
+        modal.show();
+        
+        // Cargar secciones disponibles
+        fetch('/productos/ubicaciones/secciones/json/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    let opcionesSecciones = '<option value="">Seleccione una sección</option>';
+                    data.secciones.forEach(seccion => {
+                        opcionesSecciones += `<option value="${seccion.id}">${seccion.nombre}</option>`;
+                    });
+                    
+                    document.getElementById('contenidoModalUbicar').innerHTML = `
+                        <div class="mb-3">
+                            <h6 class="text-primary">Producto: ${nombre}</h6>
+                            <small class="text-muted">Código: ${codigo}</small>
+                        </div>
+                        
+                        <form id="formUbicarProducto">
+                            <input type="hidden" name="producto_id" value="${productoId}">
+                            
+                            <div class="mb-3">
+                                <label for="seccionSelect" class="form-label">Sección:</label>
+                                <select class="form-select" id="seccionSelect" name="seccion_id" required onchange="cargarPerchas(this.value)">
+                                    ${opcionesSecciones}
+                                </select>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <label for="perchaSelect" class="form-label">Percha:</label>
+                                <select class="form-select" id="perchaSelect" name="percha_id" required disabled onchange="cargarPosiciones(this.value)">
+                                    <option value="">Primero seleccione una sección</option>
+                                </select>
+                            </div>
+                            
+                            <div id="posicionesContainer" style="display: none;">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <label for="filaInput" class="form-label">Fila:</label>
+                                        <input type="number" class="form-control" id="filaInput" name="fila" min="1" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="columnaInput" class="form-label">Columna:</label>
+                                        <input type="number" class="form-control" id="columnaInput" name="columna" min="1" required>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <label for="observacionesInput" class="form-label">Observaciones (opcional):</label>
+                                    <textarea class="form-control" id="observacionesInput" name="observaciones" rows="2"></textarea>
+                                </div>
+                            </div>
+                            
+                            <div class="mt-3 text-end">
+                                <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-primary" disabled id="btnUbicar">
+                                    <i class="fas fa-map-pin"></i> Ubicar Producto
+                                </button>
+                            </div>
+                        </form>
+                    `;
+                    
+                    // Agregar event listener al formulario
+                    document.getElementById('formUbicarProducto').addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        ubicarProducto();
+                    });
+                } else {
+                    document.getElementById('contenidoModalUbicar').innerHTML = `
+                        <div class="alert alert-danger">
+                            <h6>Error</h6>
+                            <p>No se pudieron cargar las secciones: ${data.error}</p>
+                            <a href="/productos/ubicaciones/secciones/" class="btn btn-primary btn-sm">
+                                <i class="fas fa-cog"></i> Gestionar Secciones
+                            </a>
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Error cargando secciones:', error);
+                document.getElementById('contenidoModalUbicar').innerHTML = `
+                    <div class="alert alert-danger">
+                        <h6>Error</h6>
+                        <p>No se pudieron cargar las secciones. Verifique que existan secciones configuradas.</p>
+                        <a href="/productos/ubicaciones/secciones/" class="btn btn-primary btn-sm">
+                            <i class="fas fa-cog"></i> Gestionar Secciones
+                        </a>
+                    </div>
+                `;
+            });
+    }
+
+    function cargarPerchas(seccionId) {
+        console.log('cargarPerchas llamada con seccionId:', seccionId);
+        
+        const perchaSelect = document.getElementById('perchaSelect');
+        const posicionesContainer = document.getElementById('posicionesContainer');
+        const btnUbicar = document.getElementById('btnUbicar');
+        
+        if (!seccionId) {
+            perchaSelect.innerHTML = '<option value="">Primero seleccione una sección</option>';
+            perchaSelect.disabled = true;
+            posicionesContainer.style.display = 'none';
+            btnUbicar.disabled = true;
+            return;
+        }
+        
+        perchaSelect.innerHTML = '<option value="">Cargando perchas...</option>';
+        perchaSelect.disabled = true;
+        
+        const url = `/productos/ubicaciones/secciones/${seccionId}/perchas/json/`;
+        console.log('Haciendo petición a:', url);
+        
+        fetch(url)
+            .then(response => {
+                console.log('Respuesta recibida:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Datos recibidos:', data);
+                if (data.success) {
+                    let opcionesPerchas = '<option value="">Seleccione una percha</option>';
+                    data.perchas.forEach(percha => {
+                        opcionesPerchas += `<option value="${percha.id}" data-filas="${percha.filas}" data-columnas="${percha.columnas}">${percha.nombre}</option>`;
+                    });
+                    
+                    perchaSelect.innerHTML = opcionesPerchas;
+                    perchaSelect.disabled = false;
+                    console.log(`Se cargaron ${data.perchas.length} perchas`);
+                } else {
+                    console.error('Error en respuesta:', data.error);
+                    perchaSelect.innerHTML = '<option value="">Error cargando perchas</option>';
+                    perchaSelect.disabled = true;
+                }
+            })
+            .catch(error => {
+                console.error('Error en petición:', error);
+                perchaSelect.innerHTML = '<option value="">Error cargando perchas</option>';
+                perchaSelect.disabled = true;
+            });
+    }
+
+    function cargarPosiciones(perchaId) {
+        const posicionesContainer = document.getElementById('posicionesContainer');
+        const filaInput = document.getElementById('filaInput');
+        const columnaInput = document.getElementById('columnaInput');
+        const btnUbicar = document.getElementById('btnUbicar');
+        const perchaSelect = document.getElementById('perchaSelect');
+        
+        if (!perchaId) {
+            posicionesContainer.style.display = 'none';
+            btnUbicar.disabled = true;
+            return;
+        }
+        
+        // Obtener información de dimensiones de la opción seleccionada
+        const selectedOption = perchaSelect.querySelector(`option[value="${perchaId}"]`);
+        if (selectedOption) {
+            const maxFilas = parseInt(selectedOption.getAttribute('data-filas')) || 5;
+            const maxColumnas = parseInt(selectedOption.getAttribute('data-columnas')) || 10;
+            
+            filaInput.max = maxFilas;
+            filaInput.placeholder = `1-${maxFilas}`;
+            columnaInput.max = maxColumnas;
+            columnaInput.placeholder = `1-${maxColumnas}`;
+            
+            posicionesContainer.style.display = 'block';
+            btnUbicar.disabled = false;
+        } else {
+            posicionesContainer.style.display = 'none';
+            btnUbicar.disabled = true;
+        }
+    }
+
+    function ubicarProducto() {
+        const form = document.getElementById('formUbicarProducto');
+        const formData = new FormData(form);
+        const btnUbicar = document.getElementById('btnUbicar');
+        
+        btnUbicar.disabled = true;
+        btnUbicar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ubicando...';
+        
+        // Obtener token CSRF
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        formData.append('csrfmiddlewaretoken', csrfToken);
+        
+        fetch('/productos/ubicaciones/ubicar-producto/', {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Mostrar mensaje de éxito
+                document.getElementById('contenidoModalUbicar').innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="fas fa-check-circle"></i> ${data.message}
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Cerrar</button>
+                    </div>
+                `;
+                
+                // Actualizar la lista de productos
+                setTimeout(() => {
+                    buscarProductos();
+                }, 1500);
+            } else {
+                // Mostrar error
+                document.getElementById('contenidoModalUbicar').innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle"></i> Error: ${data.error}
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-secondary" onclick="location.reload()">Intentar de nuevo</button>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error ubicando producto:', error);
+            document.getElementById('contenidoModalUbicar').innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i> Error de conexión
+                </div>
+                <div class="text-end">
+                    <button type="button" class="btn btn-secondary" onclick="location.reload()">Intentar de nuevo</button>
+                </div>
+            `;
+        });
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,468 @@
+{% load static %}
+
+<style>
+    /* Estilos para menú vertical */
+    .sidebar-vertical {
+        position: fixed;
+        left: 0;
+        top: 56px; /* Altura del navbar fijo */
+        width: 250px;
+        height: calc(100vh - 56px);
+        background: #343a40;
+        overflow-y: auto;
+        overflow-x: hidden;
+        z-index: 1040; /* Justo debajo del navbar que está en 1050 */
+        transition: all 0.3s;
+        box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    }
+    
+    .sidebar-vertical .nav-link {
+        color: #fff;
+        padding: 12px 20px;
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        text-decoration: none;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    .sidebar-vertical .nav-link:hover {
+        background: #495057;
+        padding-left: 25px;
+    }
+    
+    .sidebar-vertical .nav-link i {
+        width: 20px;
+        min-width: 20px;
+        margin-right: 10px;
+        text-align: center;
+    }
+    
+    .sidebar-vertical .submenu {
+        background: #23272b;
+        padding-left: 0;
+    }
+    
+    .sidebar-vertical .submenu .nav-link {
+        padding: 8px 15px 8px 40px;
+        font-size: 0.85em;
+    }
+    
+    .sidebar-vertical .submenu .nav-link:hover {
+        padding-left: 45px;
+    }
+    
+    .sidebar-vertical .menu-section-title {
+        color: #adb5bd;
+        font-size: 0.75rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        padding: 10px 20px 5px;
+        margin-top: 10px;
+    }
+    
+    /* Scrollbar personalizado para el sidebar */
+    .sidebar-vertical::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .sidebar-vertical::-webkit-scrollbar-track {
+        background: #23272b;
+    }
+    
+    .sidebar-vertical::-webkit-scrollbar-thumb {
+        background: #495057;
+        border-radius: 3px;
+    }
+    
+    .sidebar-vertical::-webkit-scrollbar-thumb:hover {
+        background: #6c757d;
+    }
+    
+    /* Indicador de expansión */
+    .sidebar-vertical .float-end {
+        transition: transform 0.3s;
+    }
+    
+    .sidebar-vertical [data-bs-toggle="collapse"]:not(.collapsed) .float-end {
+        transform: rotate(180deg);
+    }
+    
+    .content-with-sidebar {
+        margin-left: 250px;
+        transition: margin-left 0.3s;
+        width: calc(100% - 250px);
+        max-width: 100%;
+        overflow-x: hidden;
+    }
+    
+    .sidebar-toggle {
+        display: none;
+        position: fixed;
+        left: 10px;
+        bottom: 20px;
+        z-index: 1001;
+        background: #007bff;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 50px;
+        height: 50px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .sidebar-toggle:hover {
+        background: #0056b3;
+        transform: scale(1.1);
+    }
+    
+    /* Responsive para tablets */
+    @media (max-width: 992px) {
+        .sidebar-vertical {
+            width: 220px;
+        }
+        
+        .content-with-sidebar {
+            margin-left: 220px;
+            width: calc(100% - 220px);
+        }
+    }
+    
+    /* Responsive para móviles */
+    @media (max-width: 768px) {
+        .sidebar-vertical {
+            left: -250px;
+            width: 250px;
+        }
+        
+        .sidebar-vertical.show {
+            left: 0;
+            box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+        }
+        
+        .content-with-sidebar {
+            margin-left: 0 !important;
+            width: 100% !important;
+            padding-left: 15px;
+            padding-right: 15px;
+        }
+        
+        .sidebar-toggle {
+            display: block;
+        }
+        
+        /* Overlay cuando el sidebar está abierto */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 56px; /* Justo debajo del navbar fijo */
+            left: 0;
+            width: 100%;
+            height: calc(100vh - 56px);
+            background: rgba(0,0,0,0.5);
+            z-index: 1039; /* Debajo del sidebar pero arriba del contenido */
+            transition: opacity 0.3s;
+        }
+        
+        .sidebar-overlay.show {
+            display: block;
+        }
+    }
+    
+    /* Extra pequeño */
+    @media (max-width: 576px) {
+        .content-with-sidebar {
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+        
+        .container-fluid {
+            padding-left: 10px;
+            padding-right: 10px;
+        }
+    }
+</style>
+
+<!-- Overlay para móviles -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- Sidebar Vertical -->
+<div class="sidebar-vertical" id="sidebarVertical">
+    <nav class="nav flex-column">
+        <!-- Productos -->
+        <div>
+            <a class="nav-link" data-bs-toggle="collapse" href="#menuProductos">
+                <i class="fas fa-box"></i> Productos
+                <i class="fas fa-chevron-down float-end"></i>
+            </a>
+            <div class="collapse submenu" id="menuProductos">
+                <a class="nav-link" href="{% url 'productos:lista' %}">
+                    <i class="fas fa-th-list"></i> Ver Productos
+                </a>
+                <a class="nav-link" href="{% url 'productos:crear' %}">
+                    <i class="fas fa-plus-circle"></i> Nuevo Producto
+                </a>
+                <a class="nav-link" href="{% url 'productos:ubicaciones_productos' %}">
+                    <i class="fas fa-map-marker-alt"></i> Ubicaciones
+                </a>
+                <a class="nav-link" href="{% url 'productos:categorias' %}">
+                    <i class="fas fa-tags"></i> Categorías
+                </a>
+                <a class="nav-link" href="{% url 'productos:marcas' %}">
+                    <i class="fas fa-award"></i> Marcas
+                </a>
+            </div>
+        </div>
+        
+        <!-- Ventas -->
+        <div>
+            <a class="nav-link" data-bs-toggle="collapse" href="#menuVentas">
+                <i class="fas fa-shopping-cart"></i> Ventas
+                <i class="fas fa-chevron-down float-end"></i>
+            </a>
+            <div class="collapse submenu" id="menuVentas">
+                <a class="nav-link bg-success text-white" href="{% url 'ventas:crear' %}">
+                    <i class="fas fa-cash-register"></i> Punto de Venta
+                </a>
+                <a class="nav-link" href="{% url 'ventas:lista' %}">
+                    <i class="fas fa-list-alt"></i> Ver Ventas
+                </a>
+                <a class="nav-link" href="{% url 'ventas:devoluciones' %}">
+                    <i class="fas fa-undo"></i> Devoluciones
+                </a>
+                <a class="nav-link" href="{% url 'ventas:facturas_electronicas' %}">
+                    <i class="fas fa-file-invoice-dollar"></i> Facturas Electrónicas
+                </a>
+            </div>
+        </div>
+        
+        <!-- Cotizaciones -->
+        <div>
+            <a class="nav-link" data-bs-toggle="collapse" href="#menuCotizaciones">
+                <i class="fas fa-file-contract"></i> Cotizaciones
+                <i class="fas fa-chevron-down float-end"></i>
+            </a>
+            <div class="collapse submenu" id="menuCotizaciones">
+                <a class="nav-link" href="{% url 'cotizaciones:lista' %}">
+                    <i class="fas fa-list-alt"></i> Ver Cotizaciones
+                </a>
+                <a class="nav-link" href="{% url 'cotizaciones:crear' %}">
+                    <i class="fas fa-plus-circle"></i> Nueva Cotización
+                </a>
+            </div>
+        </div>
+        
+        <!-- Clientes -->
+        <div>
+            <a class="nav-link" data-bs-toggle="collapse" href="#menuClientes">
+                <i class="fas fa-users"></i> Clientes
+                <i class="fas fa-chevron-down float-end"></i>
+            </a>
+            <div class="collapse submenu" id="menuClientes">
+                <a class="nav-link" href="{% url 'clientes:lista' %}">
+                    <i class="fas fa-list-alt"></i> Ver Clientes
+                </a>
+                <a class="nav-link" href="{% url 'clientes:crear' %}">
+                    <i class="fas fa-user-plus"></i> Nuevo Cliente
+                </a>
+            </div>
+        </div>
+        
+        <!-- Proveedores -->
+        <div>
+            <a class="nav-link" data-bs-toggle="collapse" href="#menuProveedores">
+                <i class="fas fa-truck"></i> Proveedores
+                <i class="fas fa-chevron-down float-end"></i>
+            </a>
+            <div class="collapse submenu" id="menuProveedores">
+                <a class="nav-link" href="{% url 'proveedores:lista' %}">
+                    <i class="fas fa-list-alt"></i> Ver Proveedores
+                </a>
+                <a class="nav-link" href="{% url 'proveedores:crear' %}">
+                    <i class="fas fa-plus-circle"></i> Nuevo Proveedor
+                </a>
+            </div>
+        </div>
+        
+        <!-- Inventario -->
+        <div>
+            <a class="nav-link" data-bs-toggle="collapse" href="#menuInventario">
+                <i class="fas fa-warehouse"></i> Inventario
+                <i class="fas fa-chevron-down float-end"></i>
+            </a>
+            <div class="collapse submenu" id="menuInventario">
+                <a class="nav-link" href="{% url 'inventario:kardex' %}">
+                    <i class="fas fa-list-alt"></i> Kardex
+                </a>
+                <a class="nav-link" href="{% url 'inventario:ajustes' %}">
+                    <i class="fas fa-balance-scale"></i> Ajustes
+                </a>
+                <a class="nav-link" href="{% url 'inventario:compras' %}">
+                    <i class="fas fa-shopping-cart"></i> Compras
+                </a>
+                <a class="nav-link" href="{% url 'inventario:lista_ordenes_compra' %}">
+                    <i class="fas fa-file-invoice"></i> Órdenes de Compra
+                </a>
+                <a class="nav-link" href="{% url 'inventario:lista_transferencias' %}">
+                    <i class="fas fa-exchange-alt"></i> Transferencias
+                </a>
+                <a class="nav-link" href="{% url 'inventario:reportes' %}">
+                    <i class="fas fa-chart-line"></i> Reportes
+                </a>
+            </div>
+        </div>
+        
+        <!-- Caja -->
+        <div>
+            <a class="nav-link" data-bs-toggle="collapse" href="#menuCaja">
+                <i class="fas fa-cash-register"></i> Caja
+                <i class="fas fa-chevron-down float-end"></i>
+            </a>
+            <div class="collapse submenu" id="menuCaja">
+                <a class="nav-link" href="{% url 'caja:estado' %}">
+                    <i class="fas fa-eye"></i> Estado de Caja
+                </a>
+                <a class="nav-link" href="{% url 'caja:movimientos' %}">
+                    <i class="fas fa-exchange-alt"></i> Movimientos
+                </a>
+                <a class="nav-link" href="{% url 'caja:aperturas' %}">
+                    <i class="fas fa-unlock"></i> Aperturas
+                </a>
+                <a class="nav-link" href="{% url 'caja:cierres' %}">
+                    <i class="fas fa-lock"></i> Cierres
+                </a>
+            </div>
+        </div>
+        
+        <!-- Contabilidad -->
+        <div>
+            <a class="nav-link" data-bs-toggle="collapse" href="#menuContabilidad">
+                <i class="fas fa-calculator"></i> Contabilidad
+                <i class="fas fa-chevron-down float-end"></i>
+            </a>
+            <div class="collapse submenu" id="menuContabilidad">
+                <a class="nav-link" href="{% url 'contabilidad:dashboard' %}">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a class="nav-link" href="{% url 'contabilidad:cuentas_por_cobrar' %}">
+                    <i class="fas fa-coins"></i> Cuentas por Cobrar
+                </a>
+                <a class="nav-link" href="{% url 'contabilidad:cuentas_por_pagar' %}">
+                    <i class="fas fa-credit-card"></i> Cuentas por Pagar
+                </a>
+                <a class="nav-link" href="{% url 'contabilidad:flujo_caja' %}">
+                    <i class="fas fa-chart-line"></i> Flujo de Caja
+                </a>
+            </div>
+        </div>
+        
+        <!-- Usuarios -->
+        <div>
+            <a class="nav-link" data-bs-toggle="collapse" href="#menuUsuarios">
+                <i class="fas fa-user-shield"></i> Usuarios
+                <i class="fas fa-chevron-down float-end"></i>
+            </a>
+            <div class="collapse submenu" id="menuUsuarios">
+                <a class="nav-link" href="{% url 'usuarios:lista_usuarios' %}">
+                    <i class="fas fa-list"></i> Lista de Usuarios
+                </a>
+                <a class="nav-link" href="{% url 'usuarios:crear_usuario' %}">
+                    <i class="fas fa-user-plus"></i> Crear Usuario
+                </a>
+                <a class="nav-link" href="{% url 'usuarios:lista_roles' %}">
+                    <i class="fas fa-user-tag"></i> Roles
+                </a>
+            </div>
+        </div>
+        
+        <!-- Reportes -->
+        <div>
+            <a class="nav-link" data-bs-toggle="collapse" href="#menuReportes">
+                <i class="fas fa-chart-bar"></i> Reportes
+                <i class="fas fa-chevron-down float-end"></i>
+            </a>
+            <div class="collapse submenu" id="menuReportes">
+                <a class="nav-link" href="{% url 'reportes:dashboard' %}">
+                    <i class="fas fa-tachometer-alt"></i> Dashboard
+                </a>
+                <a class="nav-link" href="{% url 'reportes:estadisticas' %}">
+                    <i class="fas fa-chart-line"></i> Estadísticas
+                </a>
+            </div>
+        </div>
+    </nav>
+</div>
+
+<!-- Botón toggle para móviles -->
+<button class="sidebar-toggle" id="sidebarToggle">
+    <i class="fas fa-bars"></i>
+</button>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const sidebar = document.getElementById('sidebarVertical');
+    const toggleBtn = document.getElementById('sidebarToggle');
+    const overlay = document.getElementById('sidebarOverlay');
+    
+    // Toggle sidebar
+    if (toggleBtn) {
+        toggleBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            sidebar.classList.toggle('show');
+            if (overlay) {
+                overlay.classList.toggle('show');
+            }
+        });
+    }
+    
+    // Cerrar sidebar al hacer click en el overlay
+    if (overlay) {
+        overlay.addEventListener('click', function() {
+            sidebar.classList.remove('show');
+            overlay.classList.remove('show');
+        });
+    }
+    
+    // Cerrar sidebar al hacer click en un enlace (en móviles)
+    if (window.innerWidth <= 768) {
+        const sidebarLinks = sidebar.querySelectorAll('a.nav-link:not([data-bs-toggle])');
+        sidebarLinks.forEach(link => {
+            link.addEventListener('click', function() {
+                sidebar.classList.remove('show');
+                if (overlay) {
+                    overlay.classList.remove('show');
+                }
+            });
+        });
+    }
+    
+    // Cerrar sidebar al presionar ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && sidebar.classList.contains('show')) {
+            sidebar.classList.remove('show');
+            if (overlay) {
+                overlay.classList.remove('show');
+            }
+        }
+    });
+    
+    // Ajustar al cambiar tamaño de ventana
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            if (window.innerWidth > 768) {
+                sidebar.classList.remove('show');
+                if (overlay) {
+                    overlay.classList.remove('show');
+                }
+            }
+        }, 250);
+    });
+});
+</script>

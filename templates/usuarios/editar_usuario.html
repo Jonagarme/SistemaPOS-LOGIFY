@@ -1,0 +1,232 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-12 col-lg-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-plus"></i> {{ titulo }}
+                    </h5>
+                </div>
+                
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <!-- Información Personal -->
+                        <div class="row mb-4">
+                            <div class="col-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-user"></i> Información Personal
+                                </h6>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.nombre_usuario.id_for_label }}" class="form-label">
+                                    {{ form.nombre_usuario.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.nombre_usuario }}
+                                {% if form.nombre_usuario.errors %}
+                                    <div class="text-danger small">{{ form.nombre_usuario.errors }}</div>
+                                {% endif %}
+                                <div class="form-text">Usuario único para iniciar sesión</div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.nombre_completo.id_for_label }}" class="form-label">
+                                    {{ form.nombre_completo.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.nombre_completo }}
+                                {% if form.nombre_completo.errors %}
+                                    <div class="text-danger small">{{ form.nombre_completo.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3 mt-1">
+                            <div class="col-md-6">
+                                <label for="{{ form.email.id_for_label }}" class="form-label">
+                                    {{ form.email.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.email }}
+                                {% if form.email.errors %}
+                                    <div class="text-danger small">{{ form.email.errors }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.id_rol.id_for_label }}" class="form-label">
+                                    {{ form.id_rol.label }} <span class="text-danger">*</span>
+                                </label>
+                                {{ form.id_rol }}
+                                {% if form.id_rol.errors %}
+                                    <div class="text-danger small">{{ form.id_rol.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Seguridad -->
+                        <div class="row mb-4 mt-4">
+                            <div class="col-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-lock"></i> Seguridad
+                                </h6>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="{{ form.contrasena.id_for_label }}" class="form-label">
+                                    {{ form.contrasena.label }} 
+                                    {% if not usuario %}<span class="text-danger">*</span>{% endif %}
+                                </label>
+                                {{ form.contrasena }}
+                                {% if form.contrasena.errors %}
+                                    <div class="text-danger small">{{ form.contrasena.errors }}</div>
+                                {% endif %}
+                                {% if form.contrasena.help_text %}
+                                    <div class="form-text">{{ form.contrasena.help_text }}</div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.confirmar_contrasena.id_for_label }}" class="form-label">
+                                    {{ form.confirmar_contrasena.label }}
+                                    {% if not usuario %}<span class="text-danger">*</span>{% endif %}
+                                </label>
+                                {{ form.confirmar_contrasena }}
+                                {% if form.confirmar_contrasena.errors %}
+                                    <div class="text-danger small">{{ form.confirmar_contrasena.errors }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Estado y Preferencias -->
+                        <div class="row mb-4 mt-4">
+                            <div class="col-12">
+                                <h6 class="text-primary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-toggle-on"></i> Estado y Preferencias
+                                </h6>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    {{ form.activo }}
+                                    <label class="form-check-label" for="{{ form.activo.id_for_label }}">
+                                        {{ form.activo.label }}
+                                    </label>
+                                    {% if form.activo.errors %}
+                                        <div class="text-danger small">{{ form.activo.errors }}</div>
+                                    {% endif %}
+                                    <div class="form-text">Usuario habilitado para iniciar sesión</div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <label for="{{ form.tipo_menu.id_for_label }}" class="form-label">
+                                    <i class="fas fa-bars"></i> {{ form.tipo_menu.label }}
+                                </label>
+                                {{ form.tipo_menu }}
+                                {% if form.tipo_menu.errors %}
+                                    <div class="text-danger small">{{ form.tipo_menu.errors }}</div>
+                                {% endif %}
+                                <div class="form-text">Estilo de navegación preferido</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Información adicional para edición -->
+                        {% if usuario %}
+                        <div class="row mb-4 mt-4">
+                            <div class="col-12">
+                                <h6 class="text-secondary border-bottom pb-2 mb-3">
+                                    <i class="fas fa-info-circle"></i> Información Adicional
+                                </h6>
+                            </div>
+                        </div>
+                        
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">Estado Actual</label>
+                                <div class="form-control-plaintext">
+                                    {% if usuario.anulado %}
+                                        <span class="badge bg-dark">Anulado</span>
+                                    {% elif usuario.activo %}
+                                        <span class="badge bg-success">Activo</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">Inactivo</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-4">
+                                <label class="form-label">Creado</label>
+                                <div class="form-control-plaintext">
+                                    {{ usuario.creado_date|date:"d/m/Y H:i" }}
+                                </div>
+                            </div>
+                            
+                            {% if usuario.editado_date %}
+                            <div class="col-md-4">
+                                <label class="form-label">Última Edición</label>
+                                <div class="form-control-plaintext">
+                                    {{ usuario.editado_date|date:"d/m/Y H:i" }}
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                        
+                        <!-- Botones -->
+                        <hr class="my-4">
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'usuarios:lista_usuarios' %}" class="btn btn-secondary me-md-2">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> {{ accion }}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Validación en tiempo real de contraseñas
+    const contrasena = document.getElementById('{{ form.contrasena.id_for_label }}');
+    const confirmarContrasena = document.getElementById('{{ form.confirmar_contrasena.id_for_label }}');
+    
+    function validarContrasenas() {
+        if (contrasena.value && confirmarContrasena.value) {
+            if (contrasena.value !== confirmarContrasena.value) {
+                confirmarContrasena.setCustomValidity('Las contraseñas no coinciden');
+                confirmarContrasena.classList.add('is-invalid');
+                confirmarContrasena.classList.remove('is-valid');
+            } else {
+                confirmarContrasena.setCustomValidity('');
+                confirmarContrasena.classList.remove('is-invalid');
+                confirmarContrasena.classList.add('is-valid');
+            }
+        }
+    }
+    
+    if (contrasena && confirmarContrasena) {
+        contrasena.addEventListener('input', validarContrasenas);
+        confirmarContrasena.addEventListener('input', validarContrasenas);
+    }
+});
+</script>
+{% endblock %}

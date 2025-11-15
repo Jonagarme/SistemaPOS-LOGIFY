@@ -1,0 +1,466 @@
+{% extends 'base.html' %}
+
+{% block title %}Aperturas de Caja - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <div class="row align-items-center">
+                    <div class="col">
+                        <h5 class="mb-0">
+                            <i class="fas fa-unlock"></i> Aperturas de Caja
+                        </h5>
+                    </div>
+                    <div class="col-auto">
+                        {% if puede_abrir_caja %}
+                        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalApertura">
+                            <i class="fas fa-unlock"></i> Abrir Caja
+                        </button>
+                        {% else %}
+                        <span class="badge bg-info">Caja ya está abierta</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card-body">
+                <!-- Estado actual de la caja -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card {% if caja_abierta %}bg-success{% else %}bg-secondary{% endif %} text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="card-title mb-0">Estado de Caja</h6>
+                                        <h4 class="mb-0">
+                                            {% if caja_abierta %}
+                                                <i class="fas fa-unlock"></i> ABIERTA
+                                            {% else %}
+                                                <i class="fas fa-lock"></i> CERRADA
+                                            {% endif %}
+                                        </h4>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-cash-register fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    {% if caja_abierta %}
+                    <div class="col-md-4">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="card-title mb-0">Monto Inicial</h6>
+                                        <h4 class="mb-0">$ {{ apertura_actual.monto_inicial|floatformat:2 }}</h4>
+                                        <small>{{ apertura_actual.fecha_apertura|date:"d/m/Y H:i" }}</small>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-dollar-sign fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card bg-info text-white">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="card-title mb-0">Saldo Actual</h6>
+                                        <h4 class="mb-0">$ {{ saldo_actual|floatformat:2 }}</h4>
+                                        <small>{{ apertura_actual.usuario.get_full_name }}</small>
+                                    </div>
+                                    <div class="align-self-center">
+                                        <i class="fas fa-wallet fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Filtros -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <label for="filtro_fecha_inicio" class="form-label">Fecha Inicio</label>
+                        <input type="date" class="form-control" id="filtro_fecha_inicio">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filtro_fecha_fin" class="form-label">Fecha Fin</label>
+                        <input type="date" class="form-control" id="filtro_fecha_fin">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filtro_usuario" class="form-label">Usuario</label>
+                        <select class="form-select" id="filtro_usuario">
+                            <option value="">Todos los usuarios</option>
+                            {% for usuario in usuarios %}
+                            <option value="{{ usuario.id }}">{{ usuario.get_full_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filtro_estado" class="form-label">Estado</label>
+                        <select class="form-select" id="filtro_estado">
+                            <option value="">Todos los estados</option>
+                            <option value="ABIERTA">Abierta</option>
+                            <option value="CERRADA">Cerrada</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Lista de aperturas -->
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Fecha Apertura</th>
+                                <th>Usuario</th>
+                                <th>Monto Inicial</th>
+                                <th>Ventas del Día</th>
+                                <th>Otros Ingresos</th>
+                                <th>Egresos</th>
+                                <th>Saldo Final</th>
+                                <th>Estado</th>
+                                <th>Fecha Cierre</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for apertura in aperturas %}
+                            <tr>
+                                <td>
+                                    {{ apertura.fecha_apertura|date:"d/m/Y" }}
+                                    <br>
+                                    <small class="text-muted">{{ apertura.fecha_apertura|date:"H:i:s" }}</small>
+                                </td>
+                                <td>
+                                    <strong>{{ apertura.usuario.get_full_name }}</strong>
+                                    <br>
+                                    <small class="text-muted">{{ apertura.usuario.username }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary">
+                                        $ {{ apertura.monto_inicial|floatformat:2 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success">
+                                        $ {{ apertura.total_ventas|default:"0.00"|floatformat:2 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">
+                                        $ {{ apertura.otros_ingresos|default:"0.00"|floatformat:2 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-warning">
+                                        $ {{ apertura.total_egresos|default:"0.00"|floatformat:2 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <strong>$ {{ apertura.saldo_final|default:"0.00"|floatformat:2 }}</strong>
+                                </td>
+                                <td>
+                                    {% if apertura.activa %}
+                                        <span class="badge bg-success">
+                                            <i class="fas fa-unlock"></i> Abierta
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">
+                                            <i class="fas fa-lock"></i> Cerrada
+                                        </span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if apertura.fecha_cierre %}
+                                        {{ apertura.fecha_cierre|date:"d/m/Y" }}
+                                        <br>
+                                        <small class="text-muted">{{ apertura.fecha_cierre|date:"H:i:s" }}</small>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                data-bs-toggle="tooltip" title="Ver detalles"
+                                                onclick="verDetalleApertura('{{ apertura.id }}')">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-info" 
+                                                data-bs-toggle="tooltip" title="Imprimir reporte"
+                                                onclick="imprimirReporte('{{ apertura.id }}')">
+                                            <i class="fas fa-print"></i>
+                                        </button>
+                                        {% if apertura.activa and apertura.usuario == request.user %}
+                                        <a href="{% url 'caja:cerrar' %}" class="btn btn-sm btn-outline-danger" 
+                                           data-bs-toggle="tooltip" title="Cerrar caja">
+                                            <i class="fas fa-lock"></i>
+                                        </a>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="10" class="text-center text-muted py-4">
+                                    <i class="fas fa-unlock fa-3x mb-3"></i>
+                                    <br>
+                                    No se encontraron aperturas de caja
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Paginación -->
+                {% if is_paginated %}
+                <nav aria-label="Paginación de aperturas">
+                    <ul class="pagination justify-content-center">
+                        {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1">&laquo; Primera</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
+                        </li>
+                        {% endif %}
+                        
+                        {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active">
+                            <span class="page-link">{{ num }}</span>
+                        </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                        {% endfor %}
+                        
+                        {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última &raquo;</a>
+                        </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para nueva apertura -->
+<div class="modal fade" id="modalApertura" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-unlock"></i> Abrir Caja
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formApertura">
+                    {% csrf_token %}
+                    
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Importante:</strong> Asegúrese de contar el dinero en efectivo antes de abrir la caja.
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="monto_inicial" class="form-label">
+                            Monto Inicial <span class="text-danger">*</span>
+                        </label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="monto_inicial" 
+                                   name="monto_inicial" step="0.01" min="0" required
+                                   placeholder="0.00">
+                        </div>
+                        <div class="form-text">
+                            Cantidad de dinero en efectivo con la que inicia la caja
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="observaciones_apertura" class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="observaciones_apertura" 
+                                  name="observaciones" rows="3"
+                                  placeholder="Notas adicionales sobre la apertura..."></textarea>
+                    </div>
+                    
+                    <!-- Desglose de denominaciones (opcional) -->
+                    <div class="mb-3">
+                        <h6 class="text-primary">
+                            <i class="fas fa-money-bill"></i> Desglose de Denominaciones (Opcional)
+                        </h6>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h7>Billetes</h7>
+                                <div class="mb-2">
+                                    <label class="form-label">$ 500</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control denominacion" 
+                                               data-valor="500" min="0" value="0">
+                                        <span class="input-group-text">= $ <span class="total">0.00</span></span>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">$ 100</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control denominacion" 
+                                               data-valor="100" min="0" value="0">
+                                        <span class="input-group-text">= $ <span class="total">0.00</span></span>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">$ 50</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control denominacion" 
+                                               data-valor="50" min="0" value="0">
+                                        <span class="input-group-text">= $ <span class="total">0.00</span></span>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">$ 20</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control denominacion" 
+                                               data-valor="20" min="0" value="0">
+                                        <span class="input-group-text">= $ <span class="total">0.00</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <h7>Monedas</h7>
+                                <div class="mb-2">
+                                    <label class="form-label">$ 10</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control denominacion" 
+                                               data-valor="10" min="0" value="0">
+                                        <span class="input-group-text">= $ <span class="total">0.00</span></span>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">$ 5</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control denominacion" 
+                                               data-valor="5" min="0" value="0">
+                                        <span class="input-group-text">= $ <span class="total">0.00</span></span>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">$ 1</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control denominacion" 
+                                               data-valor="1" min="0" value="0">
+                                        <span class="input-group-text">= $ <span class="total">0.00</span></span>
+                                    </div>
+                                </div>
+                                <div class="mb-2">
+                                    <label class="form-label">$ 0.50</label>
+                                    <div class="input-group input-group-sm">
+                                        <input type="number" class="form-control denominacion" 
+                                               data-valor="0.5" min="0" value="0">
+                                        <span class="input-group-text">= $ <span class="total">0.00</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mt-3 p-2 bg-light">
+                            <strong>Total calculado: $ <span id="total_denominaciones">0.00</span></strong>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="confirmarApertura()">
+                    <i class="fas fa-unlock"></i> Abrir Caja
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Calcular total de denominaciones
+    const denominaciones = document.querySelectorAll('.denominacion');
+    
+    denominaciones.forEach(input => {
+        input.addEventListener('input', function() {
+            const cantidad = parseFloat(this.value) || 0;
+            const valor = parseFloat(this.dataset.valor);
+            const total = cantidad * valor;
+            
+            // Actualizar total individual
+            this.parentElement.querySelector('.total').textContent = tota$toFixed(2);
+            
+            // Calcular total general
+            let totalGeneral = 0;
+            denominaciones.forEach(inp => {
+                const cant = parseFloat(inp.value) || 0;
+                const val = parseFloat(inp.dataset.valor);
+                totalGeneral += cant * val;
+            });
+            
+            document.getElementById('total_denominaciones').textContent = totalGenera$toFixed(2);
+            
+            // Sugerir actualizar monto inicial
+            if (totalGeneral > 0) {
+                document.getElementById('monto_inicial').value = totalGenera$toFixed(2);
+            }
+        });
+    });
+    
+    // Inicializar tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+});
+
+function confirmarApertura() {
+    const montoInicial = parseFloat(document.getElementById('monto_inicial').value);
+    
+    if (!montoInicial || montoInicial < 0) {
+        alert('Por favor ingrese un monto inicial válido');
+        return;
+    }
+    
+    if (confirm(`¿Está seguro de abrir la caja con un monto inicial de $ ${montoInicia$toFixed(2)}?`)) {
+        // Aquí iría la lógica para abrir la caja
+        console.log('Abriendo caja...');
+        // window.location.href = '/caja/abrir/';
+    }
+}
+
+function verDetalleApertura(aperturaId) {
+    console.log('Ver detalle de apertura:', aperturaId);
+    // Mostrar modal con detalles completos
+}
+
+function imprimirReporte(aperturaId) {
+    window.open(`/caja/aperturas/${aperturaId}/imprimir/`, '_blank');
+}
+</script>
+{% endblock %}

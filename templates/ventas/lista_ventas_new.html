@@ -1,0 +1,477 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .header-ventas {
+        background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        color: white;
+        padding: 1.5rem 0;
+        margin-bottom: 1.5rem;
+        border-radius: 0 0 15px 15px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+    
+    .filtros-card {
+        background: white;
+        border-radius: 10px;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        margin-bottom: 1.5rem;
+    }
+    
+    .tabla-ventas {
+        background: white;
+        border-radius: 10px;
+        border: 1px solid #e9ecef;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    }
+    
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 15px;
+        font-weight: 600;
+    }
+    
+    .status-completada {
+        background-color: #d4edda;
+        color: #155724;
+    }
+    
+    .status-pendiente {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+    
+    .status-anulada {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .status-cancelada {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+    
+    .metodo-badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+        border-radius: 10px;
+        font-weight: 500;
+    }
+    
+    .metodo-efectivo {
+        background-color: #e2f3ff;
+        color: #0066cc;
+    }
+    
+    .metodo-tarjeta {
+        background-color: #fff0e6;
+        color: #cc6600;
+    }
+    
+    .metodo-transferencia {
+        background-color: #f0e6ff;
+        color: #6600cc;
+    }
+    
+    .btn-sm-custom {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+        margin: 0 2px;
+    }
+    
+    .venta-row:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="header-ventas">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <h2 class="mb-0">
+                        <i class="fas fa-file-invoice-dollar"></i>
+                        Facturas y Ventas Realizadas
+                    </h2>
+                    <p class="mb-0 opacity-75">Historial y consulta de facturas electrónicas y ventas realizadas</p>
+                </div>
+                <div class="col-md-4 text-end">
+                    <span class="badge bg-light text-dark">
+                        <i class="fas fa-calendar"></i>
+                        {{ ventas|length }} ventas encontradas
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros de Búsqueda -->
+    <div class="filtros-card">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="fecha_inicio" class="form-label">Fecha Inicio</label>
+                    <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio" 
+                           value="{{ fecha_inicio }}">
+                </div>
+                <div class="col-md-3">
+                    <label for="fecha_fin" class="form-label">Fecha Fin</label>
+                    <input type="date" class="form-control" id="fecha_fin" name="fecha_fin" 
+                           value="{{ fecha_fin }}">
+                </div>
+                <div class="col-md-4">
+                    <label for="busqueda" class="form-label">Buscar por Cliente, Número o Vendedor</label>
+                    <input type="text" class="form-control" id="busqueda" name="busqueda" 
+                           value="{{ texto_busqueda }}" placeholder="FAC-20251031-5A355D, nombre del cliente...">
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <div class="btn-group w-100" role="group">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-search"></i> Buscar
+                        </button>
+                        <a href="{% url 'ventas:lista' %}" class="btn btn-outline-secondary">
+                            <i class="fas fa-list"></i> Todas
+                        </a>
+                    </div>
+                </div>
+            </form>
+            
+            <!-- Búsqueda Rápida por Número -->
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label for="busquedaRapida" class="form-label">Búsqueda Rápida por Número</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="busquedaRapida" 
+                               placeholder="FAC-20251031-5A355D o últimos dígitos">
+                        <button class="btn btn-outline-secondary" type="button" id="btnBusquedaRapida">
+                            <i class="fas fa-bolt"></i> Buscar
+                        </button>
+                    </div>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <a href="{% url 'ventas:crear' %}" class="btn btn-success">
+                        <i class="fas fa-plus"></i> Nueva Venta
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Ventas -->
+    <div class="tabla-ventas">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Número Venta</th>
+                            <th>Cliente</th>
+                            <th>Fecha Venta</th>
+                            <th>Total</th>
+                            <th>Estado</th>
+                            <th>Método Pago</th>
+                            <th>Tipo</th>
+                            <th>Vendedor</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for venta in ventas %}
+                        <tr class="venta-row" data-id="{{ venta.Id }}">
+                            <td>{{ venta.Id }}</td>
+                            <td>
+                                <strong class="text-primary">{{ venta.NumeroVenta }}</strong>
+                            </td>
+                            <td>{{ venta.Cliente|default:"Sin cliente" }}</td>
+                            <td>{{ venta.FechaVenta|date:"d/m/Y H:i" }}</td>
+                            <td>
+                                <strong>${{ venta.Total|floatformat:2 }}</strong>
+                            </td>
+                            <td>
+                                <span class="status-badge status-{{ venta.Estado }}">
+                                    {{ venta.Estado|upper }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="metodo-badge metodo-{{ venta.MetodoPago|lower }}">
+                                    {{ venta.MetodoPago|upper }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="badge bg-{% if venta.TipoDocumento == 'FACTURA' %}warning{% else %}info{% endif %}">
+                                    {{ venta.TipoDocumento|default:"VENTA" }}
+                                </span>
+                            </td>
+                            <td>{{ venta.Vendedor|default:"Sin vendedor" }}</td>
+                            <td>
+                                <div class="btn-group" role="group">
+                                    <button type="button" class="btn btn-info btn-sm-custom" 
+                                            onclick="verDetalle({{ venta.Id }})" title="Ver Detalle">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <a href="{% url 'ventas:ticket_termico' venta.Id %}" 
+                                       class="btn btn-secondary btn-sm-custom" target="_blank" title="Ticket">
+                                        <i class="fas fa-print"></i>
+                                    </a>
+                                    <a href="{% url 'ventas:detalle' venta.Id %}" 
+                                       class="btn btn-primary btn-sm-custom" title="Ver Completo">
+                                        <i class="fas fa-file-alt"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="9" class="text-center py-4">
+                                <div class="text-muted">
+                                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                                    <p>No se encontraron ventas con los criterios especificados</p>
+                                    <a href="{% url 'ventas:crear' %}" class="btn btn-primary">
+                                        <i class="fas fa-plus"></i> Realizar Primera Venta
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Ver Detalle de Venta -->
+<div class="modal fade" id="modalDetalleVenta" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-receipt"></i>
+                    Detalle de Venta
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="contenidoDetalleVenta">
+                <div class="text-center">
+                    <div class="spinner-border" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Resultados de Búsqueda Rápida -->
+<div class="modal fade" id="modalBusquedaRapida" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-search"></i>
+                    Resultados de Búsqueda
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="resultadosBusquedaRapida">
+                <!-- Contenido dinámico -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Función para ver detalle de venta
+function verDetalle(ventaId) {
+    const modal = new bootstrap.Modal(document.getElementById('modalDetalleVenta'));
+    const contenido = document.getElementById('contenidoDetalleVenta');
+    
+    // Mostrar spinner
+    contenido.innerHTML = `
+        <div class="text-center">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+        </div>
+    `;
+    
+    modal.show();
+    
+    // Cargar datos
+    fetch(`/ventas/${ventaId}/detalle-venta/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                contenido.innerHTML = `<div class="alert alert-danger">${data.error}</div>`;
+                return;
+            }
+            
+            // Generar HTML del detalle
+            const html = generarHtmlDetalle(data);
+            contenido.innerHTML = html;
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            contenido.innerHTML = '<div class="alert alert-danger">Error al cargar el detalle</div>';
+        });
+}
+
+// Función para generar HTML del detalle
+function generarHtmlDetalle(data) {
+    const encabezado = data.encabezado;
+    const detalle = data.detalle;
+    
+    let html = `
+        <div class="row">
+            <div class="col-md-6">
+                <h6><i class="fas fa-receipt"></i> Información de la Venta</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Número:</strong></td><td>${encabezado.NumeroVenta}</td></tr>
+                    <tr><td><strong>Fecha:</strong></td><td>${encabezado.FechaVenta}</td></tr>
+                    <tr><td><strong>Estado:</strong></td><td><span class="status-badge status-${encabezado.EstadoVenta}">${encabezado.EstadoVenta}</span></td></tr>
+                    <tr><td><strong>Método Pago:</strong></td><td><span class="metodo-badge metodo-${encabezado.MetodoPago.toLowerCase()}">${encabezado.MetodoPago}</span></td></tr>
+                    <tr><td><strong>Vendedor:</strong></td><td>${encabezado.Vendedor}</td></tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <h6><i class="fas fa-user"></i> Información del Cliente</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Cliente:</strong></td><td>${encabezado.RazonSocial}</td></tr>
+                    <tr><td><strong>Identificación:</strong></td><td>${encabezado.Identificacion || 'N/A'}</td></tr>
+                    <tr><td><strong>Dirección:</strong></td><td>${encabezado.Direccion || 'N/A'}</td></tr>
+                    <tr><td><strong>Teléfono:</strong></td><td>${encabezado.Telefono || 'N/A'}</td></tr>
+                </table>
+            </div>
+        </div>
+        
+        <hr>
+        
+        <h6><i class="fas fa-list"></i> Detalle de Productos</h6>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th>Código</th>
+                        <th>Descripción</th>
+                        <th>Cant.</th>
+                        <th>P. Unit.</th>
+                        <th>Descuento</th>
+                        <th>Subtotal</th>
+                        <th>IVA</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    detalle.forEach(item => {
+        html += `
+            <tr>
+                <td>${item.Codigo}</td>
+                <td>${item.Descripcion}</td>
+                <td>${item.Cantidad}</td>
+                <td>$${parseFloat(item.PrecioUnitario).toFixed(2)}</td>
+                <td>$${parseFloat(item.Descuento).toFixed(2)}</td>
+                <td>$${parseFloat(item.Subtotal).toFixed(2)}</td>
+                <td>$${parseFloat(item.Iva).toFixed(2)}</td>
+            </tr>
+        `;
+    });
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="row mt-3">
+            <div class="col-md-8"></div>
+            <div class="col-md-4">
+                <table class="table table-sm">
+                    <tr><td><strong>Subtotal:</strong></td><td>$${parseFloat(encabezado.SubtotalVenta).toFixed(2)}</td></tr>
+                    <tr><td><strong>Descuento:</strong></td><td>$${parseFloat(encabezado.DescuentoVenta).toFixed(2)}</td></tr>
+                    <tr><td><strong>IVA:</strong></td><td>$${parseFloat(encabezado.IvaVenta).toFixed(2)}</td></tr>
+                    <tr class="table-success"><td><strong>TOTAL:</strong></td><td><strong>$${parseFloat(encabezado.TotalVenta).toFixed(2)}</strong></td></tr>
+                </table>
+            </div>
+        </div>
+    `;
+    
+    return html;
+}
+
+// Búsqueda rápida
+document.getElementById('btnBusquedaRapida').addEventListener('click', function() {
+    const termino = document.getElementById('busquedaRapida').value.trim();
+    
+    if (!termino) {
+        alert('Por favor ingrese un término de búsqueda');
+        return;
+    }
+    
+    fetch(`/ventas/buscar-numero/?termino=${encodeURIComponent(termino)}`)
+        .then(response => response.json())
+        .then(data => {
+            mostrarResultadosBusqueda(data.ventas);
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Error en la búsqueda');
+        });
+});
+
+// Mostrar resultados de búsqueda rápida
+function mostrarResultadosBusqueda(ventas) {
+    const modal = new bootstrap.Modal(document.getElementById('modalBusquedaRapida'));
+    const contenido = document.getElementById('resultadosBusquedaRapida');
+    
+    if (ventas.length === 0) {
+        contenido.innerHTML = '<div class="alert alert-warning">No se encontraron ventas</div>';
+    } else {
+        let html = '<div class="table-responsive"><table class="table table-hover"><thead class="table-light"><tr><th>Venta</th><th>Cliente</th><th>Fecha</th><th>Total</th><th>Estado</th><th>Método</th><th>Acciones</th></tr></thead><tbody>';
+        
+        ventas.forEach(venta => {
+            html += `
+                <tr>
+                    <td><strong>${venta.NumeroVenta}</strong></td>
+                    <td>${venta.Cliente}</td>
+                    <td>${venta.FechaVenta}</td>
+                    <td>$${parseFloat(venta.Total).toFixed(2)}</td>
+                    <td><span class="status-badge status-${venta.Estado}">${venta.Estado}</span></td>
+                    <td><span class="metodo-badge metodo-${venta.MetodoPago.toLowerCase()}">${venta.MetodoPago}</span></td>
+                    <td>
+                        <button class="btn btn-info btn-sm" onclick="verDetalle(${venta.Id})">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+        
+        html += '</tbody></table></div>';
+        contenido.innerHTML = html;
+    }
+    
+    modal.show();
+}
+
+// Permitir búsqueda con Enter
+document.getElementById('busquedaRapida').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        document.getElementById('btnBusquedaRapida').click();
+    }
+});
+</script>
+{% endblock %}

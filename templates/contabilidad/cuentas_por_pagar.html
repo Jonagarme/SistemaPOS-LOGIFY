@@ -1,0 +1,292 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Cuentas por Pagar{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-credit-card me-2"></i>Cuentas por Pagar
+                    </h2>
+                    <p class="text-muted mb-0">Gestión de obligaciones pendientes</p>
+                </div>
+                <div>
+                    <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#nuevaCuentaModal">
+                        <i class="fas fa-plus me-1"></i>Nueva Cuenta
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Resumen -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card border-left-danger shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                                Total Pendiente
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                ${{ total_pendiente|floatformat:2 }}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-credit-card fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Filtros de Búsqueda</h6>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label for="proveedor" class="form-label">Proveedor</label>
+                    <select name="proveedor" id="proveedor" class="form-select">
+                        <option value="">Todos los proveedores</option>
+                        {% for proveedor in proveedores %}
+                        <option value="{{ proveedor.id }}" {% if filtros.proveedor_id == proveedor.id|stringformat:"s" %}selected{% endif %}>
+                            {{ proveedor.nombres }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="estado" class="form-label">Estado</label>
+                    <select name="estado" id="estado" class="form-select">
+                        <option value="">Todos</option>
+                        <option value="pendiente" {% if filtros.estado == "pendiente" %}selected{% endif %}>Pendiente</option>
+                        <option value="parcial" {% if filtros.estado == "parcial" %}selected{% endif %}>Pago Parcial</option>
+                        <option value="pagada" {% if filtros.estado == "pagada" %}selected{% endif %}>Pagada</option>
+                        <option value="vencida" {% if filtros.estado == "vencida" %}selected{% endif %}>Vencida</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label for="fecha_desde" class="form-label">Fecha Desde</label>
+                    <input type="date" name="fecha_desde" id="fecha_desde" class="form-control" value="{{ filtros.fecha_desde }}">
+                </div>
+                <div class="col-md-2">
+                    <label for="fecha_hasta" class="form-label">Fecha Hasta</label>
+                    <input type="date" name="fecha_hasta" id="fecha_hasta" class="form-control" value="{{ filtros.fecha_hasta }}">
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="fas fa-search me-1"></i>Filtrar
+                    </button>
+                    <a href="{% url 'contabilidad:cuentas_por_pagar' %}" class="btn btn-secondary">
+                        <i class="fas fa-times me-1"></i>Limpiar
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de cuentas -->
+    <div class="card shadow">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">Listado de Cuentas por Pagar</h6>
+        </div>
+        <div class="card-body">
+            {% if cuentas %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Número</th>
+                                <th>Proveedor</th>
+                                <th>Factura Proveedor</th>
+                                <th>Fecha Emisión</th>
+                                <th>Fecha Vencimiento</th>
+                                <th class="text-end">Monto Original</th>
+                                <th class="text-end">Monto Pendiente</th>
+                                <th>Estado</th>
+                                <th>Categoría</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cuenta in cuentas %}
+                            <tr>
+                                <td>
+                                    <strong>{{ cuenta.numero }}</strong>
+                                </td>
+                                <td>
+                                    <strong>{{ cuenta.proveedor.nombres }}</strong>
+                                    <br><small class="text-muted">{{ cuenta.proveedor.ruc }}</small>
+                                </td>
+                                <td>{{ cuenta.factura_proveedor }}</td>
+                                <td>{{ cuenta.fecha_emision|date:"d/m/Y" }}</td>
+                                <td>
+                                    {{ cuenta.fecha_vencimiento|date:"d/m/Y" }}
+                                </td>
+                                <td class="text-end">
+                                    <strong>${{ cuenta.monto_original|floatformat:2 }}</strong>
+                                </td>
+                                <td class="text-end">
+                                    <strong>${{ cuenta.monto_pendiente|floatformat:2 }}</strong>
+                                </td>
+                                <td>
+                                    {% if cuenta.estado == 'pendiente' %}
+                                        <span class="badge bg-warning">Pendiente</span>
+                                    {% elif cuenta.estado == 'parcial' %}
+                                        <span class="badge bg-info">Pago Parcial</span>
+                                    {% elif cuenta.estado == 'pagada' %}
+                                        <span class="badge bg-success">Pagada</span>
+                                    {% elif cuenta.estado == 'vencida' %}
+                                        <span class="badge bg-danger">Vencida</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ cuenta.categoria_gasto }}</small>
+                                </td>
+                                <td>
+                                    <div class="btn-group" role="group">
+                                        {% if cuenta.estado != 'pagada' %}
+                                        <button type="button" class="btn btn-sm btn-success" 
+                                                onclick="abrirModalPago({{ cuenta.id }}, '{{ cuenta.numero }}', {{ cuenta.monto_pendiente }})">
+                                            <i class="fas fa-dollar-sign"></i>
+                                        </button>
+                                        {% endif %}
+                                        <button type="button" class="btn btn-sm btn-info" 
+                                                onclick="verDetalle({{ cuenta.id }})">
+                                            <i class="fas fa-eye"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                {% if cuentas.has_other_pages %}
+                <nav aria-label="Paginación">
+                    <ul class="pagination justify-content-center">
+                        {% if cuentas.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ cuentas.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Anterior</a>
+                            </li>
+                        {% endif %}
+                        
+                        {% for num in cuentas.paginator.page_range %}
+                            {% if cuentas.number == num %}
+                                <li class="page-item active">
+                                    <span class="page-link">{{ num }}</span>
+                                </li>
+                            {% else %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                        
+                        {% if cuentas.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ cuentas.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">Siguiente</a>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </nav>
+                {% endif %}
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-gray-300 mb-3"></i>
+                    <p class="text-muted">No se encontraron cuentas por pagar con los filtros aplicados</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Modal para registrar pago -->
+<div class="modal fade" id="pagoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registrar Pago</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{% url 'contabilidad:registrar_pago_cxp' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" name="cuenta_id" id="pago_cuenta_id">
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Cuenta:</label>
+                        <p id="pago_cuenta_info" class="text-muted"></p>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="monto" class="form-label">Monto a Pagar *</label>
+                        <input type="number" step="0.01" name="monto" id="monto" class="form-control" required>
+                        <div class="form-text">Máximo: $<span id="monto_maximo"></span></div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="forma_pago" class="form-label">Forma de Pago *</label>
+                        <select name="forma_pago" id="forma_pago" class="form-select" required>
+                            <option value="">Seleccionar...</option>
+                            <option value="efectivo">Efectivo</option>
+                            <option value="transferencia">Transferencia Bancaria</option>
+                            <option value="cheque">Cheque</option>
+                            <option value="tarjeta">Tarjeta</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="referencia" class="form-label">Referencia</label>
+                        <input type="text" name="referencia" id="referencia" class="form-control" 
+                               placeholder="Número de comprobante, cheque, etc.">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="observaciones" class="form-label">Observaciones</label>
+                        <textarea name="observaciones" id="observaciones" class="form-control" rows="3"></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-success">Registrar Pago</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function abrirModalPago(cuentaId, numero, montoPendiente) {
+    document.getElementById('pago_cuenta_id').value = cuentaId;
+    document.getElementById('pago_cuenta_info').textContent = `Cuenta ${numero} - Pendiente: $${montoPendiente.toFixed(2)}`;
+    document.getElementById('monto_maximo').textContent = montoPendiente.toFixed(2);
+    document.getElementById('monto').max = montoPendiente;
+    
+    // Limpiar form
+    document.getElementById('monto').value = '';
+    document.getElementById('forma_pago').value = '';
+    document.getElementById('referencia').value = '';
+    document.getElementById('observaciones').value = '';
+    
+    new bootstrap.Modal(document.getElementById('pagoModal')).show();
+}
+
+function verDetalle(cuentaId) {
+    // TODO: Implementar modal de detalle con historial de pagos
+    alert('Función de detalle en desarrollo');
+}
+</script>
+{% endblock %}

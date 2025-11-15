@@ -1,0 +1,330 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestionar Secciones - Sistema POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .seccion-card {
+        border-left: 4px solid;
+        transition: transform 0.2s;
+    }
+    .seccion-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .color-preview {
+        width: 30px;
+        height: 30px;
+        border-radius: 50%;
+        display: inline-block;
+        border: 2px solid #fff;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{% csrf_token %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2><i class="fas fa-folder-open text-primary"></i> Gestionar Secciones</h2>
+                    <p class="text-muted mb-0">Organiza tu establecimiento por secciones principales</p>
+                </div>
+                <div>
+                    <a href="{% url 'productos:ubicaciones_productos' %}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaSeccion">
+                        <i class="fas fa-plus"></i> Nueva Sección
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Total Secciones</h5>
+                            <h3 id="total-secciones">{{ total_secciones }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-folder fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Total Perchas</h5>
+                            <h3 id="total-perchas">{{ total_perchas }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-boxes fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Productos Ubicados</h5>
+                            <h3 id="productos-ubicados">{{ productos_ubicados }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-map-marker-alt fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h5 class="card-title">Sin Ubicar</h5>
+                            <h3 id="sin-ubicar">{{ productos_sin_ubicar }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-question fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Secciones -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Secciones Configuradas</h5>
+                </div>
+                <div class="card-body">
+                    {% if secciones %}
+                        <div class="row" id="secciones-grid">
+                            {% for seccion in secciones %}
+                            <div class="col-lg-6 col-xl-4 mb-3">
+                                <div class="card seccion-card h-100" style="border-left-color: {{ seccion.color }}" data-seccion-id="{{ seccion.id }}">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div class="flex-grow-1">
+                                                <h6 class="card-title mb-1">
+                                                    <span class="color-preview" style="background-color: {{ seccion.color }}"></span>
+                                                    {{ seccion.nombre }}
+                                                </h6>
+                                                <p class="card-text text-muted small mb-2">{{ seccion.descripcion }}</p>
+                                            </div>
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a class="dropdown-item" href="#" onclick="editarSeccion({{ seccion.id|default:'0' }})">
+                                                        <i class="fas fa-edit"></i> Editar
+                                                    </a></li>
+                                                    <li><a class="dropdown-item" href="{% if seccion.id %}{% url 'productos:gestionar_perchas' seccion.id %}{% else %}#{% endif %}">
+                                                        <i class="fas fa-th-large"></i> Gestionar Perchas
+                                                    </a></li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li><a class="dropdown-item text-danger" href="#" onclick="eliminarSeccion({{ seccion.id|default:'0' }})">
+                                                        <i class="fas fa-trash"></i> Eliminar
+                                                    </a></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row text-center">
+                                            <div class="col-4">
+                                                <small class="text-muted">Perchas</small>
+                                                <div class="fw-bold">{{ seccion.total_perchas }}</div>
+                                            </div>
+                                            <div class="col-4">
+                                                <small class="text-muted">Ubicados</small>
+                                                <div class="fw-bold text-success">{{ seccion.productos_ubicados }}</div>
+                                            </div>
+                                            <div class="col-4">
+                                                <small class="text-muted">Orden</small>
+                                                <div class="fw-bold">{{ seccion.orden }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-footer bg-transparent">
+                                        <div class="row g-2">
+                                            <div class="col-6">
+                                                <a href="{% if seccion.id %}{% url 'productos:gestionar_perchas' seccion.id %}{% else %}#{% endif %}" class="btn btn-primary btn-sm w-100">
+                                                    <i class="fas fa-th-large"></i> Gestionar Perchas
+                                                </a>
+                                            </div>
+                                            <div class="col-6">
+                                                <button class="btn btn-outline-secondary btn-sm w-100" onclick="editarSeccion({{ seccion.id|default:'0' }})">
+                                                    <i class="fas fa-edit"></i> Editar
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-folder-open fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay secciones configuradas</h5>
+                            <p class="text-muted">Crea tu primera sección para organizar los productos</p>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaSeccion">
+                                <i class="fas fa-plus"></i> Crear Primera Sección
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nueva/Editar Sección -->
+<div class="modal fade" id="modalNuevaSeccion" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Nueva Sección</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formSeccion">
+                <div class="modal-body">
+                    <input type="hidden" id="seccionId" name="seccion_id">
+                    
+                    <div class="mb-3">
+                        <label for="nombre" class="form-label">Nombre de la Sección *</label>
+                        <input type="text" class="form-control" id="nombre" name="nombre" required maxlength="100">
+                        <div class="form-text">Ej: Productos A, Accesorios, Servicios</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="descripcion" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="descripcion" name="descripcion" rows="3" maxlength="500"></textarea>
+                        <div class="form-text">Descripción opcional de la sección</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="color" class="form-label">Color Identificativo</label>
+                            <input type="color" class="form-control form-control-color" id="color" name="color" value="#007bff">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="orden" class="form-label">Orden</label>
+                            <input type="number" class="form-control" id="orden" name="orden" min="0" value="0">
+                            <div class="form-text">Orden de visualización</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Sección</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Gestión de formulario de sección
+document.getElementById('formSeccion').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const seccionId = document.getElementById('seccionId').value;
+    const url = seccionId ? 
+        `/productos/ubicaciones/secciones/${seccionId}/editar/` : 
+        '{% url "productos:gestionar_secciones" %}';
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'No se pudo guardar la sección'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error de conexión');
+    });
+});
+
+// Editar sección
+function editarSeccion(id) {
+    fetch(`/productos/ubicaciones/secciones/${id}/`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const seccion = data.seccion;
+            document.getElementById('modalTitle').textContent = 'Editar Sección';
+            document.getElementById('seccionId').value = seccion.id;
+            document.getElementById('nombre').value = seccion.nombre;
+            document.getElementById('descripcion').value = seccion.descripcion || '';
+            document.getElementById('color').value = seccion.color;
+            document.getElementById('orden').value = seccion.orden;
+            
+            new bootstrap.Modal(document.getElementById('modalNuevaSeccion')).show();
+        }
+    });
+}
+
+// Eliminar sección
+function eliminarSeccion(id) {
+    if (confirm('¿Estás seguro de eliminar esta sección? Se eliminarán también todas sus perchas.')) {
+        fetch(`/productos/ubicaciones/secciones/${id}/eliminar/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'No se pudo eliminar la sección'));
+            }
+        });
+    }
+}
+
+// Limpiar formulario al abrir modal para nueva sección
+document.getElementById('modalNuevaSeccion').addEventListener('show.bs.modal', function() {
+    if (!document.getElementById('seccionId').value) {
+        document.getElementById('modalTitle').textContent = 'Nueva Sección';
+        document.getElementById('formSeccion').reset();
+        document.getElementById('color').value = '#007bff';
+    }
+});
+</script>
+{% endblock %}

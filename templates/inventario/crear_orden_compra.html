@@ -1,0 +1,412 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_css %}
+<style>
+.form-section {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.producto-item {
+    border: 1px solid #e3e6f0;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 10px;
+    background: white;
+}
+
+.producto-item.selected {
+    border-color: #007bff;
+    background-color: #f0f7ff;
+}
+
+.remove-producto {
+    background: #dc3545;
+    border: none;
+    color: white;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.add-producto-btn {
+    border: 2px dashed #007bff;
+    color: #007bff;
+    background: transparent;
+    padding: 20px;
+    border-radius: 8px;
+    width: 100%;
+    transition: all 0.3s ease;
+}
+
+.add-producto-btn:hover {
+    background-color: #f0f7ff;
+}
+
+.total-section {
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border-radius: 10px;
+    padding: 20px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">{{ titulo }}</h1>
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'usuarios:dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="#">Inventario</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'inventario:lista_ordenes_compra' %}">Órdenes de Compra</a></li>
+                    <li class="breadcrumb-item active">Nueva Orden</li>
+                </ol>
+            </nav>
+        </div>
+        <a href="{% url 'inventario:lista_ordenes_compra' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <form method="post" id="formOrdenCompra">
+        {% csrf_token %}
+        
+        <!-- Información General -->
+        <div class="card mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="fas fa-info-circle"></i> Información General</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="proveedor" class="form-label">Proveedor *</label>
+                            <select name="proveedor" id="proveedor" class="form-select" required>
+                                <option value="">Seleccionar proveedor...</option>
+                                {% for proveedor in proveedores %}
+                                    <option value="{{ proveedor.id }}" 
+                                            data-telefono="{{ proveedor.telefono }}"
+                                            data-email="{{ proveedor.email }}">
+                                        {{ proveedor.nombre_comercial }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="ubicacion_destino" class="form-label">Ubicación Destino *</label>
+                            <select name="ubicacion_destino" id="ubicacion_destino" class="form-select" required>
+                                <option value="">Seleccionar ubicación...</option>
+                                {% for ubicacion in ubicaciones %}
+                                    <option value="{{ ubicacion.id }}">
+                                        {{ ubicacion.nombre }} ({{ ubicacion.get_tipo_display }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="fecha_entrega_esperada" class="form-label">Fecha Entrega Esperada</label>
+                            <input type="date" name="fecha_entrega_esperada" id="fecha_entrega_esperada" 
+                                   class="form-control" min="{{ 'now'|date:'Y-m-d' }}">
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="prioridad" class="form-label">Prioridad</label>
+                            <select name="prioridad" id="prioridad" class="form-select">
+                                <option value="baja">Baja</option>
+                                <option value="normal" selected>Normal</option>
+                                <option value="alta">Alta</option>
+                                <option value="urgente">Urgente</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="observaciones" class="form-label">Observaciones</label>
+                            <textarea name="observaciones" id="observaciones" class="form-control" 
+                                      rows="2" placeholder="Observaciones adicionales..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Productos -->
+        <div class="card mb-4">
+            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="fas fa-boxes"></i> Productos</h5>
+                <button type="button" class="btn btn-light btn-sm" id="btnAgregarProducto">
+                    <i class="fas fa-plus"></i> Agregar Producto
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="productosContainer">
+                    <!-- Los productos se agregarán dinámicamente aquí -->
+                </div>
+                
+                <button type="button" class="add-producto-btn" id="btnAgregarProductoMain">
+                    <i class="fas fa-plus-circle fa-2x mb-2"></i><br>
+                    Agregar Primer Producto
+                </button>
+            </div>
+        </div>
+
+        <!-- Resumen -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Nota:</strong> La orden se creará en estado "Borrador" y podrá ser enviada al proveedor posteriormente.
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="total-section text-center">
+                            <h6>Total Estimado</h6>
+                            <h3 id="totalOrden">$ 0.00</h3>
+                            <small id="totalProductos">0 productos</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de Acción -->
+        <div class="card">
+            <div class="card-body text-center">
+                <button type="submit" class="btn btn-primary btn-lg" id="btnCrearOrden">
+                    <i class="fas fa-save"></i> Crear Orden de Compra
+                </button>
+                <a href="{% url 'inventario:lista_ordenes_compra' %}" class="btn btn-outline-secondary btn-lg ml-3">
+                    <i class="fas fa-times"></i> Cancelar
+                </a>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Modal para Seleccionar Producto -->
+<div class="modal fade" id="modalSeleccionarProducto" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Seleccionar Producto</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <input type="text" id="buscarProducto" class="form-control" 
+                           placeholder="Buscar producto por nombre o código...">
+                </div>
+                <div id="listaProductos" style="max-height: 400px; overflow-y: auto;">
+                    {% for producto in productos %}
+                        <div class="producto-option" data-id="{{ producto.id }}" data-nombre="{{ producto.nombre }}"
+                             data-codigo="{{ producto.codigo }}" data-precio="{{ producto.precio_compra|default:0 }}"
+                             data-stock="{{ producto.stock_actual }}">
+                            <div class="row align-items-center p-2 border-bottom">
+                                <div class="col-md-2">
+                                    <strong>{{ producto.codigo }}</strong>
+                                </div>
+                                <div class="col-md-6">
+                                    {{ producto.nombre }}
+                                </div>
+                                <div class="col-md-2 text-center">
+                                    Stock: {{ producto.stock_actual }}
+                                </div>
+                                <div class="col-md-2 text-end">
+                                    $ {{ producto.precio_compra|default:0|floatformat:2 }}
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let contadorProductos = 0;
+let productosSeleccionados = [];
+
+document.addEventListener('DOMContentLoaded', function() {
+    const btnAgregarProducto = document.getElementById('btnAgregarProducto');
+    const btnAgregarProductoMain = document.getElementById('btnAgregarProductoMain');
+    const modalSeleccionarProducto = new bootstrap.Modal(document.getElementById('modalSeleccionarProducto'));
+    const buscarProducto = document.getElementById('buscarProducto');
+    
+    // Event listeners para agregar producto
+    btnAgregarProducto.addEventListener('click', abrirModalProducto);
+    btnAgregarProductoMain.addEventListener('click', abrirModalProducto);
+    
+    // Búsqueda de productos
+    buscarProducto.addEventListener('input', filtrarProductos);
+    
+    // Selección de producto
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.producto-option')) {
+            seleccionarProducto(e.target.closest('.producto-option'));
+        }
+        
+        if (e.target.closest('.remove-producto')) {
+            removerProducto(e.target.closest('.producto-item'));
+        }
+    });
+    
+    // Actualizar totales cuando cambie cantidad
+    document.addEventListener('input', function(e) {
+        if (e.target.classList.contains('cantidad-producto')) {
+            actualizarTotales();
+        }
+    });
+});
+
+function abrirModalProducto() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalSeleccionarProducto'));
+    modal.show();
+}
+
+function filtrarProductos() {
+    const filtro = document.getElementById('buscarProducto').value.toLowerCase();
+    const productos = document.querySelectorAll('.producto-option');
+    
+    productos.forEach(producto => {
+        const nombre = producto.dataset.nombre.toLowerCase();
+        const codigo = producto.dataset.codigo.toLowerCase();
+        
+        if (nombre.includes(filtro) || codigo.includes(filtro)) {
+            producto.style.display = 'block';
+        } else {
+            producto.style.display = 'none';
+        }
+    });
+}
+
+function seleccionarProducto(productoElement) {
+    const productoId = productoElement.dataset.id;
+    
+    // Verificar si ya está seleccionado
+    if (productosSeleccionados.includes(productoId)) {
+        alert('Este producto ya ha sido agregado');
+        return;
+    }
+    
+    const producto = {
+        id: productoId,
+        nombre: productoElement.dataset.nombre,
+        codigo: productoElement.dataset.codigo,
+        precio: parseFloat(productoElement.dataset.precio),
+        stock: parseInt(productoElement.dataset.stock)
+    };
+    
+    agregarProductoALista(producto);
+    productosSeleccionados.push(productoId);
+    
+    // Cerrar modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('modalSeleccionarProducto'));
+    modal.hide();
+    
+    // Ocultar botón principal si hay productos
+    document.getElementById('btnAgregarProductoMain').style.display = 'none';
+}
+
+function agregarProductoALista(producto) {
+    const container = document.getElementById('productosContainer');
+    const index = contadorProductos++;
+    
+    const productoHTML = `
+        <div class="producto-item" data-index="${index}" data-id="${producto.id}">
+            <div class="row align-items-center">
+                <div class="col-md-1">
+                    <button type="button" class="remove-producto">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="col-md-2">
+                    <strong>${producto.codigo}</strong>
+                </div>
+                <div class="col-md-4">
+                    ${producto.nombre}
+                    <input type="hidden" name="productos[]" value="${producto.id}">
+                </div>
+                <div class="col-md-2">
+                    <small class="text-muted">Stock: ${producto.stock}</small><br>
+                    <small class="text-success">$ ${producto.precio.toFixed(2)}</small>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Cantidad</label>
+                    <input type="number" name="cantidades[]" class="form-control cantidad-producto" 
+                           min="1" value="1" required>
+                </div>
+                <div class="col-md-1 text-end">
+                    <strong class="subtotal-producto">$ ${producto.precio.toFixed(2)}</strong>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', productoHTML);
+    actualizarTotales();
+}
+
+function removerProducto(productoItem) {
+    const productoId = productoItem.dataset.id;
+    
+    // Remover de la lista de seleccionados
+    const index = productosSeleccionados.indexOf(productoId);
+    if (index > -1) {
+        productosSeleccionados.splice(index, 1);
+    }
+    
+    // Remover elemento
+    productoItem.remove();
+    
+    // Mostrar botón principal si no hay productos
+    if (productosSeleccionados.length === 0) {
+        document.getElementById('btnAgregarProductoMain').style.display = 'block';
+    }
+    
+    actualizarTotales();
+}
+
+function actualizarTotales() {
+    let total = 0;
+    let totalProductos = 0;
+    
+    document.querySelectorAll('.producto-item').forEach(item => {
+        const precio = parseFloat(item.querySelector('.text-success').textContent.replace('$ ', ''));
+        const cantidad = parseInt(item.querySelector('.cantidad-producto').value) || 0;
+        const subtotal = precio * cantidad;
+        
+        item.querySelector('.subtotal-producto').textContent = `$ ${subtotal.toFixed(2)}`;
+        total += subtotal;
+        totalProductos++;
+    });
+    
+    document.getElementById('totalOrden').textContent = `$ ${total.toFixed(2)}`;
+    document.getElementById('totalProductos').textContent = `${totalProductos} producto${totalProductos !== 1 ? 's' : ''}`;
+}
+</script>
+{% endblock %}

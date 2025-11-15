@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-cash-register"></i> {{ titulo }}
+        </h1>
+        <div>
+            <a href="{% url 'caja:crear' %}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nueva Caja
+            </a>
+            <a href="{% url 'caja:estado' %}" class="btn btn-info">
+                <i class="fas fa-chart-bar"></i> Estado de Caja
+            </a>
+            <a href="{% url 'caja:abrir' %}" class="btn btn-success">
+                <i class="fas fa-unlock"></i> Abrir Caja
+            </a>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                                Total de Cajas
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_cajas }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-boxes fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                                Cajas Activas
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_activas }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                                Cajas Inactivas
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_cajas|add:"-"|add:total_activas }}</div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-times-circle fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                                Estado del Sistema
+                            </div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {% if total_activas > 0 %}
+                                    <span class="text-success">Operativo</span>
+                                {% else %}
+                                    <span class="text-danger">Sin Cajas</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fas fa-server fa-2x text-gray-300"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Cajas -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-list"></i> Listado de Cajas
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if cajas %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for caja in cajas %}
+                                <tr>
+                                    <td>
+                                        <strong class="text-primary">{{ caja.codigo }}</strong>
+                                    </td>
+                                    <td>{{ caja.nombre }}</td>
+                                    <td>
+                                        {% if caja.activa %}
+                                            <span class="badge badge-success">
+                                                <i class="fas fa-check"></i> Activa
+                                            </span>
+                                        {% else %}
+                                            <span class="badge badge-danger">
+                                                <i class="fas fa-times"></i> Inactiva
+                                            </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'caja:editar' caja.id %}" 
+                                               class="btn btn-sm btn-outline-primary" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            
+                                            <form method="post" action="{% url 'caja:activar' caja.id %}" 
+                                                  style="display: inline-block;" 
+                                                  onsubmit="return confirm('¿Está seguro de cambiar el estado de esta caja?')">
+                                                {% csrf_token %}
+                                                {% if caja.activa %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-warning" title="Desactivar">
+                                                        <i class="fas fa-pause"></i>
+                                                    </button>
+                                                {% else %}
+                                                    <button type="submit" class="btn btn-sm btn-outline-success" title="Activar">
+                                                        <i class="fas fa-play"></i>
+                                                    </button>
+                                                {% endif %}
+                                            </form>
+                                            
+                                            {% if caja.activa %}
+                                                <a href="{% url 'caja:abrir' %}?caja={{ caja.id }}" 
+                                                   class="btn btn-sm btn-success" title="Abrir Caja">
+                                                    <i class="fas fa-unlock"></i>
+                                                </a>
+                                            {% endif %}
+                                            
+                                            <form method="post" action="{% url 'caja:eliminar' caja.id %}" 
+                                                  style="display: inline-block;" 
+                                                  onsubmit="return confirm('¿Está seguro de eliminar esta caja? Esta acción no se puede deshacer.')">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar" 
+                                                        {% if caja.activa %}disabled{% endif %}>
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-inbox fa-3x text-gray-300 mb-3"></i>
+                    <h5 class="text-gray-500">No hay cajas registradas</h5>
+                    <p class="text-gray-400">Para comenzar a usar el sistema, debe crear al menos una caja.</p>
+                    <a href="{% url 'caja:crear' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Crear Primera Caja
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Instrucciones -->
+    {% if total_activas == 0 and total_cajas > 0 %}
+        <div class="alert alert-warning">
+            <h5><i class="fas fa-exclamation-triangle"></i> Atención</h5>
+            <p class="mb-0">
+                Tiene cajas registradas pero ninguna está activa. 
+                Para realizar ventas debe activar al menos una caja usando el botón 
+                <i class="fas fa-play"></i> en la tabla anterior.
+            </p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

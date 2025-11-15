@@ -1,0 +1,359 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestionar Perchas - Sistema POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .percha-card {
+        border-left: 4px solid;
+        transition: transform 0.2s;
+    }
+    .percha-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .ocupacion-bar {
+        height: 8px;
+        background-color: #e9ecef;
+        border-radius: 4px;
+        overflow: hidden;
+    }
+    .ocupacion-fill {
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb">
+                            <li class="breadcrumb-item"><a href="{% url 'productos:ubicaciones_productos' %}">Ubicaciones</a></li>
+                            <li class="breadcrumb-item"><a href="{% url 'productos:gestionar_secciones' %}">Secciones</a></li>
+                            <li class="breadcrumb-item active">{{ seccion.nombre }}</li>
+                        </ol>
+                    </nav>
+                    <h2><i class="fas fa-boxes text-primary"></i> Perchas - {{ seccion.nombre }}</h2>
+                    <p class="text-muted mb-0">{{ seccion.descripcion }}</p>
+                </div>
+                <div>
+                    <a href="{% url 'productos:gestionar_secciones' %}" class="btn btn-outline-secondary me-2">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaPercha">
+                        <i class="fas fa-plus"></i> Nueva Percha
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas de la Sección -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card" style="border-left: 4px solid {{ seccion.color }}">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title text-muted">Total Perchas</h6>
+                            <h3 class="text-primary">{{ total_perchas }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-boxes fa-2x opacity-50" style="color: {{ seccion.color }}"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-success text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Productos Ubicados</h6>
+                            <h3>{{ productos_ubicados }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-check-circle fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Capacidad Total</h6>
+                            <h3>{{ capacidad_total }}</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-warehouse fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-white">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">Ocupación</h6>
+                            <h3>{{ porcentaje_ocupacion }}%</h3>
+                        </div>
+                        <div class="align-self-center">
+                            <i class="fas fa-chart-pie fa-2x opacity-75"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Perchas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Perchas en {{ seccion.nombre }}</h5>
+                </div>
+                <div class="card-body">
+                    {% if perchas %}
+                        <div class="row" id="perchas-grid">
+                            {% for percha in perchas %}
+                            <div class="col-lg-6 col-xl-4 mb-3">
+                                <div class="card percha-card h-100" style="border-left-color: {{ seccion.color }}" data-percha-id="{{ percha.0 }}">
+                                    <div class="card-body">
+                                        <div class="d-flex justify-content-between align-items-start mb-2">
+                                            <div class="flex-grow-1">
+                                                <h6 class="card-title mb-1">{{ percha.nombre }}</h6>
+                                                <p class="card-text text-muted small mb-2">{{ percha.descripcion }}</p>
+                                            </div>
+                                            <div class="dropdown">
+                                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                                                    <i class="fas fa-ellipsis-v"></i>
+                                                </button>
+                                                <ul class="dropdown-menu">
+                                                    <li><a class="dropdown-item" href="{% if percha.0 %}{% url 'productos:mapa_percha' percha.0 %}{% else %}#{% endif %}">
+                                                        <i class="fas fa-map"></i> Ver Mapa
+                                                    </a></li>
+                                                    <li><a class="dropdown-item" href="#" onclick="editarPercha({{ percha.0|default:'0' }})">
+                                                        <i class="fas fa-edit"></i> Editar
+                                                    </a></li>
+                                                    <li><hr class="dropdown-divider"></li>
+                                                    <li><a class="dropdown-item text-danger" href="#" onclick="eliminarPercha({{ percha.0|default:'0' }})">
+                                                        <i class="fas fa-trash"></i> Eliminar
+                                                    </a></li>
+                                                </ul>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- Ocupación visual -->
+                                        <div class="mb-2">
+                                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                                <small class="text-muted">Ocupación</small>
+                                                <small class="fw-bold">{{ percha.productos_ubicados }}/{{ percha.capacidad_total }}</small>
+                                            </div>
+                                            <div class="ocupacion-bar">
+                                                <div class="ocupacion-fill bg-success" style="width: {{ percha.porcentaje_ocupacion }}%"></div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="row text-center">
+                                            <div class="col-4">
+                                                <small class="text-muted">Filas</small>
+                                                <div class="fw-bold">{{ percha.filas }}</div>
+                                            </div>
+                                            <div class="col-4">
+                                                <small class="text-muted">Columnas</small>
+                                                <div class="fw-bold">{{ percha.columnas }}</div>
+                                            </div>
+                                            <div class="col-4">
+                                                <small class="text-muted">Total</small>
+                                                <div class="fw-bold">{{ percha.capacidad_total }}</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-footer">
+                                        <a href="{% if percha.0 %}{% url 'productos:mapa_percha' percha.0 %}{% else %}#{% endif %}" class="btn btn-outline-primary btn-sm w-100">
+                                            <i class="fas fa-map"></i> Ver Mapa de Percha
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-boxes fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay perchas en esta sección</h5>
+                            <p class="text-muted">Crea tu primera percha para organizar los productos</p>
+                            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaPercha">
+                                <i class="fas fa-plus"></i> Crear Primera Percha
+                            </button>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nueva/Editar Percha -->
+<div class="modal fade" id="modalNuevaPercha" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Nueva Percha</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="formPercha">
+                <div class="modal-body">
+                    <input type="hidden" id="perchaId" name="percha_id">
+                    <input type="hidden" name="seccion_id" value="{{ seccion.id }}">
+                    
+                    <div class="mb-3">
+                        <label for="nombre" class="form-label">Nombre de la Percha *</label>
+                        <input type="text" class="form-control" id="nombre" name="nombre" required maxlength="100">
+                        <div class="form-text">Ej: Percha A1, Estante Central, Vitrina Principal</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="descripcion" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="descripcion" name="descripcion" rows="2" maxlength="500"></textarea>
+                        <div class="form-text">Describe qué tipo de productos van en esta percha</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label for="filas" class="form-label">Número de Filas *</label>
+                            <input type="number" class="form-control" id="filas" name="filas" min="1" max="20" value="5" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="columnas" class="form-label">Número de Columnas *</label>
+                            <input type="number" class="form-control" id="columnas" name="columnas" min="1" max="50" value="10" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-3">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Capacidad total:</strong> <span id="capacidad-calculada">50</span> posiciones
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">Guardar Percha</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Calcular capacidad automáticamente
+function calcularCapacidad() {
+    const filas = parseInt(document.getElementById('filas').value) || 0;
+    const columnas = parseInt(document.getElementById('columnas').value) || 0;
+    const capacidad = filas * columnas;
+    document.getElementById('capacidad-calculada').textContent = capacidad;
+}
+
+// Event listeners para calcular capacidad
+document.getElementById('filas').addEventListener('input', calcularCapacidad);
+document.getElementById('columnas').addEventListener('input', calcularCapacidad);
+
+// Gestión de formulario de percha
+document.getElementById('formPercha').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const formData = new FormData(this);
+    const perchaId = document.getElementById('perchaId').value;
+    const url = perchaId ? 
+        `/productos/ubicaciones/perchas/${perchaId}/editar/` : 
+        '{% url "productos:gestionar_perchas" seccion.id %}';
+    
+    fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            location.reload();
+        } else {
+            alert('Error: ' + (data.error || 'No se pudo guardar la percha'));
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Error de conexión');
+    });
+});
+
+// Editar percha
+function editarPercha(id) {
+    fetch(`/productos/ubicaciones/perchas/${id}/`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const percha = data.percha;
+            document.getElementById('modalTitle').textContent = 'Editar Percha';
+            document.getElementById('perchaId').value = percha.id;
+            document.getElementById('nombre').value = percha.nombre;
+            document.getElementById('descripcion').value = percha.descripcion || '';
+            document.getElementById('filas').value = percha.filas;
+            document.getElementById('columnas').value = percha.columnas;
+            calcularCapacidad();
+            
+            new bootstrap.Modal(document.getElementById('modalNuevaPercha')).show();
+        }
+    });
+}
+
+// Eliminar percha
+function eliminarPercha(id) {
+    if (confirm('¿Estás seguro de eliminar esta percha? Se perderán todas las ubicaciones de productos.')) {
+        fetch(`/productos/ubicaciones/perchas/${id}/eliminar/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            } else {
+                alert('Error: ' + (data.error || 'No se pudo eliminar la percha'));
+            }
+        });
+    }
+}
+
+// Limpiar formulario al abrir modal para nueva percha
+document.getElementById('modalNuevaPercha').addEventListener('show.bs.modal', function() {
+    if (!document.getElementById('perchaId').value) {
+        document.getElementById('modalTitle').textContent = 'Nueva Percha';
+        document.getElementById('formPercha').reset();
+        document.getElementById('filas').value = 5;
+        document.getElementById('columnas').value = 10;
+        calcularCapacidad();
+    }
+});
+</script>
+{% endblock %}

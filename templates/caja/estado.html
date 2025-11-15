@@ -1,0 +1,190 @@
+{% extends 'base.html' %}
+
+{% block title %}Estado de Caja - Sistema POS{% endblock %}
+
+{% block content %}
+{% if apertura %}
+<div class="row">
+    <!-- Información de la caja -->
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h6 class="mb-0">
+                    <i class="fas fa-cash-register"></i> Información de Caja
+                </h6>
+            </div>
+            <div class="card-body">
+                <dl class="row">
+                    <dt class="col-sm-6">Caja:</dt>
+                    <dd class="col-sm-6">{{ apertura.caja_nombre }}</dd>
+                    
+                    <dt class="col-sm-6">Apertura:</dt>
+                    <dd class="col-sm-6">{{ apertura.fechaApertura|date:"d/m/Y H:i" }}</dd>
+                    
+                    <dt class="col-sm-6">Saldo Inicial:</dt>
+                    <dd class="col-sm-6">$ {{ apertura.saldoInicial|floatformat:2 }}</dd>
+                </dl>
+                
+                <div class="d-grid gap-2">
+                    <a href="{% url 'caja:cerrar' %}" class="btn btn-danger">
+                        <i class="fas fa-lock"></i> Cerrar Caja
+                    </a>
+                    <a href="{% url 'caja:movimientos' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-exchange-alt"></i> Movimientos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Resumen del día -->
+    <div class="col-md-8">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card bg-primary text-white">
+                    <div class="card-body text-center">
+                        <h3>{{ cantidad_ventas }}</h3>
+                        <p class="mb-0">Ventas Realizadas</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card bg-success text-white">
+                    <div class="card-body text-center">
+                        <h3>$ {{ total_ventas|floatformat:2 }}</h3>
+                        <p class="mb-0">Total en Ventas</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Últimas ventas -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-receipt"></i> Últimas Ventas
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if ventas_del_dia %}
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Hora</th>
+                                    <th>Factura</th>
+                                    <th>Cliente</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for venta in ventas_del_dia|slice:":10" %}
+                                <tr>
+                                    <td>{{ venta.fecha|date:"H:i" }}</td>
+                                    <td>{{ venta.numero_factura }}</td>
+                                    <td>
+                                        {% if venta.cliente %}
+                                            {{ venta.cliente.nombre_completo|truncatechars:25 }}
+                                        {% else %}
+                                            <em>Cliente Genérico</em>
+                                        {% endif %}
+                                    </td>
+                                    <td>$ {{ venta.total|floatformat:2 }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    {% if ventas_del_dia.count > 10 %}
+                        <div class="text-center">
+                            <a href="{% url 'ventas:lista' %}" class="btn btn-sm btn-outline-primary">
+                                Ver todas las ventas
+                            </a>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted text-center">No se han realizado ventas hoy</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Movimientos recientes -->
+<div class="card mt-4">
+    <div class="card-header">
+        <h6 class="mb-0">
+            <i class="fas fa-exchange-alt"></i> Movimientos Recientes
+        </h6>
+    </div>
+    <div class="card-body">
+        {% if movimientos %}
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Hora</th>
+                            <th>Tipo</th>
+                            <th>Concepto</th>
+                            <th>Monto</th>
+                            <th>Observaciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for movimiento in movimientos|slice:":5" %}
+                        <tr>
+                            <td>{{ movimiento.fecha|date:"H:i" }}</td>
+                            <td>
+                                {% if movimiento.tipo == 'entrada' %}
+                                    <span class="badge bg-success">Entrada</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Salida</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ movimiento.concepto }}</td>
+                            <td>
+                                {% if movimiento.tipo == 'entrada' %}
+                                    <span class="text-success">+ $ {{ movimiento.monto|floatformat:2 }}</span>
+                                {% else %}
+                                    <span class="text-danger">- $ {{ movimiento.monto|floatformat:2 }}</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ movimiento.observaciones|default:"—" }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            {% if movimientos.count > 5 %}
+                <div class="text-center">
+                    <a href="{% url 'caja:movimientos' %}" class="btn btn-sm btn-outline-primary">
+                        Ver todos los movimientos
+                    </a>
+                </div>
+            {% endif %}
+        {% else %}
+            <p class="text-muted text-center">No hay movimientos registrados</p>
+        {% endif %}
+    </div>
+</div>
+
+{% else %}
+<!-- No hay caja abierta -->
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body text-center">
+                <i class="fas fa-cash-register fa-3x text-muted mb-3"></i>
+                <h5>No hay caja abierta</h5>
+                <p class="text-muted">Debe abrir una caja antes de poder realizar ventas o consultar el estado</p>
+                <a href="{% url 'caja:abrir' %}" class="btn btn-primary">
+                    <i class="fas fa-unlock"></i> Abrir Caja
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

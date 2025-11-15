@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-plus-circle"></i> {{ titulo }}
+        </h1>
+        <a href="{% url 'caja:lista' %}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> Volver a Lista
+        </a>
+    </div>
+
+    <!-- Formulario -->
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-cash-register"></i> Información de la Caja
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="codigo" class="form-label">
+                                        <i class="fas fa-barcode"></i> Código de Caja <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="codigo" name="codigo" 
+                                           placeholder="Ej: CAJA001" required maxlength="20"
+                                           value="{{ codigo|default:'' }}">
+                                    <div class="form-text">
+                                        Código único identificador de la caja
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="nombre" class="form-label">
+                                        <i class="fas fa-tag"></i> Nombre de la Caja <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="nombre" name="nombre" 
+                                           placeholder="Ej: Caja Principal" required maxlength="100"
+                                           value="{{ nombre|default:'' }}">
+                                    <div class="form-text">
+                                        Nombre descriptivo de la caja
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Información adicional -->
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle"></i> Información Importante</h6>
+                            <ul class="mb-0">
+                                <li>La caja se creará en estado <strong>activo</strong> por defecto</li>
+                                <li>El código debe ser único en el sistema</li>
+                                <li>Una vez creada, podrá activar/desactivar la caja desde la lista</li>
+                                <li>Solo las cajas activas están disponibles para abrir turno</li>
+                            </ul>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{% url 'caja:lista' %}" class="btn btn-outline-secondary me-md-2">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Crear Caja
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ayuda -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card border-left-info shadow">
+                <div class="card-body">
+                    <h6 class="text-info"><i class="fas fa-lightbulb"></i> Sugerencias</h6>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>Códigos recomendados:</h6>
+                            <ul class="small">
+                                <li><code>CAJA001</code> - Caja Principal</li>
+                                <li><code>CAJA002</code> - Caja Secundaria</li>
+                                <li><code>CAJA001</code> - Caja Principal</li>
+                                <li><code>VENT001</code> - Caja Ventas</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Nombres descriptivos:</h6>
+                            <ul class="small">
+                                <li>Caja Principal</li>
+                                <li>Caja Mostrador</li>
+                                <li>Caja Principal</li>
+                                <li>Caja Emergencia</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-generar sugerencia de código
+    const nombreInput = document.getElementById('nombre');
+    const codigoInput = document.getElementById('codigo');
+    
+    nombreInput.addEventListener('input', function() {
+        if (!codigoInput.value) {
+            const nombre = this.value.toUpperCase().replace(/\s+/g, '');
+            if (nombre) {
+                const sugerencia = nombre.substring(0, 4) + '001';
+                codigoInput.placeholder = `Sugerencia: ${sugerencia}`;
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
