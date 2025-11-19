@@ -507,7 +507,7 @@ function createNewTab() {
     
     // Solo cambiar IDs específicos que pueden causar conflictos, 
     // pero mantener los IDs de elementos funcionales como totales
-    const specificElementsToChange = ['cart-items', 'empty-cart'];
+    const specificElementsToChange = ['cart-items', 'empty-cart', 'client-info', 'cliente-id', 'cliente-search'];
     specificElementsToChange.forEach(elementId => {
         const element = newTabPane.querySelector(`#${elementId}`);
         if (element) {
@@ -624,6 +624,9 @@ function switchToTab(tabId) {
     
     // Actualizar la vista del carrito
     updateCartDisplay();
+    
+    // Actualizar la visualización del cliente del tab activo
+    updateClientDisplay();
     
     console.log('Switch complete. Current cart items:', getCurrentCart().items.length);
 }
@@ -1156,17 +1159,18 @@ function nuevaVenta() {
 function limpiarTodo() {
     clearCart();
     
-    // Limpiar cliente
-    document.getElementById('cliente-search').value = '';
-    document.getElementById('cliente-id').value = '';
-    document.getElementById('client-info').style.display = 'none';
-    
-    // Limpiar otros campos
+    // Limpiar cliente del tab activo y otros campos
     const activeTab = document.querySelector(`#${currentTabId}`);
     if (activeTab) {
+        const clienteSearch = activeTab.querySelector('[id^="cliente-search"]');
+        const clienteId = activeTab.querySelector('[id^="cliente-id"]');
+        const clientInfo = activeTab.querySelector('[id^="client-info"]');
         const formaPagoSelect = activeTab.querySelector('#forma-pago');
         const montoRecibidoInput = activeTab.querySelector('#monto-recibido');
         
+        if (clienteSearch) clienteSearch.value = '';
+        if (clienteId) clienteId.value = '';
+        if (clientInfo) clientInfo.style.display = 'none';
         if (formaPagoSelect) formaPagoSelect.value = 'efectivo';
         if (montoRecibidoInput) montoRecibidoInput.value = '';
     }
@@ -1603,46 +1607,47 @@ function testMontoRecibidoListeners() {
 
 // Función para configurar la búsqueda de clientes
 function setupClientSearch() {
-    const clienteSearch = document.getElementById('cliente-search');
-    const clearClientBtn = document.getElementById('clear-client');
-    
-    let searchTimeout;
-    
-    if (clienteSearch) {
-        // Búsqueda al escribir
-        clienteSearch.addEventListener('input', function(e) {
-            clearTimeout(searchTimeout);
+    // Usar event delegation para manejar todos los campos de búsqueda de cliente
+    document.addEventListener('input', function(e) {
+        if (e.target && e.target.id && e.target.id.startsWith('cliente-search')) {
+            clearTimeout(e.target.searchTimeout);
             const query = e.target.value.trim();
             
             if (query.length >= 3) {
-                searchTimeout = setTimeout(() => {
+                e.target.searchTimeout = setTimeout(() => {
                     searchClient(query);
                 }, 300);
             } else {
                 clearClientInfo();
             }
-        });
-        
-        // Búsqueda al presionar Enter
-        clienteSearch.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const query = e.target.value.trim();
-                if (query.length > 0) {
-                    searchClient(query);
+        }
+    });
+    
+    // Event delegation para Enter en campos de búsqueda
+    document.addEventListener('keypress', function(e) {
+        if (e.target && e.target.id && e.target.id.startsWith('cliente-search') && e.key === 'Enter') {
+            e.preventDefault();
+            const query = e.target.value.trim();
+            if (query.length > 0) {
+                searchClient(query);
+            }
+        }
+    });
+    
+    // Event delegation para botones de limpiar cliente
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.closest('#clear-client')) {
+            const activeTab = document.querySelector(`#${currentTabId}`);
+            if (activeTab) {
+                const clienteSearch = activeTab.querySelector('[id^="cliente-search"]');
+                if (clienteSearch) {
+                    clearClientInfo();
+                    clienteSearch.value = '';
+                    clienteSearch.focus();
                 }
             }
-        });
-    }
-    
-    // Botón limpiar cliente
-    if (clearClientBtn) {
-        clearClientBtn.addEventListener('click', function() {
-            clearClientInfo();
-            clienteSearch.value = '';
-            clienteSearch.focus();
-        });
-    }
+        }
+    });
 }
 
 // Función para buscar cliente por cédula/RUC
@@ -1675,18 +1680,29 @@ function searchClient(query) {
 
 // Función para mostrar información del cliente encontrado
 function displayClientInfo(cliente) {
-    const clientInfo = document.getElementById('client-info');
-    const clienteId = document.getElementById('cliente-id');
+    // Buscar elementos en el tab activo
+    const activeTab = document.querySelector(`#${currentTabId}`);
+    if (!activeTab) return;
+    
+    const clientInfo = activeTab.querySelector('[id^="client-info"]');
+    const clienteId = activeTab.querySelector('[id^="cliente-id"]');
     
     if (clientInfo && clienteId) {
         clienteId.value = cliente.id;
+        
+        // Guardar cliente en el carrito del tab
+        const currentCart = getCurrentCart();
+        currentCart.cliente_id = cliente.id;
+        currentCart.cliente_nombre = cliente.nombre;
+        currentCart.cliente_documento = cliente.documento || cliente.cedula || cliente.ruc || '';
+        localStorage.setItem('pos_carts', JSON.stringify(carts));
         
         clientInfo.style.display = 'block';
         clientInfo.innerHTML = `
             <div class="alert alert-success alert-sm mb-0 p-2">
                 <small>
                     <strong>${cliente.nombre || 'Cliente'}</strong><br>
-                    <span class="text-muted">${cliente.documento || ''}</span>
+                    <span class="text-muted">${currentCart.cliente_documento}</span>
                 </small>
             </div>
         `;
@@ -1695,8 +1711,12 @@ function displayClientInfo(cliente) {
 
 // Función para limpiar información del cliente
 function clearClientInfo() {
-    const clientInfo = document.getElementById('client-info');
-    const clienteId = document.getElementById('cliente-id');
+    // Buscar elementos en el tab activo
+    const activeTab = document.querySelector(`#${currentTabId}`);
+    if (!activeTab) return;
+    
+    const clientInfo = activeTab.querySelector('[id^="client-info"]');
+    const clienteId = activeTab.querySelector('[id^="cliente-id"]');
     
     if (clientInfo) {
         clientInfo.style.display = 'none';
@@ -1705,11 +1725,22 @@ function clearClientInfo() {
     if (clienteId) {
         clienteId.value = '';
     }
+    
+    // Limpiar cliente del carrito del tab
+    const currentCart = getCurrentCart();
+    currentCart.cliente_id = null;
+    currentCart.cliente_nombre = null;
+    currentCart.cliente_documento = null;
+    localStorage.setItem('pos_carts', JSON.stringify(carts));
 }
 
 // Función para mostrar mensaje de cliente no encontrado
 function showClientNotFound(query) {
-    const clientInfo = document.getElementById('client-info');
+    // Buscar elementos en el tab activo
+    const activeTab = document.querySelector(`#${currentTabId}`);
+    if (!activeTab) return;
+    
+    const clientInfo = activeTab.querySelector('[id^="client-info"]');
     
     if (clientInfo) {
         clientInfo.style.display = 'block';
@@ -1721,6 +1752,50 @@ function showClientNotFound(query) {
                 </small>
             </div>
         `;
+    }
+}
+
+// Función para actualizar la visualización del cliente en el tab activo
+function updateClientDisplay() {
+    const currentCart = getCurrentCart();
+    const activeTab = document.querySelector(`#${currentTabId}`);
+    
+    if (!activeTab) return;
+    
+    const clientInfo = activeTab.querySelector('[id^="client-info"]');
+    const clienteId = activeTab.querySelector('[id^="cliente-id"]');
+    const clienteSearch = activeTab.querySelector('[id^="cliente-search"]');
+    
+    // Si el carrito tiene cliente guardado, mostrarlo
+    if (currentCart.cliente_id && currentCart.cliente_nombre) {
+        if (clientInfo) {
+            clientInfo.style.display = 'block';
+            clientInfo.innerHTML = `
+                <div class="alert alert-success alert-sm mb-0 p-2">
+                    <small>
+                        <strong>${currentCart.cliente_nombre}</strong><br>
+                        <span class="text-muted">${currentCart.cliente_documento || ''}</span>
+                    </small>
+                </div>
+            `;
+        }
+        if (clienteId) {
+            clienteId.value = currentCart.cliente_id;
+        }
+        if (clienteSearch && currentCart.cliente_documento) {
+            clienteSearch.value = currentCart.cliente_documento;
+        }
+    } else {
+        // No hay cliente, limpiar visualización
+        if (clientInfo) {
+            clientInfo.style.display = 'none';
+        }
+        if (clienteId) {
+            clienteId.value = '';
+        }
+        if (clienteSearch) {
+            clienteSearch.value = '';
+        }
     }
 }
 
