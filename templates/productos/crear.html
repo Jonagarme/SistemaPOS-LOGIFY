@@ -128,6 +128,16 @@
                                        placeholder="RSA-XXX-XXXX">
                             </div>
                         </div>
+                        <div class="col-md-4">
+                            <div class="mb-3">
+                                <label for="fecha_caducidad" class="form-label">
+                                    <i class="fas fa-calendar-times text-danger"></i> Fecha de Caducidad
+                                </label>
+                                <input type="date" class="form-control" id="fecha_caducidad" name="fecha_caducidad"
+                                       value="{{ producto.fecha_caducidad|date:'Y-m-d'|default:'' }}">
+                                <small class="text-muted">Fecha de expiración del producto</small>
+                            </div>
+                        </div>
                     </div>
                     
                     <div class="row">
@@ -593,23 +603,29 @@ setInterval(function() {
     localStorage.setItem('producto_borrador', JSON.stringify(borrador));
 }, 120000);
 
-// Cargar borrador al iniciar
+// Cargar borrador al iniciar (solo si estamos creando un nuevo producto)
 window.addEventListener('load', function() {
-    const borrador = localStorage.getItem('producto_borrador');
-    if (borrador && confirm('Se encontró un borrador guardado. ¿Desea cargarlo?')) {
-        const datos = JSON.parse(borrador);
-        for (let [key, value] of Object.entries(datos)) {
-            const elemento = document.querySelector(`[name="${key}"]`);
-            if (elemento) {
-                if (elemento.type === 'checkbox') {
-                    elemento.checked = value === 'on';
-                } else {
-                    elemento.value = value;
+    // Verificar si es un producto existente (modo edición)
+    const esEdicion = document.querySelector('input[name="codigo_principal"]').value !== '';
+    
+    // Solo cargar borrador si NO estamos editando un producto existente
+    if (!esEdicion) {
+        const borrador = localStorage.getItem('producto_borrador');
+        if (borrador && confirm('Se encontró un borrador guardado. ¿Desea cargarlo?')) {
+            const datos = JSON.parse(borrador);
+            for (let [key, value] of Object.entries(datos)) {
+                const elemento = document.querySelector(`[name="${key}"]`);
+                if (elemento) {
+                    if (elemento.type === 'checkbox') {
+                        elemento.checked = value === 'on';
+                    } else {
+                        elemento.value = value;
+                    }
                 }
             }
+            // Recalcular después de cargar
+            calcularTotales();
         }
-        // Recalcular después de cargar
-        calcularTotales();
     }
     
     // Validar que precio de venta sea mayor que precio de compra
@@ -621,9 +637,23 @@ window.addEventListener('load', function() {
             e.preventDefault();
             alert('El precio de venta debe ser mayor que el costo');
             precioVenta.focus();
+        } else {
+            // Limpiar el borrador al enviar exitosamente el formulario
+            localStorage.removeItem('producto_borrador');
+        }
             return false;
         }
     });
+    
+    // Limpiar borrador cuando se hace clic en "Volver a Productos" (Cancelar)
+    document.querySelector('a[href="{% url "productos:lista" %}"]').addEventListener('click', function() {
+        localStorage.removeItem('producto_borrador');
+    });
+    
+    // Si estamos editando, limpiar cualquier borrador antiguo
+    if (document.querySelector('input[name="codigo_principal"]').value !== '') {
+        localStorage.removeItem('producto_borrador');
+    }
 });
 </script>
 {% endblock %}

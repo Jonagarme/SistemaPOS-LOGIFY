@@ -389,6 +389,10 @@ def editar_producto(request, producto_id):
                 producto.observaciones = request.POST.get('observaciones', '').strip() or None
                 producto.registro_sanitario = request.POST.get('registro_sanitario', '').strip() or None
                 
+                # Fecha de caducidad
+                fecha_caducidad = request.POST.get('fecha_caducidad', '').strip()
+                producto.fecha_caducidad = fecha_caducidad if fecha_caducidad else None
+                
                 # Clasificación
                 producto.id_tipo_producto_id = request.POST.get('id_tipo_producto')
                 producto.id_clase_producto_id = request.POST.get('id_clase_producto')

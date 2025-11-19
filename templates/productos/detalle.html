@@ -228,6 +228,12 @@
                         <p class="fw-bold">{{ producto.registro_sanitario }}</p>
                     </div>
                     {% endif %}
+                    {% if producto.fecha_caducidad %}
+                    <div class="mb-2">
+                        <label class="text-muted small"><i class="fas fa-calendar-times text-danger"></i> Fecha de Caducidad:</label>
+                        <p class="fw-bold">{{ producto.fecha_caducidad|date:"d/m/Y" }}</p>
+                    </div>
+                    {% endif %}
                     {% if producto.lote %}
                     <div class="mb-2">
                         <label class="text-muted small">Lote:</label>
