@@ -505,11 +505,13 @@
 <script>
     let productosData = [];
     let proveedorData = {};
+    let seccionesData = [];  // Para almacenar las secciones disponibles
 
     document.addEventListener('DOMContentLoaded', function() {
         initializeFileUpload();
         initializeClaveAccesoForm();
         initializeProductControls();
+        cargarSecciones();  // Cargar secciones al iniciar
     });
 
     function initializeFileUpload() {
@@ -920,18 +922,11 @@
             mostrarProductos();
             mostrarAlerta('success', `Producto vinculado con "${productoExistente.nombre}"`);
         } else {
-            // Usuario eligió crear como nuevo
-            console.log(`✨ Usuario decidió crear como nuevo producto`);
-            productosData[index] = {
-                ...producto,
-                es_existente: false,
-                codigo_vinculado: false,
-                tiene_similares: false  // Ya no mostrar el botón vincular
-            };
-            
-            // Recargar la visualización
-            mostrarProductos();
-            mostrarAlerta('info', 'Se creará como producto nuevo');
+            // Usuario canceló el modal - mantener el botón de vincular disponible
+            console.log(`❌ Usuario canceló la vinculación`);
+            // NO actualizar productosData, mantener tiene_similares: true
+            // para que el botón de vincular siga visible
+            mostrarAlerta('info', 'Puedes vincular este producto más tarde usando el botón "Vincular"');
         }
     }
 
@@ -1124,6 +1119,43 @@
                         </div>
                     </div>
                     
+                    <!-- Nueva fila: Fecha de Caducidad y Ubicación -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">
+                                <i class="bi bi-calendar-event"></i> Fecha de Caducidad
+                            </label>
+                            <input type="date" class="form-control fecha-caducidad" 
+                                   id="fechaCaducidad${index}" 
+                                   data-index="${index}">
+                            <small class="text-muted">Opcional - Dejar vacío si no aplica</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">
+                                <i class="bi bi-geo-alt"></i> Sección/Percha
+                            </label>
+                            <select class="form-select seccion-select" 
+                                    id="seccion${index}" 
+                                    data-index="${index}"
+                                    onchange="cargarPerchas(${index})">
+                                <option value="">Sin ubicación</option>
+                            </select>
+                            <small class="text-muted">Selecciona dónde ubicar el producto</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">
+                                <i class="bi bi-grid-3x3"></i> Percha Específica
+                            </label>
+                            <select class="form-select percha-select" 
+                                    id="percha${index}" 
+                                    data-index="${index}"
+                                    disabled>
+                                <option value="">Selecciona primero una sección</option>
+                            </select>
+                            <small class="text-muted">Percha donde se ubicará</small>
+                        </div>
+                    </div>
+                    
                     <!-- Métricas calculadas -->
                     <div class="row">
                         <div class="col-md-3">
@@ -1189,6 +1221,7 @@
         // Calcular métricas iniciales para todos los productos
         productosData.forEach((producto, index) => {
             calcularMetricasProducto(index);
+            poblarSelectSecciones(index);  // Poblar secciones para cada producto
         });
 
         // Actualizar resumen global
@@ -1327,7 +1360,36 @@
 
     function procesarIngreso() {
         const checkboxes = document.querySelectorAll('.producto-checkbox:checked');
-        const productosSeleccionados = Array.from(checkboxes).map(cb => productosData[cb.value]);
+        const productosSeleccionados = Array.from(checkboxes).map(cb => {
+            const index = cb.value;
+            const producto = {...productosData[index]};
+            
+            // Agregar fecha de caducidad si se ingresó
+            const fechaCaducidad = document.getElementById(`fechaCaducidad${index}`);
+            if (fechaCaducidad && fechaCaducidad.value) {
+                producto.fecha_caducidad = fechaCaducidad.value;
+            }
+            
+            // Agregar ubicación si se seleccionó
+            const seccionId = document.getElementById(`seccion${index}`)?.value;
+            const perchaId = document.getElementById(`percha${index}`)?.value;
+            
+            if (seccionId) {
+                producto.seccion_id = seccionId;
+            }
+            if (perchaId) {
+                producto.percha_id = perchaId;
+            }
+            
+            // Agregar precios actualizados si se modificaron
+            const costoUnidad = document.getElementById(`costoUnidad${index}`)?.value;
+            const precioVenta = document.getElementById(`precioVenta${index}`)?.value;
+            
+            if (costoUnidad) producto.costo_unidad = parseFloat(costoUnidad);
+            if (precioVenta) producto.precio_venta = parseFloat(precioVenta);
+            
+            return producto;
+        });
         
         if (productosSeleccionados.length === 0) {
             alert('Debe seleccionar al menos un producto');
@@ -1410,6 +1472,80 @@
                 alertDiv.remove();
             }
         }, 5000);
+    }
+
+    // ===================== FUNCIONES PARA UBICACIONES Y FECHA CADUCIDAD =====================
+    
+    /**
+     * Cargar secciones disponibles
+     */
+    function cargarSecciones() {
+        fetch('/productos/ubicaciones/secciones/json/')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    seccionesData = data.secciones;
+                    console.log('✓ Secciones cargadas:', seccionesData.length);
+                }
+            })
+            .catch(error => console.error('Error al cargar secciones:', error));
+    }
+
+    /**
+     * Poblar select de secciones en un producto específico
+     */
+    function poblarSelectSecciones(index) {
+        const selectSeccion = document.getElementById(`seccion${index}`);
+        if (!selectSeccion) return;
+
+        selectSeccion.innerHTML = '<option value="">Sin ubicación</option>';
+        
+        seccionesData.forEach(seccion => {
+            const option = document.createElement('option');
+            option.value = seccion.id;
+            option.textContent = seccion.nombre;
+            option.style.backgroundColor = seccion.color + '20';  // Color con transparencia
+            selectSeccion.appendChild(option);
+        });
+    }
+
+    /**
+     * Cargar perchas de una sección
+     */
+    function cargarPerchas(index) {
+        const selectSeccion = document.getElementById(`seccion${index}`);
+        const selectPercha = document.getElementById(`percha${index}`);
+        const seccionId = selectSeccion.value;
+
+        if (!seccionId) {
+            selectPercha.disabled = true;
+            selectPercha.innerHTML = '<option value="">Selecciona primero una sección</option>';
+            return;
+        }
+
+        selectPercha.disabled = true;
+        selectPercha.innerHTML = '<option value="">Cargando perchas...</option>';
+
+        fetch(`/productos/ubicaciones/secciones/${seccionId}/perchas/`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    selectPercha.innerHTML = '<option value="">Seleccionar percha</option>';
+                    data.perchas.forEach(percha => {
+                        const option = document.createElement('option');
+                        option.value = percha.id;
+                        option.textContent = `${percha.nombre} (${percha.filas}x${percha.columnas})`;
+                        selectPercha.appendChild(option);
+                    });
+                    selectPercha.disabled = false;
+                } else {
+                    selectPercha.innerHTML = '<option value="">No hay perchas en esta sección</option>';
+                }
+            })
+            .catch(error => {
+                console.error('Error al cargar perchas:', error);
+                selectPercha.innerHTML = '<option value="">Error al cargar perchas</option>';
+            });
     }
 </script>
 

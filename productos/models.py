@@ -123,6 +123,7 @@ class Producto(models.Model):
     descripcion = models.TextField(null=True, blank=True)
     observaciones = models.TextField(null=True, blank=True)
     registro_sanitario = models.CharField(max_length=50, null=True, blank=True, db_column='registroSanitario')
+    fecha_caducidad = models.DateField(null=True, blank=True, db_column='fechaCaducidad', help_text='Fecha de caducidad del producto')
     
     # Relaciones foráneas
     id_tipo_producto = models.ForeignKey(TipoProducto, on_delete=models.PROTECT, default=1, db_column='idTipoProducto')

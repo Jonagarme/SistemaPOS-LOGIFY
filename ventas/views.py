@@ -616,6 +616,8 @@ def procesar_ingreso_productos(request):
             import json
             from productos.models import Producto, Categoria, CodigoAlternativo
             from proveedores.models import Proveedor
+            from django.db import connection
+            from datetime import datetime
             
             data = json.loads(request.body)
             productos_seleccionados = data.get('productos', [])
@@ -627,28 +629,39 @@ def procesar_ingreso_productos(request):
             # Buscar o crear proveedor
             proveedor = None
             if proveedor_data.get('ruc'):
-                proveedor, created = Proveedor.objects.get_or_create(
-                    numero_documento=proveedor_data['ruc'],
-                    defaults={
-                        'nombres': proveedor_data.get('razon_social', 'Proveedor Importado'),
-                        'tipo_documento': 'ruc',
-                        'activo': True
-                    }
-                )
-            
-            # Buscar o crear categoría para productos importados
-            categoria_importados, created = Categoria.objects.get_or_create(
-                nombre='Productos Importados XML',
-                defaults={'descripcion': 'Productos importados desde facturas XML', 'activo': True}
-            )
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        SELECT id FROM proveedores WHERE ruc = %s AND anulado = 0 LIMIT 1
+                    """, [proveedor_data['ruc']])
+                    result = cursor.fetchone()
+                    if result:
+                        proveedor_id = result[0]
+                    else:
+                        # Crear proveedor
+                        cursor.execute("""
+                            INSERT INTO proveedores (ruc, razonSocial, nombreComercial, estado, anulado, creadoPor, creadoDate)
+                            VALUES (%s, %s, %s, 1, 0, %s, NOW())
+                        """, [
+                            proveedor_data['ruc'],
+                            proveedor_data.get('razon_social', 'Proveedor Importado'),
+                            proveedor_data.get('razon_social', 'Proveedor Importado'),
+                            request.user.id
+                        ])
+                        proveedor_id = cursor.lastrowid
             
             productos_creados = 0
             productos_actualizados = 0
             codigos_vinculados = 0
+            productos_ubicados = 0
             
             for producto_data in productos_seleccionados:
                 codigo = producto_data.get('codigo', '')
                 cantidad = int(producto_data.get('cantidad', 1))
+                costo_unidad = float(producto_data.get('costo_unidad', producto_data.get('precio_unitario', 0)))
+                precio_venta = float(producto_data.get('precio_venta', costo_unidad * 1.3))
+                fecha_caducidad = producto_data.get('fecha_caducidad')  # Puede ser None
+                seccion_id = producto_data.get('seccion_id')
+                percha_id = producto_data.get('percha_id')
                 
                 # Verificar si es un producto existente vinculado por el detector de duplicados
                 es_existente = producto_data.get('es_existente', False)
@@ -656,64 +669,68 @@ def procesar_ingreso_productos(request):
                 codigo_vinculado = producto_data.get('codigo_vinculado', False)
                 
                 if es_existente and producto_id:
-                    # Producto vinculado a uno existente - actualizar stock del producto existente
-                    try:
-                        producto_existente = Producto.objects.get(id=producto_id)
-                        producto_existente.stock += cantidad
-                        producto_existente.save()
-                        productos_actualizados += 1
-                        
-                        # Si se marcó para vincular código, crear el código alternativo
-                        if codigo_vinculado and codigo:
-                            # Verificar si el código alternativo ya existe
-                            if not CodigoAlternativo.objects.filter(codigo=codigo).exists():
-                                CodigoAlternativo.objects.create(
-                                    producto=producto_existente,
-                                    codigo=codigo,
-                                    activo=True
-                                )
-                                codigos_vinculados += 1
-                    except Producto.DoesNotExist:
-                        # Si el producto no existe (error), crear uno nuevo
-                        Producto.objects.create(
-                            codigo=codigo,
-                            nombre=producto_data.get('descripcion', '')[:100],
-                            descripcion=producto_data.get('descripcion', ''),
-                            categoria=categoria_importados,
-                            precio_compra=producto_data.get('precio_unitario', 0),
-                            precio_venta=producto_data.get('precio_unitario', 0) * 1.3,
-                            stock=cantidad,
-                            stock_minimo=1,
-                            aplica_iva=producto_data.get('iva', 0) > 0,
-                            proveedor=proveedor,
-                            activo=True
-                        )
-                        productos_creados += 1
-                else:
-                    # Producto nuevo - verificar si ya existe por código antes de crear
-                    producto_existente = Producto.objects.filter(codigo=codigo).first()
+                    # Producto vinculado a uno existente - actualizar stock
+                    with connection.cursor() as cursor:
+                        cursor.execute("UPDATE productos SET stock = stock + %s WHERE id = %s", [cantidad, producto_id])
+                    productos_actualizados += 1
                     
-                    if producto_existente:
-                        # Ya existe con el mismo código - solo actualizar stock
-                        producto_existente.stock += cantidad
-                        producto_existente.save()
-                        productos_actualizados += 1
-                    else:
-                        # Crear nuevo producto
-                        Producto.objects.create(
-                            codigo=codigo,
-                            nombre=producto_data.get('descripcion', '')[:100],
-                            descripcion=producto_data.get('descripcion', ''),
-                            categoria=categoria_importados,
-                            precio_compra=producto_data.get('precio_unitario', 0),
-                            precio_venta=producto_data.get('precio_unitario', 0) * 1.3,
-                            stock=cantidad,
-                            stock_minimo=1,
-                            aplica_iva=producto_data.get('iva', 0) > 0,
-                            proveedor=proveedor,
-                            activo=True
-                        )
-                        productos_creados += 1
+                    # Vincular código alternativo si se marcó
+                    if codigo_vinculado and codigo:
+                        with connection.cursor() as cursor:
+                            cursor.execute("""
+                                INSERT IGNORE INTO codigos_alternativo (producto_id, codigo, activo)
+                                VALUES (%s, %s, 1)
+                            """, [producto_id, codigo])
+                            if cursor.rowcount > 0:
+                                codigos_vinculados += 1
+                    
+                    # Ubicar producto si se proporcionó percha
+                    if percha_id:
+                        ubicar_producto_en_percha(producto_id, percha_id, cantidad)
+                        productos_ubicados += 1
+                else:
+                    # Producto nuevo - verificar si ya existe por código
+                    with connection.cursor() as cursor:
+                        cursor.execute("SELECT id FROM productos WHERE codigoPrincipal = %s AND anulado = 0", [codigo])
+                        producto_existente = cursor.fetchone()
+                        
+                        if producto_existente:
+                            # Ya existe - actualizar stock
+                            cursor.execute("UPDATE productos SET stock = stock + %s WHERE id = %s", [cantidad, producto_existente[0]])
+                            productos_actualizados += 1
+                            producto_id = producto_existente[0]
+                        else:
+                            # Crear nuevo producto
+                            cursor.execute("""
+                                INSERT INTO productos (
+                                    codigoPrincipal, nombre, descripcion, fechaCaducidad,
+                                    costoUnidad, precioVenta, stock, stockMinimo, stockMaximo,
+                                    esDivisible, esPsicotropico, requiereCadenaFrio, requiereSeguimiento,
+                                    calculoABCManual, activo, anulado,
+                                    idTipoProducto, idClaseProducto, idCategoria, idSubcategoria, idMarca, idLaboratorio
+                                ) VALUES (
+                                    %s, %s, %s, %s,
+                                    %s, %s, %s, 1, 100,
+                                    0, 0, 0, 0,
+                                    0, 1, 0,
+                                    1, 1, 1, 1, 1, 1
+                                )
+                            """, [
+                                codigo,
+                                producto_data.get('descripcion', '')[:255],
+                                producto_data.get('descripcion', ''),
+                                fecha_caducidad if fecha_caducidad else None,
+                                costo_unidad,
+                                precio_venta,
+                                cantidad
+                            ])
+                            producto_id = cursor.lastrowid
+                            productos_creados += 1
+                        
+                        # Ubicar producto si se proporcionó percha
+                        if percha_id and producto_id:
+                            ubicar_producto_en_percha(producto_id, percha_id, cantidad)
+                            productos_ubicados += 1
             
             # Construir mensaje de respuesta
             mensaje_partes = []
@@ -723,6 +740,8 @@ def procesar_ingreso_productos(request):
                 mensaje_partes.append(f'{productos_actualizados} producto(s) actualizado(s)')
             if codigos_vinculados > 0:
                 mensaje_partes.append(f'{codigos_vinculados} código(s) alternativo(s) vinculado(s)')
+            if productos_ubicados > 0:
+                mensaje_partes.append(f'{productos_ubicados} producto(s) ubicado(s) en perchas')
             
             mensaje = f"Ingreso procesado exitosamente. {', '.join(mensaje_partes)}." if mensaje_partes else "No se procesaron productos."
             
@@ -731,15 +750,71 @@ def procesar_ingreso_productos(request):
                 'mensaje': mensaje,
                 'productos_creados': productos_creados,
                 'productos_actualizados': productos_actualizados,
-                'codigos_vinculados': codigos_vinculados
+                'codigos_vinculados': codigos_vinculados,
+                'productos_ubicados': productos_ubicados
             })
             
         except json.JSONDecodeError:
             return JsonResponse({'success': False, 'error': 'Error en formato de datos'})
         except Exception as e:
+            import traceback
+            print(traceback.format_exc())
             return JsonResponse({'success': False, 'error': f'Error al procesar ingreso: {str(e)}'})
     
     return JsonResponse({'success': False, 'error': 'Método no permitido'})
+
+
+def ubicar_producto_en_percha(producto_id, percha_id, cantidad):
+    """Ubica un producto en una percha específica"""
+    from django.db import connection
+    
+    with connection.cursor() as cursor:
+        # Verificar si ya existe ubicación para este producto
+        cursor.execute("""
+            SELECT id FROM productos_ubicacionproducto 
+            WHERE producto_id = %s AND activo = 1
+        """, [producto_id])
+        
+        ubicacion_existente = cursor.fetchone()
+        
+        if ubicacion_existente:
+            # Actualizar ubicación existente
+            cursor.execute("""
+                UPDATE productos_ubicacionproducto 
+                SET percha_id = %s, cantidad_actual = %s
+                WHERE id = %s
+            """, [percha_id, cantidad, ubicacion_existente[0]])
+        else:
+            # Buscar posición disponible en la percha
+            cursor.execute("""
+                SELECT filas, columnas FROM productos_percha WHERE id = %s
+            """, [percha_id])
+            percha_info = cursor.fetchone()
+            
+            if percha_info:
+                # Buscar primera posición libre
+                cursor.execute("""
+                    SELECT fila, columna FROM productos_ubicacionproducto
+                    WHERE percha_id = %s AND activo = 1
+                """, [percha_id])
+                posiciones_ocupadas = cursor.fetchall()
+                
+                # Encontrar primera posición libre
+                fila, columna = 1, 1
+                for f in range(1, percha_info[0] + 1):
+                    for c in range(1, percha_info[1] + 1):
+                        if (f, c) not in posiciones_ocupadas:
+                            fila, columna = f, c
+                            break
+                    if (fila, columna) != (1, 1):
+                        break
+                
+                # Crear ubicación
+                cursor.execute("""
+                    INSERT INTO productos_ubicacionproducto 
+                    (producto_id, percha_id, fila, columna, cantidad_maxima, cantidad_actual, activo)
+                    VALUES (%s, %s, %s, %s, 50, %s, 1)
+                """, [producto_id, percha_id, fila, columna, cantidad])
 
 
 @login_required
