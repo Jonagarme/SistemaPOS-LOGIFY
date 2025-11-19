@@ -873,10 +873,39 @@ function setQuantity(index, quantity) {
 function removeFromCart(index) {
     const currentCart = getCurrentCart();
     if (index >= 0 && index < currentCart.items.length) {
+        // Guardar referencia al producto antes de eliminarlo
+        const removedItem = currentCart.items[index];
+        
+        // Eliminar del carrito
         currentCart.items.splice(index, 1);
+        
+        // Restaurar el stock visual del producto eliminado
+        const productCards = document.querySelectorAll(`[data-product-id="${removedItem.id}"]`);
+        productCards.forEach(card => {
+            const stockBadge = card.querySelector('.badge');
+            if (stockBadge) {
+                // Restaurar al stock original
+                const originalStock = removedItem.stock;
+                stockBadge.textContent = `Stock: ${originalStock}`;
+                
+                // Restaurar color según stock original
+                if (originalStock <= 0) {
+                    stockBadge.className = 'badge bg-danger';
+                } else if (originalStock <= 5) {
+                    stockBadge.className = 'badge bg-warning';
+                } else {
+                    stockBadge.className = 'badge bg-success';
+                }
+                
+                // Habilitar la tarjeta
+                card.style.opacity = '1';
+                card.style.pointerEvents = 'auto';
+            }
+        });
+        
         updateCartDisplay();
         updateTotals();
-        updateProductStockDisplay();
+        updateProductStockDisplay(); // Actualizar otros productos que sigan en el carrito
         
         // Mostrar mensaje visual (opcional)
         console.log(`Producto removido del carrito. Quedan ${currentCart.items.length} items.`);
@@ -1347,11 +1376,19 @@ function imprimirTicket() {
 // Actualizar la visualización del stock en las tarjetas de productos
 function updateProductStockDisplay() {
     const currentCart = getCurrentCart();
-    currentCart.items.forEach(cartItem => {
-        const productCards = document.querySelectorAll(`[data-product-id="${cartItem.id}"]`);
-        productCards.forEach(card => {
-            const stockBadge = card.querySelector('.badge');
-            if (stockBadge) {
+    
+    // Primero, restaurar todos los productos a su stock original
+    document.querySelectorAll('.product-card[data-product-id]').forEach(card => {
+        const productId = parseInt(card.getAttribute('data-product-id'));
+        const stockBadge = card.querySelector('.badge');
+        const originalStock = parseInt(card.getAttribute('data-product-stock'));
+        
+        if (stockBadge && !isNaN(originalStock)) {
+            // Verificar si el producto está en el carrito
+            const cartItem = currentCart.items.find(item => item.id === productId);
+            
+            if (cartItem) {
+                // Producto está en el carrito - mostrar stock disponible
                 const availableStock = cartItem.stock - cartItem.quantity;
                 stockBadge.textContent = `Stock: ${availableStock}`;
                 
@@ -1369,8 +1406,25 @@ function updateProductStockDisplay() {
                     card.style.opacity = '1';
                     card.style.pointerEvents = 'auto';
                 }
+            } else {
+                // Producto NO está en el carrito - restaurar stock original
+                stockBadge.textContent = `Stock: ${originalStock}`;
+                
+                if (originalStock <= 0) {
+                    stockBadge.className = 'badge bg-danger';
+                    card.style.opacity = '0.6';
+                    card.style.pointerEvents = 'none';
+                } else if (originalStock <= 5) {
+                    stockBadge.className = 'badge bg-warning';
+                    card.style.opacity = '1';
+                    card.style.pointerEvents = 'auto';
+                } else {
+                    stockBadge.className = 'badge bg-success';
+                    card.style.opacity = '1';
+                    card.style.pointerEvents = 'auto';
+                }
             }
-        });
+        }
     });
 }
 
