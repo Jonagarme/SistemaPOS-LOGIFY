@@ -188,10 +188,47 @@
 .tab-content {
     height: calc(100vh - 200px);
 }
+
+.offline-indicator {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    z-index: 9999;
+    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.8; transform: scale(1.05); }
+}
+
+.offline-indicator i {
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
 </style>
 {% endblock %}
 
 {% block content %}
+<!-- Indicador de modo offline -->
+{% if modo_offline %}
+<div class="offline-indicator">
+    <i class="fas fa-wifi-slash me-2"></i>
+    <strong>MODO OFFLINE</strong>
+    <br>
+    <small>Sin conexión a servidor</small>
+</div>
+{% endif %}
+
 <div class="pos-container">
     <!-- Sistema de Tabs para múltiples ventas -->
     <div class="sales-tabs-container mb-3">
@@ -264,9 +301,29 @@
                                 </div>
                             </div>
                             {% endfor %}
+                        </div>
+                        
+                        <!-- Controles de paginación -->
+                        <div class="d-flex justify-content-between align-items-center mt-3 mb-3" id="pagination-controls">
+                            <div>
+                                <small class="text-muted">
+                                    Mostrando <span id="showing-count">{{ productos|length }}</span> de <span id="total-count">{{ productos|length }}</span> productos
+                                </small>
+                            </div>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="prev-page" onclick="loadPreviousPage()" disabled>
+                                    <i class="fas fa-chevron-left"></i> Anterior
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary disabled">
+                                    Página <span id="current-page">1</span>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" id="next-page" onclick="loadNextPage()">
+                                    Siguiente <i class="fas fa-chevron-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
         
         <!-- Panel del carrito -->
         <div class="col-lg-4">
@@ -433,6 +490,11 @@
         </div>
     </div>
 </div>
+
+{{ productos|json_script:"productos-data" }}
+{{ clientes|json_script:"clientes-data" }}
+{{ categorias|json_script:"categorias-data" }}
+
 {% endblock %}
 
 {% block extra_js %}
@@ -2067,5 +2129,223 @@ document.addEventListener('keydown', function(e) {
         focusProductSearch();
     }
 });
+
+// Detectar cambios en la conexión a internet
+{% if modo_offline %}
+let wasOffline = true;
+
+// Verificar conexión periódicamente
+setInterval(function() {
+    fetch('/static/img/pixel.png', { 
+        method: 'HEAD',
+        cache: 'no-cache'
+    })
+    .then(() => {
+        // Hay conexión
+        if (wasOffline) {
+            // Reconectado
+            wasOffline = false;
+            showReconnectedNotification();
+        }
+    })
+    .catch(() => {
+        // Sin conexión
+        wasOffline = true;
+    });
+}, 30000); // Verificar cada 30 segundos
+
+function showReconnectedNotification() {
+    const notification = document.createElement('div');
+    notification.className = 'alert alert-success alert-dismissible fade show position-fixed';
+    notification.style.cssText = `
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        min-width: 350px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    `;
+    
+    notification.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="fas fa-wifi text-success me-2 fa-2x"></i>
+            <div class="flex-grow-1">
+                <strong>¡Conexión restaurada!</strong><br>
+                <small>Puede recargar la página para sincronizar datos</small>
+            </div>
+            <button type="button" class="btn btn-sm btn-success ms-2" onclick="location.reload()">
+                <i class="fas fa-sync"></i> Recargar
+            </button>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-eliminar después de 10 segundos
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.remove();
+        }
+    }, 10000);
+}
+
+// Cargar productos en modo offline si el grid está vacío
+document.addEventListener('DOMContentLoaded', function() {
+    const modoOffline = {% if modo_offline %}true{% else %}false{% endif %};
+    const productsGrid = document.getElementById('products-grid');
+    
+    if (modoOffline && productsGrid) {
+        const productItems = productsGrid.querySelectorAll('.product-item');
+        
+        if (productItems.length === 0) {
+            console.log('Modo offline detectado sin productos en el grid. Cargando desde datos del servidor...');
+            
+            // Leer productos desde el script tag JSON
+            const productosElement = document.getElementById('productos-data');
+            
+            if (productosElement) {
+                try {
+                    const productosData = JSON.parse(productosElement.textContent);
+                    
+                    if (productosData && productosData.length > 0) {
+                        console.log(`Cargando ${productosData.length} productos desde cache del servidor`);
+                        renderProductsFromData(productosData);
+                    } else {
+                        console.log('No hay productos en cache. Sistema completamente offline.');
+                        mostrarMensajeNoProductos();
+                    }
+                } catch(e) {
+                    console.error('Error parseando productos:', e);
+                    mostrarMensajeNoProductos();
+                }
+            } else {
+                console.log('No se encontró datos de productos');
+                mostrarMensajeNoProductos();
+            }
+        }
+    }
+});
+
+function renderProductsFromData(productos) {
+    const grid = document.getElementById('products-grid');
+    if (!grid) return;
+    
+    grid.innerHTML = ''; // Limpiar grid
+    
+    productos.forEach(producto => {
+        const productCard = `
+            <div class="col-xl-3 col-lg-4 col-md-6 mb-3 product-item" 
+                 data-category="${producto.id_categoria || ''}"
+                 data-name="${(producto.nombre || '').toLowerCase()}"
+                 data-code="${producto.codigo_principal || ''}">
+                <div class="card product-card h-100" 
+                     data-product-id="${producto.id}"
+                     data-product-name="${producto.nombre}"
+                     data-product-price="${producto.precio_venta || 0}"
+                     data-product-stock="${producto.stock || 0}"
+                     onclick="addToCartFromElement(this)">
+                    <div class="card-body d-flex flex-column">
+                        <h6 class="card-title">${producto.nombre}</h6>
+                        <p class="card-text text-muted small mb-1">Código: ${producto.codigo_principal}</p>
+                        <p class="card-text mb-2">
+                            <strong class="text-primary">$${parseFloat(producto.precio_venta || 0).toFixed(2)}</strong>
+                        </p>
+                        <p class="card-text small">
+                            <span class="badge ${producto.stock > 10 ? 'bg-success' : producto.stock > 0 ? 'bg-warning' : 'bg-danger'}">
+                                Stock: ${producto.stock || 0}
+                            </span>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        `;
+        grid.insertAdjacentHTML('beforeend', productCard);
+    });
+    
+    console.log(`${productos.length} productos renderizados`);
+}
+
+function mostrarMensajeNoProductos() {
+    const grid = document.getElementById('products-grid');
+    if (!grid) return;
+    
+    grid.innerHTML = `
+        <div class="col-12 text-center py-5">
+            <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">Modo Offline: Sin productos disponibles</h5>
+            <p class="text-muted">Conecta a internet para cargar productos</p>
+        </div>
+    `;
+}
+
+// Sistema de paginación
+let allProductos = []; // Todos los productos disponibles
+let currentPage = 1;
+const productsPerPage = 20;
+
+// Cargar todos los productos desde el JSON script
+function loadAllProducts() {
+    const productosElement = document.getElementById('productos-data');
+    if (productosElement) {
+        try {
+            allProductos = JSON.parse(productosElement.textContent);
+            console.log(`Total productos cargados: ${allProductos.length}`);
+            updatePaginationControls();
+        } catch(e) {
+            console.error('Error cargando productos:', e);
+        }
+    }
+}
+
+// Mostrar página específica
+function showPage(page) {
+    const start = (page - 1) * productsPerPage;
+    const end = start + productsPerPage;
+    const productosPage = allProductos.slice(start, end);
+    
+    renderProductsFromData(productosPage);
+    currentPage = page;
+    updatePaginationControls();
+}
+
+// Actualizar controles de paginación
+function updatePaginationControls() {
+    const totalPages = Math.ceil(allProductos.length / productsPerPage);
+    
+    document.getElementById('current-page').textContent = currentPage;
+    document.getElementById('showing-count').textContent = Math.min(currentPage * productsPerPage, allProductos.length);
+    document.getElementById('total-count').textContent = allProductos.length;
+    
+    // Habilitar/deshabilitar botones
+    const prevBtn = document.getElementById('prev-page');
+    const nextBtn = document.getElementById('next-page');
+    
+    if (prevBtn) prevBtn.disabled = currentPage === 1;
+    if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+}
+
+// Página siguiente
+function loadNextPage() {
+    const totalPages = Math.ceil(allProductos.length / productsPerPage);
+    if (currentPage < totalPages) {
+        showPage(currentPage + 1);
+    }
+}
+
+// Página anterior
+function loadPreviousPage() {
+    if (currentPage > 1) {
+        showPage(currentPage - 1);
+    }
+}
+
+// Inicializar paginación al cargar
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        loadAllProducts();
+    }, 500); // Esperar a que se carguen los datos
+});
+
+{% endif %}
 </script>
 {% endblock %}

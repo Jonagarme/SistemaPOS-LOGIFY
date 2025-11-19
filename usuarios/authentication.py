@@ -1,7 +1,7 @@
 from django.contrib.auth.backends import BaseBackend
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import check_password
-from django.db import connection
+from django.db import connection, OperationalError
 import logging
 
 logger = logging.getLogger(__name__)
@@ -103,7 +103,7 @@ class UsuarioSistemaBackend(BaseBackend):
     
     def get_user(self, user_id):
         """
-        Obtiene un usuario por ID
+        Obtiene un usuario por ID - Con soporte offline
         """
         try:
             user = User.objects.get(pk=user_id)
@@ -132,9 +132,18 @@ class UsuarioSistemaBackend(BaseBackend):
                             user.nombre_usuario_original = nombre_usuario
                             user.rol_nombre = rol_nombre or "Sin rol"
                             user.nombre_completo = nombre_completo
+                except OperationalError:
+                    # Modo offline - usar datos básicos del usuario
+                    user.usuario_sistema_id = sistema_id
+                    user.nombre_usuario_original = user.username
+                    user.rol_nombre = "Usuario (Offline)"
+                    user.nombre_completo = user.username
                 except:
                     pass
             
             return user
-        except User.DoesNotExist:
+        except (User.DoesNotExist, OperationalError):
+            return None
+        except Exception as e:
+            logger.error(f"Error obteniendo usuario: {str(e)}")
             return None

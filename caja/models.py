@@ -124,7 +124,7 @@ class CierreCaja(models.Model):
     @classmethod
     def obtener_caja_abierta(cls):
         """Obtiene cualquier caja abierta (sin importar el día)"""
-        from django.db import connection
+        from django.db import connection, OperationalError
         from django.utils import timezone
         
         try:
@@ -147,6 +147,10 @@ class CierreCaja(models.Model):
             
             return None
             
+        except OperationalError as e:
+            # Re-lanzar OperationalError para que las vistas puedan detectar modo offline
+            print(f"Error de conexión al obtener caja abierta: {e}")
+            raise
         except Exception as e:
             print(f"Error al obtener caja abierta: {e}")
             return None

@@ -5,6 +5,7 @@ from django.core.paginator import Paginator
 from django.db.models import Q
 from django.http import JsonResponse
 from django.utils import timezone
+from django.db import OperationalError
 from .models import Cliente
 from .forms import ClienteForm
 
@@ -129,27 +130,43 @@ def historial_cliente(request, pk):
 
 @login_required
 def buscar_clientes(request):
-    """Buscar clientes via AJAX"""
+    """Buscar clientes via AJAX - Con soporte offline"""
     if request.method == 'GET':
         search = request.GET.get('search', '')
-        clientes = Cliente.objects.filter(
-            Q(nombres__icontains=search) |
-            Q(apellidos__icontains=search) |
-            Q(cedula_ruc__icontains=search),
-            estado=True,
-            anulado=False
-        )[:10]
         
-        clientes_data = []
-        for cliente in clientes:
-            clientes_data.append({
-                'id': cliente.id,
-                'cedula_ruc': cliente.cedula_ruc,
-                'nombre': cliente.nombre_completo,
-                'documento': cliente.cedula_ruc,
-                'telefono': cliente.telefono_principal
+        try:
+            clientes = Cliente.objects.filter(
+                Q(nombres__icontains=search) |
+                Q(apellidos__icontains=search) |
+                Q(cedula_ruc__icontains=search),
+                estado=True,
+                anulado=False
+            )[:10]
+            
+            clientes_data = []
+            for cliente in clientes:
+                clientes_data.append({
+                    'id': cliente.id,
+                    'cedula_ruc': cliente.cedula_ruc,
+                    'nombre': cliente.nombre_completo,
+                    'documento': cliente.cedula_ruc,
+                    'telefono': cliente.telefono_principal
+                })
+            
+            return JsonResponse({'clientes': clientes_data})
+            
+        except OperationalError:
+            # Modo offline - buscar en localStorage del navegador
+            # Retornar lista vacía, el frontend usará su cache
+            return JsonResponse({
+                'clientes': [],
+                'modo_offline': True,
+                'mensaje': 'Modo offline: Busca clientes desde el cache del navegador'
             })
-        
-        return JsonResponse({'clientes': clientes_data})
+        except Exception as e:
+            return JsonResponse({
+                'error': f'Error al buscar clientes: {str(e)}',
+                'clientes': []
+            })
     
     return JsonResponse({'error': 'Método no permitido'})

@@ -4,8 +4,9 @@ from django.contrib import messages
 from django.core.paginator import Paginator
 from django.http import JsonResponse, HttpResponse
 from django.db.models import Q, Sum, Count
-from django.db import transaction
+from django.db import transaction, OperationalError
 from django.views.decorators.http import require_http_methods
+from functools import wraps
 import json
 from decimal import Decimal
 from datetime import date, datetime
@@ -19,6 +20,38 @@ from clientes.models import Cliente
 from django.db import connection
 from django.template.loader import render_to_string
 from django.conf import settings
+
+
+def login_required_offline_safe(view_func):
+    """
+    Decorador personalizado que permite acceso sin autenticación en modo offline
+    """
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        # Si el middleware ya detectó modo offline, continuar directamente
+        if getattr(request, 'modo_offline', False):
+            # Verificar si hay usuario en sesión
+            usuario_offline = request.session.get('usuario_offline')
+            if not usuario_offline:
+                # No hay sesión offline, redirigir a login
+                from django.contrib.auth.views import redirect_to_login
+                return redirect_to_login(request.get_full_path())
+            # Hay sesión offline, continuar
+            return view_func(request, *args, **kwargs)
+        
+        # Modo online - verificar autenticación normal
+        try:
+            if not request.user.is_authenticated:
+                from django.contrib.auth.views import redirect_to_login
+                return redirect_to_login(request.get_full_path())
+        except (OperationalError, Exception) as e:
+            # Error inesperado - permitir acceso en modo offline
+            print(f"Error de autenticación: {e}")
+            pass
+        
+        return view_func(request, *args, **kwargs)
+    
+    return wrapper
 
 
 def obtener_configuracion_empresa():
@@ -959,24 +992,127 @@ def lista_ventas(request):
     return render(request, 'ventas/lista_ventas_new.html', context)
 
 
-@login_required
+@login_required_offline_safe
 def nueva_venta(request):
-    """Crear nueva venta - Interfaz POS"""
-    # Verificar si hay caja abierta
-    from caja.models import CierreCaja
-    caja_abierta_data = CierreCaja.obtener_caja_abierta()
+    """Crear nueva venta - Interfaz POS con soporte offline"""
     
-    if not caja_abierta_data:
-        messages.error(request, 'Debe abrir una caja antes de realizar ventas')
-        return redirect('caja:abrir')
+    # Modo offline: intentar conectar a la base de datos
+    modo_offline = False
+    caja_abierta_data = None
+    clientes_list = []
+    productos_list = []
+    categorias_list = []
+    
+    try:
+        # Importar modelos solo cuando se necesiten
+        from caja.models import CierreCaja
+        from clientes.models import Cliente
+        from productos.models import Producto, Categoria
+        
+        # Verificar si hay caja abierta
+        try:
+            caja_abierta_data = CierreCaja.obtener_caja_abierta()
+            
+            if not caja_abierta_data:
+                messages.warning(request, 'Debe abrir una caja antes de realizar ventas')
+                return redirect('caja:abrir')
+                
+        except OperationalError as db_error:
+            # Error de base de datos al verificar caja - modo offline
+            print(f"OperationalError BD verificando caja: {db_error}")
+            modo_offline = True
+            # En modo offline, usar caja de sesión
+            caja_abierta_data = request.session.get('caja_offline')
+            if not caja_abierta_data:
+                # No hay caja offline, crear una automáticamente
+                caja_abierta_data = {
+                    'idCaja': 1,
+                    'nombre': 'Caja Principal (Offline)',
+                    'montoInicial': 0.0,
+                    'modo_offline': True,
+                    'fechaApertura': str(date.today())
+                }
+                request.session['caja_offline'] = caja_abierta_data
+                messages.info(request, 'MODO OFFLINE: Caja creada automáticamente')
+        
+        # Intentar cargar datos si no estamos en modo offline
+        if not modo_offline:
+            try:
+                clientes_list = list(Cliente.objects.filter(estado=True, anulado=False).values('id', 'nombres', 'apellidos', 'cedula_ruc'))
+                
+                # Cargar todos los productos para cache (sin límite)
+                todos_productos = list(Producto.objects.filter(activo=True, stock__gt=0).values())
+                
+                # Solo mostrar primeros 20 productos en la página inicial
+                productos_list = todos_productos[:20]
+                
+                categorias_list = list(Categoria.objects.all().values())
+                
+                # Guardar TODOS en cache para uso offline
+                from django.core.cache import cache
+                cache.set('productos_offline', todos_productos, timeout=None)  # Guardar todos
+                cache.set('clientes_offline', clientes_list, timeout=None)
+                cache.set('categorias_offline', categorias_list, timeout=None)
+                
+                # Información de paginación
+                total_productos = len(todos_productos)
+                
+            except OperationalError as db_error:
+                print(f"OperationalError BD cargando datos: {db_error}")
+                modo_offline = True
+        
+    except OperationalError as e:
+        # Error de conexión general - activar modo offline
+        print(f"OperationalError de conexión: {e}")
+        modo_offline = True
+    except Exception as e:
+        # Otros errores no relacionados con BD - reportar pero no activar modo offline
+        print(f"Error no crítico en nueva_venta: {e}")
+        import traceback
+        traceback.print_exc()
+    
+    # Si estamos en modo offline, configurar datos por defecto
+    if modo_offline:
+        messages.warning(request, 'Modo OFFLINE: Sin conexión a la base de datos. Usando datos locales del navegador.')
+        
+        # Intentar cargar productos desde cache si existe
+        from django.core.cache import cache
+        productos_cache = cache.get('productos_offline', [])
+        clientes_cache = cache.get('clientes_offline', [])
+        categorias_cache = cache.get('categorias_offline', [])
+        
+        if not caja_abierta_data:
+            caja_abierta_data = {
+                'idCaja': 1,
+                'nombre': 'Caja Principal (Offline)',
+                'montoInicial': 0,
+                'modo_offline': True
+            }
+        
+        # Usar datos del cache si existen - solo primeros 20 en página
+        if productos_cache:
+            productos_list = productos_cache[:20]  # Solo 20 para la vista inicial
+            total_productos = len(productos_cache)
+            messages.info(request, f'{total_productos} productos disponibles en cache (mostrando primeros 20)')
+        else:
+            total_productos = 0
+            messages.info(request, f'{len(productos_cache)} productos cargados desde cache local')
+        
+        if clientes_cache:
+            clientes_list = clientes_cache
+            
+        if categorias_cache:
+            categorias_list = categorias_cache
     
     context = {
-        'clientes': Cliente.objects.filter(estado=True, anulado=False),
-        'productos': Producto.objects.filter(activo=True, stock__gt=0)[:20],
-        'categorias': Categoria.objects.all(),
+        'clientes': clientes_list,
+        'productos': productos_list,
+        'categorias': categorias_list,
         'caja_abierta': caja_abierta_data,
-        'titulo': 'Punto de Venta'
+        'modo_offline': modo_offline,
+        'titulo': 'Punto de Venta' + (' - MODO OFFLINE' if modo_offline else '')
     }
+    
     return render(request, 'ventas/crear.html', context)
 
 

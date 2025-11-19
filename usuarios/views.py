@@ -98,6 +98,15 @@ def custom_login(request):
                 nombre_completo = getattr(user, 'nombre_completo', user.get_full_name() or user.username)
                 rol_nombre = getattr(user, 'rol_nombre', 'Usuario')
                 
+                # Guardar información del usuario en sesión para modo offline
+                request.session['usuario_offline'] = {
+                    'id': user.id,
+                    'username': user.username,
+                    'nombre_completo': nombre_completo,
+                    'rol_nombre': rol_nombre,
+                    'usuario_sistema_id': getattr(user, 'usuario_sistema_id', None)
+                }
+                
                 # Mensajes de bienvenida personalizados
                 import datetime
                 hora_actual = datetime.datetime.now()

@@ -3,13 +3,46 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Sum
-from django.db import connection
+from django.db import connection, OperationalError
 from django.utils import timezone
 from django.http import JsonResponse
 from datetime import date
 from .models import Caja, CierreCaja, AperturaCaja, ArqueoCaja
 from decimal import Decimal
 import json
+from functools import wraps
+
+
+def login_required_offline_safe(view_func):
+    """
+    Decorador personalizado que permite acceso sin autenticación en modo offline
+    """
+    @wraps(view_func)
+    def wrapper(request, *args, **kwargs):
+        # Si el middleware ya detectó modo offline, continuar directamente
+        if getattr(request, 'modo_offline', False):
+            # Verificar si hay usuario en sesión
+            usuario_offline = request.session.get('usuario_offline')
+            if not usuario_offline:
+                # No hay sesión offline, redirigir a login
+                from django.contrib.auth.views import redirect_to_login
+                return redirect_to_login(request.get_full_path())
+            # Hay sesión offline, continuar
+            return view_func(request, *args, **kwargs)
+        
+        # Modo online - verificar autenticación normal
+        try:
+            if not request.user.is_authenticated:
+                from django.contrib.auth.views import redirect_to_login
+                return redirect_to_login(request.get_full_path())
+        except (OperationalError, Exception) as e:
+            # Error inesperado - permitir acceso en modo offline
+            print(f"Error de autenticación en caja: {e}")
+            pass
+        
+        return view_func(request, *args, **kwargs)
+    
+    return wrapper
 
 
 @login_required
@@ -174,36 +207,86 @@ def eliminar_caja(request, caja_id):
     return redirect('caja:lista')
 
 
-@login_required
+@login_required_offline_safe
 def abrir_caja(request):
-    """Abrir caja para el usuario actual"""
-    # Verificar si ya hay una caja abierta del día actual usando función centralizada
-    caja_abierta_data = CierreCaja.obtener_caja_abierta()
+    """Abrir caja para el usuario actual - Con soporte offline"""
     
-    if caja_abierta_data:
-        messages.warning(request, 'Ya hay una caja abierta para el día de hoy')
-        return redirect('caja:estado')
+    modo_offline = False
+    caja_abierta_data = None
+    caja_anterior = None
+    cajas_disponibles = []
     
-    # Verificar si hay cajas abiertas de días anteriores
-    hoy = date.today()
-    caja_anterior = CierreCaja.objects.filter(
-        estado='ABIERTA',
-        anulado=False,
-        fechaApertura__date__lt=hoy
-    ).first()
+    try:
+        # Verificar si ya hay una caja abierta del día actual usando función centralizada
+        try:
+            caja_abierta_data = CierreCaja.obtener_caja_abierta()
+            
+            if caja_abierta_data:
+                messages.warning(request, 'Ya hay una caja abierta para el día de hoy')
+                return redirect('caja:estado')
+        except OperationalError:
+            modo_offline = True
+        
+        # Verificar si hay cajas abiertas de días anteriores (solo si no estamos offline)
+        if not modo_offline:
+            try:
+                hoy = date.today()
+                caja_anterior = CierreCaja.objects.filter(
+                    estado='ABIERTA',
+                    anulado=False,
+                    fechaApertura__date__lt=hoy
+                ).first()
+                
+                # Si hay cajas anteriores abiertas, NO permitir abrir una nueva
+                if caja_anterior:
+                    fecha_apertura = caja_anterior.fechaApertura.strftime("%d/%m/%Y")
+                    messages.error(
+                        request, 
+                        f'No puedes abrir una nueva caja. Existe una caja abierta del {fecha_apertura} que debe ser cerrada primero.'
+                    )
+                    messages.info(request, 'Por favor, dirígete a "Cerrar Caja" para cerrar la caja pendiente.')
+                    return redirect('caja:cerrar')
+            except OperationalError:
+                modo_offline = True
+        
+    except OperationalError:
+        modo_offline = True
     
-    # Si hay cajas anteriores abiertas, NO permitir abrir una nueva
-    # El usuario debe cerrar primero la caja anterior manualmente
-    if caja_anterior:
-        fecha_apertura = caja_anterior.fechaApertura.strftime("%d/%m/%Y")
-        messages.error(
-            request, 
-            f'No puedes abrir una nueva caja. Existe una caja abierta del {fecha_apertura} que debe ser cerrada primero.'
-        )
-        messages.info(request, 'Por favor, dirígete a "Cerrar Caja" para cerrar la caja pendiente.')
-        return redirect('caja:cerrar')
+    # Si estamos en modo offline, verificar si ya hay caja en sesión
+    if modo_offline:
+        caja_offline_existente = request.session.get('caja_offline')
+        
+        if caja_offline_existente:
+            # Ya hay una caja offline abierta, redirigir directamente a ventas
+            messages.info(request, f'MODO OFFLINE: Usando caja {caja_offline_existente.get("nombre", "Principal")} abierta previamente.')
+            return redirect('ventas:crear')
+        
+        # No hay caja offline, crear una automáticamente y redirigir
+        caja_offline = {
+            'idCaja': 1,
+            'nombre': 'Caja Principal (Offline)',
+            'montoInicial': 0.0,
+            'modo_offline': True,
+            'fechaApertura': str(date.today())
+        }
+        request.session['caja_offline'] = caja_offline
+        messages.success(request, 'MODO OFFLINE: Caja abierta automáticamente. Los datos se sincronizarán cuando vuelva la conexión.')
+        return redirect('ventas:crear')
     
     if request.method == 'POST':
+        if modo_offline:
+            # En modo offline, guardar caja en sesión
+            caja_offline = {
+                'idCaja': 1,
+                'nombre': 'Caja Principal (Offline)',
+                'montoInicial': float(request.POST.get('monto_inicial', 0)),
+                'modo_offline': True,
+                'fechaApertura': str(date.today())
+            }
+            request.session['caja_offline'] = caja_offline
+            messages.success(request, 'Caja abierta en MODO OFFLINE. Datos guardados localmente.')
+            return redirect('ventas:crear')
+        
         # Obtener datos del formulario
         caja_id = request.POST.get('caja')
         monto_inicial = request.POST.get('monto_inicial', 0)
@@ -227,12 +310,24 @@ def abrir_caja(request):
             
         except Caja.DoesNotExist:
             messages.error(request, 'La caja seleccionada no es válida')
+        except OperationalError as e:
+            messages.error(request, f'Error de conexión: Sin acceso a la base de datos. Trabaja en modo offline.')
+            modo_offline = True
         except Exception as e:
             messages.error(request, f'Error al abrir la caja: {str(e)}')
     
+    # Cargar cajas disponibles
+    try:
+        if not modo_offline:
+            cajas_disponibles = Caja.objects.filter(activa=True)
+    except OperationalError:
+        modo_offline = True
+        cajas_disponibles = []
+    
     context = {
-        'cajas_disponibles': Caja.objects.filter(activa=True),
-        'titulo': 'Abrir Caja'
+        'cajas_disponibles': cajas_disponibles,
+        'modo_offline': modo_offline,
+        'titulo': 'Abrir Caja' + (' - MODO OFFLINE' if modo_offline else '')
     }
     return render(request, 'caja/abrir.html', context)
 

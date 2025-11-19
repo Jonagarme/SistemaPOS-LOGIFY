@@ -148,7 +148,12 @@ class ConfiguracionEmpresa(models.Model):
     @classmethod
     def obtener_configuracion(cls):
         """Obtener la configuración activa de la empresa"""
-        return cls.objects.filter(activo=True).first()
+        from django.db import OperationalError
+        try:
+            return cls.objects.filter(activo=True).first()
+        except OperationalError:
+            # Modo offline - retornar None
+            return None
     
     # Propiedades para compatibilidad con el código existente
     @property
