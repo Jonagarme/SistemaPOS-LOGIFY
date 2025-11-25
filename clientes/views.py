@@ -42,11 +42,50 @@ def lista_clientes(request):
 def crear_cliente(request):
     """Crear nuevo cliente"""
     if request.method == 'POST':
-        # Lógica para crear cliente
-        messages.success(request, 'Cliente creado exitosamente')
-        return redirect('clientes:lista')
+        form = ClienteForm(request.POST)
+        
+        # Si es petición AJAX, responder con JSON
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            if form.is_valid():
+                cliente = form.save(commit=False)
+                cliente.creado_por = request.user.id if hasattr(request.user, 'id') else None
+                cliente.creado_date = timezone.now()
+                cliente.save()
+                
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Cliente creado exitosamente',
+                    'cliente': {
+                        'id': cliente.id,
+                        'nombres': cliente.nombres,
+                        'apellidos': cliente.apellidos,
+                        'cedula_ruc': cliente.cedula_ruc,
+                        'email': cliente.email,
+                        'telefono': cliente.telefono
+                    }
+                })
+            else:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Error en el formulario',
+                    'errors': form.errors
+                }, status=400)
+        
+        # Flujo normal (no AJAX)
+        if form.is_valid():
+            cliente = form.save(commit=False)
+            cliente.creado_por = request.user.id if hasattr(request.user, 'id') else None
+            cliente.creado_date = timezone.now()
+            cliente.save()
+            messages.success(request, 'Cliente creado exitosamente')
+            return redirect('clientes:lista')
+        else:
+            messages.error(request, 'Por favor corrige los errores en el formulario')
+    else:
+        form = ClienteForm()
     
     context = {
+        'form': form,
         'titulo': 'Crear Cliente'
     }
     return render(request, 'clientes/crear.html', context)

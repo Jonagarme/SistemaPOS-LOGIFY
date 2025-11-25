@@ -1616,7 +1616,7 @@
                             title="Limpiar cliente">
                             <i class="fas fa-times"></i>
                         </button>
-                        <button class="btn btn-primary" type="button" title="Nuevo cliente">
+                        <button class="btn btn-primary" type="button" title="Nuevo cliente" onclick="abrirModalNuevoCliente()">
                             <i class="fas fa-user-plus"></i>
                         </button>
                     </div>
@@ -1723,7 +1723,7 @@
                             onclick="addToCartFromElement(this)">
                             <div class="name">{{ producto.nombre }}</div>
                             <div class="code">Cód: {{ producto.codigo_principal }}</div>
-                            <div class="price">$ {% if producto.precio_venta %}{{ producto.precio_venta|floatformat:2 }}{% else %}0.00{% endif %}</div>
+                            <div class="price">$ <span class="price-value">{% if producto.precio_venta %}{{ producto.precio_venta|floatformat:2 }}{% else %}0.00{% endif %}</span></div>
                             <span class="stock {% if producto.stock > 10 %}stock-high{% elif producto.stock > 0 %}stock-low{% else %}stock-none{% endif %}">
                                 Stock: {{ producto.stock|default:0 }}
                             </span>
@@ -2050,6 +2050,30 @@
         </div>
     </div>
 </div>
+
+<!-- Modal para crear nuevo cliente -->
+<div class="modal fade" id="modalNuevoCliente" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus me-2"></i>
+                    Nuevo Cliente
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="modal-cliente-body">
+                <div class="text-center py-4">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2">Cargando formulario...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}
@@ -3315,6 +3339,11 @@ function saveEditQuantity() {
 
 // Permitir usar Enter para guardar
 document.addEventListener('DOMContentLoaded', function() {
+    // Convertir todos los precios de punto a coma
+    document.querySelectorAll('.price-value').forEach(el => {
+        el.textContent = el.textContent.replace('.', ',');
+    });
+    
     const editInput = document.getElementById('edit-quantity-input');
     if (editInput) {
         editInput.addEventListener('keypress', function(e) {
@@ -3388,17 +3417,23 @@ function filterProducts() {
     
     console.log('Búsqueda iniciada:', searchTerm);
     
-    // Si no hay término de búsqueda, mostrar todos los productos locales
+    // Si no hay término de búsqueda, recargar productos iniciales
     if (searchTerm.length === 0) {
-        console.log('Campo vacío, mostrando todos los productos');
+        console.log('Campo vacío, recargando productos iniciales');
         if (loadingIndicator) loadingIndicator.style.display = 'none';
         
-        const productCards = document.querySelectorAll('.product-card-enhanced');
-        productCards.forEach(card => {
-            const categoryId = card.getAttribute('data-category-id');
-            const matchesCategory = !categoryFilter || categoryId === categoryFilter;
-            card.style.display = matchesCategory ? 'block' : 'none';
-        });
+        // Recargar la página actual desde allProductos
+        if (allProductos && allProductos.length > 0) {
+            showPage(currentPage);
+        } else {
+            // Si no hay productos en memoria, mostrar los del DOM
+            const productCards = document.querySelectorAll('.product-card-enhanced');
+            productCards.forEach(card => {
+                const categoryId = card.getAttribute('data-category-id');
+                const matchesCategory = !categoryFilter || categoryId === categoryFilter;
+                card.style.display = matchesCategory ? 'block' : 'none';
+            });
+        }
         return;
     }
     
@@ -3536,7 +3571,9 @@ function updateProductsGrid(productos, categoryFilter) {
         
         const stock = producto.stock || 0;
         const stockClass = stock > 10 ? 'stock-high' : (stock > 0 ? 'stock-low' : 'stock-none');
-        const precio = parseFloat(producto.precio_venta || 0).toFixed(2);
+        // Soportar tanto precio_venta (de cache) como precio (de AJAX)
+        const precioNumerico = parseFloat(producto.precio_venta || producto.precio || 0).toFixed(2);
+        const precioFormateado = precioNumerico.replace('.', ',');
         const codigo = producto.codigo_principal || producto.codigo || 'N/A';
         const nombre = producto.nombre || 'Sin nombre';
         
@@ -3544,7 +3581,7 @@ function updateProductsGrid(productos, categoryFilter) {
             <div class="product-card-enhanced" 
                  data-product-id="${producto.id}"
                  data-product-name="${nombre}"
-                 data-product-price="${precio}"
+                 data-product-price="${precioNumerico}"
                  data-product-stock="${stock}"
                  data-category-id="${categoriaId}"
                  data-name="${nombre.toLowerCase()}"
@@ -3552,7 +3589,7 @@ function updateProductsGrid(productos, categoryFilter) {
                  onclick="addToCartFromElement(this)">
                 <div class="name">${nombre}</div>
                 <div class="code">Cód: ${codigo}</div>
-                <div class="price">$ ${precio}</div>
+                <div class="price">$ ${precioFormateado}</div>
                 <span class="stock ${stockClass}">
                     Stock: ${stock}
                 </span>
@@ -3780,5 +3817,143 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('===========================================');
     showToast('Sistema POS listo para usar', 'success');
 });
+
+// ============================================
+// MODAL NUEVO CLIENTE
+// ============================================
+
+function abrirModalNuevoCliente() {
+    const modal = new bootstrap.Modal(document.getElementById('modalNuevoCliente'));
+    const modalBody = document.getElementById('modal-cliente-body');
+    
+    // Mostrar loading
+    modalBody.innerHTML = `
+        <div class="text-center py-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Cargando...</span>
+            </div>
+            <p class="mt-2">Cargando formulario...</p>
+        </div>
+    `;
+    
+    modal.show();
+    
+    // Cargar formulario via AJAX
+    fetch('/clientes/crear/')
+        .then(response => response.text())
+        .then(html => {
+            // Extraer solo el contenido del formulario
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            const form = doc.querySelector('form');
+            
+            if (form) {
+                // Modificar la acción del formulario para que sea AJAX
+                form.setAttribute('id', 'form-nuevo-cliente');
+                form.setAttribute('onsubmit', 'return guardarClienteModal(event)');
+                
+                modalBody.innerHTML = form.outerHTML;
+            } else {
+                modalBody.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Error al cargar el formulario
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error cargando formulario:', error);
+            modalBody.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Error de conexión. Inténtalo de nuevo.
+                </div>
+            `;
+        });
+}
+
+function guardarClienteModal(event) {
+    event.preventDefault();
+    
+    const form = document.getElementById('form-nuevo-cliente');
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    // Deshabilitar botón
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Guardando...';
+    }
+    
+    fetch('/clientes/crear/', {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Cliente creado exitosamente', 'success');
+            
+            // Cerrar modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('modalNuevoCliente'));
+            modal.hide();
+            
+            // Seleccionar el nuevo cliente en el POS
+            if (data.cliente) {
+                seleccionarClienteCreado(data.cliente);
+            }
+            
+            // Limpiar formulario
+            form.reset();
+        } else {
+            showToast(data.message || 'Error al crear cliente', 'error');
+            
+            // Mostrar errores en el formulario si existen
+            if (data.errors) {
+                for (const [field, errors] of Object.entries(data.errors)) {
+                    const input = form.querySelector(`[name="${field}"]`);
+                    if (input) {
+                        input.classList.add('is-invalid');
+                        const errorDiv = document.createElement('div');
+                        errorDiv.className = 'invalid-feedback';
+                        errorDiv.textContent = errors.join(', ');
+                        input.parentNode.appendChild(errorDiv);
+                    }
+                }
+            }
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Error al guardar cliente', 'error');
+    })
+    .finally(() => {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-save me-2"></i>Guardar';
+        }
+    });
+    
+    return false;
+}
+
+function seleccionarClienteCreado(cliente) {
+    const currentCart = getCurrentCart();
+    
+    // Guardar datos del cliente en el carrito
+    currentCart.cliente_id = cliente.id;
+    currentCart.cliente_nombre = `${cliente.nombres} ${cliente.apellidos}`;
+    currentCart.cliente_documento = cliente.cedula_ruc;
+    
+    // Actualizar UI
+    updateClientDisplay();
+    
+    showToast(`Cliente ${currentCart.cliente_nombre} seleccionado`, 'success');
+}
+
 </script>
 {% endblock %}
