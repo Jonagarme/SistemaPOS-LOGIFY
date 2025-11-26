@@ -23,9 +23,9 @@
     border-radius: 15px;
 }
 
-.estado-pendiente { background-color: #ffc107; color: #212529; }
-.estado-en_transito { background-color: #17a2b8; color: white; }
-.estado-recibida { background-color: #28a745; color: white; }
+.estado-guardado { background-color: #ffc107; color: #212529; }
+.estado-transferido { background-color: #17a2b8; color: white; }
+.estado-procesado { background-color: #28a745; color: white; }
 .estado-cancelada { background-color: #dc3545; color: white; }
 
 .tipo-badge {
@@ -167,6 +167,16 @@
             {% if page_obj.object_list %}
                 {% for transferencia in page_obj %}
                     <div class="transferencia-card p-3">
+                        <!-- Advertencia para estado GUARDADO -->
+                        {% if transferencia.estado == 'guardado' %}
+                            <div class="alert alert-warning mb-3">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                <strong>⚠️ ADVERTENCIA:</strong> Esta transferencia está en estado <strong>GUARDADO</strong>. 
+                                El stock <strong>NO está reservado</strong> y puede ser consumido por otras transacciones. 
+                                Envíe la transferencia lo antes posible para reservar el inventario.
+                            </div>
+                        {% endif %}
+                        
                         <div class="row align-items-center">
                             <div class="col-md-2">
                                 <h6 class="mb-1 text-primary">{{ transferencia.numero_transferencia }}</h6>
@@ -227,19 +237,19 @@
                                                 <i class="fas fa-eye"></i> Ver Detalle
                                             </a>
                                         </li>
-                                        {% if transferencia.estado == 'pendiente' %}
+                                        {% if transferencia.estado == 'guardado' %}
                                             <li>
                                                 <a class="dropdown-item" href="{% url 'inventario:enviar_transferencia' transferencia.pk %}"
-                                                   onclick="return confirm('¿Marcar transferencia como enviada?')">
-                                                    <i class="fas fa-paper-plane"></i> Enviar
+                                                   onclick="return confirm('¿Confirma enviar la transferencia? Esto RESERVARÁ el stock en origen.')">
+                                                    <i class="fas fa-paper-plane"></i> Transferir (Reservar Stock)
                                                 </a>
                                             </li>
                                         {% endif %}
-                                        {% if transferencia.estado == 'en_transito' %}
+                                        {% if transferencia.estado == 'transferido' %}
                                             <li>
                                                 <a class="dropdown-item" href="{% url 'inventario:recibir_transferencia' transferencia.pk %}"
-                                                   onclick="return confirm('¿Marcar transferencia como recibida?')">
-                                                    <i class="fas fa-check"></i> Recibir
+                                                   onclick="return confirm('¿Confirma procesar la transferencia? Esto MOVERÁ el inventario.')">
+                                                    <i class="fas fa-check"></i> Procesar (Mover Inventario)
                                                 </a>
                                             </li>
                                         {% endif %}

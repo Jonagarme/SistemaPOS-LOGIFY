@@ -451,6 +451,7 @@ def procesar_xml_factura(request):
             
             # Extraer información de la factura
             productos_extraidos = []
+            total_factura_xml = Decimal('0')
             
             # Buscar el comprobante dentro del CDATA
             comprobante_cdata = root.find('.//comprobante')
@@ -462,6 +463,13 @@ def procesar_xml_factura(request):
                 info_tributaria = comprobante_xml.find('infoTributaria')
                 razon_social = info_tributaria.find('razonSocial').text if info_tributaria.find('razonSocial') is not None else ''
                 ruc = info_tributaria.find('ruc').text if info_tributaria.find('ruc') is not None else ''
+                
+                # Extraer total de la factura desde infoFactura
+                info_factura = comprobante_xml.find('infoFactura')
+                if info_factura is not None:
+                    total_elemento = info_factura.find('importeTotal')
+                    if total_elemento is not None:
+                        total_factura_xml = Decimal(total_elemento.text or '0')
                 
                 # Extraer productos de los detalles
                 detalles = comprobante_xml.findall('.//detalle')
@@ -502,6 +510,7 @@ def procesar_xml_factura(request):
                         'razon_social': razon_social,
                         'ruc': ruc
                     },
+                    'total_factura': float(total_factura_xml),
                     'mensaje': f'Se encontraron {len(productos_extraidos)} productos en el XML'
                 })
             
@@ -576,11 +585,16 @@ def consultar_clave_acceso(request):
             
             # Extraer información de la factura
             info_factura = root.find('infoFactura')
+            total_factura = 0.0
+            if info_factura is not None:
+                total_factura = float(info_factura.findtext('importeTotal', '0'))
+            
             factura_info = {
                 'numero': f"{info_tributaria.findtext('estab', '001')}-{info_tributaria.findtext('ptoEmi', '001')}-{info_tributaria.findtext('secuencial', '000000000')}",
                 'fecha': info_factura.findtext('fechaEmision', '') if info_factura is not None else '',
                 'autorizacion': api_data.get('numeroAutorizacion', clave_acceso),
-                'fecha_autorizacion': api_data.get('fechaAutorizacion', '')
+                'fecha_autorizacion': api_data.get('fechaAutorizacion', ''),
+                'total': total_factura
             }
             
             # Extraer productos del XML
@@ -629,6 +643,7 @@ def consultar_clave_acceso(request):
                 'productos': productos,
                 'proveedor': proveedor,
                 'factura_info': factura_info,
+                'total_factura': total_factura,
                 'mensaje': f'Factura consultada exitosamente. Se encontraron {len(productos)} producto(s).',
                 'resumen_sri': api_data.get('resumen', {})
             })
@@ -2186,3 +2201,109 @@ def obtener_venta_por_numero(request):
         }
         
         return JsonResponse({'venta': venta_dict})
+
+
+@login_required
+def obtener_historial_precios(request):
+    """Obtener historial de precios de un producto por su código"""
+    codigo = request.GET.get('codigo', '').strip()
+    
+    if not codigo:
+        return JsonResponse({'success': False, 'error': 'Código requerido'})
+    
+    try:
+        from productos.models import Producto
+        from django.db import connection
+        
+        # Buscar producto por código o código alternativo
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT id, nombre, precioVenta, costoUnidad, esDivisible, cantidadFraccion
+                FROM productos 
+                WHERE codigoPrincipal = %s AND anulado = 0
+                LIMIT 1
+            """, [codigo])
+            
+            producto = cursor.fetchone()
+            
+            if not producto:
+                # Buscar en códigos alternativos
+                cursor.execute("""
+                    SELECT p.id, p.nombre, p.precioVenta, p.costoUnidad, p.esDivisible, p.cantidadFraccion
+                    FROM productos p
+                    INNER JOIN codigos_alternativo ca ON p.id = ca.producto_id
+                    WHERE ca.codigo = %s AND p.anulado = 0 AND ca.activo = 1
+                    LIMIT 1
+                """, [codigo])
+                
+                producto = cursor.fetchone()
+            
+            if producto:
+                return JsonResponse({
+                    'success': True,
+                    'tiene_producto': True,
+                    'producto': {
+                        'id': producto[0],
+                        'nombre': producto[1],
+                        'precio_venta_actual': float(producto[2]) if producto[2] else 0,
+                        'costo_actual': float(producto[3]) if producto[3] else 0,
+                        'es_divisible': bool(producto[4]),
+                        'cantidad_fraccion': int(producto[5]) if producto[5] else 1
+                    }
+                })
+            else:
+                return JsonResponse({
+                    'success': True,
+                    'tiene_producto': False,
+                    'producto': None
+                })
+                
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+
+
+@login_required
+def desvincular_codigo_alternativo(request):
+    """Desvincular un código alternativo de un producto"""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'error': 'Método no permitido'})
+    
+    try:
+        import json
+        from django.db import connection
+        
+        data = json.loads(request.body)
+        codigo = data.get('codigo', '').strip()
+        
+        if not codigo:
+            return JsonResponse({'success': False, 'error': 'Código requerido'})
+        
+        with connection.cursor() as cursor:
+            # Buscar el código alternativo
+            cursor.execute("""
+                SELECT id, producto_id FROM codigos_alternativo 
+                WHERE codigo = %s AND activo = 1
+            """, [codigo])
+            
+            codigo_alt = cursor.fetchone()
+            
+            if not codigo_alt:
+                return JsonResponse({'success': False, 'error': 'Código alternativo no encontrado'})
+            
+            # Desactivar el código alternativo (no eliminar, mantener histórico)
+            cursor.execute("""
+                UPDATE codigos_alternativo 
+                SET activo = 0
+                WHERE id = %s
+            """, [codigo_alt[0]])
+            
+            return JsonResponse({
+                'success': True,
+                'mensaje': f'Código {codigo} desvinculado exitosamente'
+            })
+            
+    except json.JSONDecodeError:
+        return JsonResponse({'success': False, 'error': 'Error en formato de datos'})
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)})
+

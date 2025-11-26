@@ -455,6 +455,94 @@
                     <!-- Los productos se cargarán dinámicamente aquí -->
                 </div>
 
+                <!-- Resumen de Validación de Totales -->
+                <div class="card mb-4" id="validacionTotales" style="display: none;">
+                    <div class="card-header" id="headerValidacion">
+                        <h6 class="mb-0">
+                            <i class="bi bi-calculator"></i> Validación de Totales
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4 text-center">
+                                <small class="text-muted">Total XML/SRI</small><br>
+                                <h4 class="text-primary mb-0">$<span id="totalXML">0.00</span></h4>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <small class="text-muted">Total Calculado</small><br>
+                                <h4 class="mb-0" id="totalCalculadoDisplay">$<span id="totalCalculado">0.00</span></h4>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <small class="text-muted">Diferencia</small><br>
+                                <h4 class="mb-0" id="diferenciaDisplay">$<span id="diferencia">0.00</span></h4>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="alert" id="alertaValidacion" style="display: none;">
+                                    <!-- Mensaje de validación -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sección de Pago -->
+                <div class="card mb-4" id="seccionPago" style="display: none;">
+                    <div class="card-header bg-primary text-white">
+                        <h6 class="mb-0">
+                            <i class="bi bi-credit-card"></i> Forma de Pago
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label">Tipo de Pago <span class="text-danger">*</span></label>
+                                <select class="form-select" id="tipoPago" onchange="toggleFormaPago()">
+                                    <option value="contado">Contado / Efectivo</option>
+                                    <option value="credito">Crédito (Cuenta por Pagar)</option>
+                                    <option value="transferencia">Transferencia Bancaria</option>
+                                    <option value="cheque">Cheque</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6" id="seccionCredito" style="display: none;">
+                                <label class="form-label">Días de Crédito</label>
+                                <input type="number" class="form-control" id="diasCredito" value="30" min="1">
+                                <small class="text-muted">Días para vencimiento de la deuda</small>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3" id="seccionAbono" style="display: none;">
+                            <div class="col-md-6">
+                                <label class="form-label">Abono Inicial (Opcional)</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="abonoInicial" 
+                                           value="0" step="0.01" min="0" max="0">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Saldo Pendiente</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="text" class="form-control" id="saldoPendiente" 
+                                           value="0.00" readonly>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="row mt-3">
+                            <div class="col-12">
+                                <div class="alert alert-info" id="alertaCredito" style="display: none;">
+                                    <i class="bi bi-info-circle"></i>
+                                    <strong>Pago a Crédito Seleccionado</strong><br>
+                                    Se creará una cuenta por pagar asociada al proveedor con vencimiento en <span id="fechaVencimiento"></span>.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Botón Procesar -->
                 <div class="text-center mt-4">
                     <button type="button" class="btn btn-procesar" id="procesarIngresoBtn" disabled>
@@ -506,6 +594,7 @@
     let productosData = [];
     let proveedorData = {};
     let seccionesData = [];  // Para almacenar las secciones disponibles
+    let totalFacturaXML = 0;  // Total de la factura del XML
 
     document.addEventListener('DOMContentLoaded', function() {
         initializeFileUpload();
@@ -657,9 +746,17 @@
             if (data.success) {
                 productosData = data.productos;
                 proveedorData = data.proveedor;
+                totalFacturaXML = data.total_factura || 0;  // Guardar total del XML
+                
                 // INTEGRACIÓN: Verificar duplicados antes de mostrar
                 verificarDuplicadosYMostrar();
                 mostrarAlerta('success', data.mensaje);
+                
+                // Mostrar validación de totales si hay total
+                if (totalFacturaXML > 0) {
+                    mostrarValidacionTotales();
+                }
+                
                 // Cambiar a tab de productos
                 document.getElementById('revisar-productos-tab').click();
             } else {
@@ -1057,6 +1154,36 @@
                 <!-- Panel de detalles expandible -->
                 <div class="producto-details" id="details${index}" style="display: none;">
                     <hr>
+                    
+                    <!-- Sección de Historial de Precios -->
+                    <div class="row mb-3" id="seccionHistorial${index}" style="display: none;">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <h6 class="mb-2">
+                                    <i class="bi bi-clock-history"></i> Historial de Precios - Producto Existente
+                                </h6>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <small class="text-muted">Producto en Sistema:</small><br>
+                                        <strong id="nombreHistorial${index}">-</strong>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">PVP Anterior:</small><br>
+                                        <strong class="text-success">$<span id="pvpAnterior${index}">0.00</span></strong>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <small class="text-muted">Costo Anterior:</small><br>
+                                        <strong class="text-primary">$<span id="costoAnterior${index}">0.00</span></strong>
+                                    </div>
+                                </div>
+                                <small class="text-warning">
+                                    <i class="bi bi-exclamation-triangle"></i> 
+                                    Este es solo un referencial. Verifica y actualiza los precios según corresponda.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="row mb-3">
                         <div class="col-12">
                             <h6 class="text-primary mb-3">
@@ -1156,6 +1283,38 @@
                         </div>
                     </div>
                     
+                    <!-- Indicador de Fraccionamiento -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label">
+                                <i class="bi bi-scissors"></i> Fraccionamiento
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">Div</span>
+                                <input type="number" 
+                                       class="form-control" 
+                                       id="divFraccion${index}" 
+                                       value="1" 
+                                       min="1"
+                                       data-index="${index}"
+                                       readonly>
+                                <button type="button" 
+                                        class="btn btn-outline-secondary" 
+                                        onclick="toggleFraccionamiento(${index})">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                            </div>
+                            <small class="text-muted" id="helpFraccion${index}">
+                                1 = No fraccionable
+                            </small>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="alert alert-sm mb-0" id="alertFraccion${index}" style="display: none; padding: 0.5rem;">
+                                <!-- Mensaje de fraccionamiento -->
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Métricas calculadas -->
                     <div class="row">
                         <div class="col-md-3">
@@ -1206,6 +1365,9 @@
                 }
                 actualizarBotonProcesar();
                 actualizarResumenGlobal();
+                if (totalFacturaXML > 0) {
+                    calcularTotalProductos();
+                }
             });
         });
 
@@ -1222,6 +1384,7 @@
         productosData.forEach((producto, index) => {
             calcularMetricasProducto(index);
             poblarSelectSecciones(index);  // Poblar secciones para cada producto
+            cargarHistorialPrecio(index);  // Cargar historial de precios
         });
 
         // Actualizar resumen global
@@ -1341,6 +1504,9 @@
         });
         actualizarBotonProcesar();
         actualizarResumenGlobal();
+        if (totalFacturaXML > 0) {
+            calcularTotalProductos();
+        }
     }
 
     function deseleccionarTodos() {
@@ -1350,12 +1516,26 @@
         });
         actualizarBotonProcesar();
         actualizarResumenGlobal();
+        if (totalFacturaXML > 0) {
+            calcularTotalProductos();
+        }
     }
 
     function actualizarBotonProcesar() {
         const seleccionados = document.querySelectorAll('.producto-checkbox:checked').length;
         const btn = document.getElementById('procesarIngresoBtn');
-        btn.disabled = seleccionados === 0;
+        
+        // Solo habilitar si hay productos seleccionados
+        if (seleccionados === 0) {
+            btn.disabled = true;
+        } else {
+            // Si hay total XML, validar que coincida
+            if (totalFacturaXML > 0) {
+                calcularTotalProductos();
+            } else {
+                btn.disabled = false;
+            }
+        }
     }
 
     function procesarIngreso() {
@@ -1547,10 +1727,401 @@
                 selectPercha.innerHTML = '<option value="">Error al cargar perchas</option>';
             });
     }
+
+    // ===================== HISTORIAL DE PRECIOS =====================
+    
+    async function cargarHistorialPrecio(index) {
+        const producto = productosData[index];
+        if (!producto || !producto.codigo) return;
+        
+        try {
+            const response = await fetch(`/ventas/historial-precios/?codigo=${encodeURIComponent(producto.codigo)}`);
+            const data = await response.json();
+            
+            if (data.success && data.tiene_producto && data.producto) {
+                const prod = data.producto;
+                
+                // Mostrar sección de historial
+                document.getElementById(`seccionHistorial${index}`).style.display = 'block';
+                document.getElementById(`nombreHistorial${index}`).textContent = prod.nombre;
+                document.getElementById(`pvpAnterior${index}`).textContent = prod.precio_venta_actual.toFixed(2);
+                document.getElementById(`costoAnterior${index}`).textContent = prod.costo_actual.toFixed(2);
+                
+                // Guardar info de fraccionamiento
+                productosData[index].es_divisible = prod.es_divisible;
+                productosData[index].cantidad_fraccion = prod.cantidad_fraccion || 1;
+                
+                // Actualizar indicador de fraccionamiento
+                actualizarIndicadorFraccionamiento(index);
+            } else {
+                // Producto nuevo - fraccionamiento por defecto
+                productosData[index].es_divisible = false;
+                productosData[index].cantidad_fraccion = 1;
+                actualizarIndicadorFraccionamiento(index);
+            }
+        } catch (error) {
+            console.error('Error al cargar historial:', error);
+            // Fraccionamiento por defecto en caso de error
+            productosData[index].es_divisible = false;
+            productosData[index].cantidad_fraccion = 1;
+            actualizarIndicadorFraccionamiento(index);
+        }
+    }
+
+    // ===================== FRACCIONAMIENTO =====================
+    
+    function actualizarIndicadorFraccionamiento(index) {
+        const producto = productosData[index];
+        const inputDiv = document.getElementById(`divFraccion${index}`);
+        const helpText = document.getElementById(`helpFraccion${index}`);
+        const alertFraccion = document.getElementById(`alertFraccion${index}`);
+        
+        if (!inputDiv) return;
+        
+        if (producto.es_divisible && producto.cantidad_fraccion > 1) {
+            // ✅ Es fraccionable
+            inputDiv.value = producto.cantidad_fraccion;
+            inputDiv.style.backgroundColor = '#d4edda'; // Verde claro
+            inputDiv.style.color = '#155724';
+            inputDiv.style.fontWeight = 'bold';
+            inputDiv.style.border = '2px solid #28a745';
+            
+            helpText.textContent = `Fraccionable en ${producto.cantidad_fraccion} partes`;
+            helpText.className = 'text-success';
+            
+            if (alertFraccion) {
+                alertFraccion.className = 'alert alert-success alert-sm mb-0';
+                alertFraccion.style.display = 'block';
+                alertFraccion.style.padding = '0.5rem';
+                alertFraccion.innerHTML = `
+                    <i class="bi bi-check-circle"></i>
+                    <strong>Producto Fraccionable:</strong> 
+                    Se puede dividir en ${producto.cantidad_fraccion} unidades menores (cajas, blisters, etc.)
+                `;
+            }
+        } else {
+            // ❌ NO es fraccionable
+            inputDiv.value = 1;
+            inputDiv.style.backgroundColor = '#f8d7da'; // Rojo claro
+            inputDiv.style.color = '#721c24';
+            inputDiv.style.fontWeight = 'bold';
+            inputDiv.style.border = '2px solid #dc3545';
+            
+            helpText.textContent = 'NO fraccionable (gotas, inyectables, etc.)';
+            helpText.className = 'text-danger';
+            
+            if (alertFraccion) {
+                alertFraccion.className = 'alert alert-danger alert-sm mb-0';
+                alertFraccion.style.display = 'block';
+                alertFraccion.style.padding = '0.5rem';
+                alertFraccion.innerHTML = `
+                    <i class="bi bi-exclamation-triangle"></i>
+                    <strong>Producto NO Fraccionable:</strong> 
+                    Solo se puede vender por unidad completa (gotas oftálmicas, inyectables, etc.)
+                `;
+            }
+        }
+    }
+
+    function toggleFraccionamiento(index) {
+        const producto = productosData[index];
+        const esDivisible = producto.es_divisible || false;
+        
+        // Verificar que el modal existe
+        const modalElement = document.getElementById('modalFraccionamiento');
+        if (!modalElement) {
+            console.error('Modal de fraccionamiento no encontrado');
+            return;
+        }
+        
+        const modal = new bootstrap.Modal(modalElement);
+        const header = document.getElementById('headerModalFraccionamiento');
+        const titulo = document.getElementById('tituloModalFraccionamiento');
+        const body = document.getElementById('bodyModalFraccionamiento');
+        const btnConfirmar = document.getElementById('btnConfirmarFraccionamiento');
+        
+        if (!esDivisible) {
+            // ACTIVAR FRACCIONAMIENTO
+            header.className = 'modal-header bg-success text-white';
+            titulo.innerHTML = '<i class="bi bi-box-seam me-2"></i>Activar modo FRACCIONABLE';
+            
+            body.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>¿Qué significa FRACCIONABLE?</strong>
+                </div>
+                
+                <p class="mb-3">
+                    <i class="bi bi-check-circle text-success me-2"></i>
+                    Permite vender el producto por <strong>unidades sueltas</strong> en lugar de solo el empaque completo.
+                </p>
+                
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <i class="bi bi-lightbulb text-warning me-2"></i>
+                        <strong>Ejemplos de productos FRACCIONABLES:</strong>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            <li><strong>Cajas con tabletas/pastillas</strong> - Vender por unidad</li>
+                            <li><strong>Paquetes de jeringuillas</strong> - Vender sueltas</li>
+                            <li><strong>Cajas con ampollas</strong> - Vender por ampolla</li>
+                            <li><strong>Empaques con múltiples unidades</strong></li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>NO usar para:</strong> Gotas oftálmicas, inyectables líquidos, jarabes u otros productos que no se pueden dividir.
+                </div>
+                
+                <hr>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-calculator me-2"></i>
+                        ¿Cuántas unidades trae el empaque completo?
+                    </label>
+                    <input type="number" class="form-control form-control-lg" id="inputCantidadFraccion" 
+                           placeholder="Ej: 6, 12, 24, 50..." min="2" value="6" autofocus>
+                    <div class="form-text">
+                        <strong>Ejemplos:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li><strong>6</strong> = Caja con 6 unidades</li>
+                            <li><strong>12</strong> = Caja con 12 unidades</li>
+                            <li><strong>24</strong> = Caja con 24 unidades</li>
+                            <li><strong>50</strong> = Paquete con 50 unidades</li>
+                        </ul>
+                    </div>
+                </div>
+            `;
+            
+            btnConfirmar.className = 'btn btn-success';
+            btnConfirmar.innerHTML = '<i class="bi bi-check-circle me-2"></i>Activar Fraccionamiento';
+            
+            btnConfirmar.onclick = function() {
+                const cantidadFraccion = parseInt(document.getElementById('inputCantidadFraccion').value);
+                
+                if (!cantidadFraccion || cantidadFraccion < 2) {
+                    alert('⚠️ La cantidad debe ser mayor a 1 para ser fraccionable.');
+                    document.getElementById('inputCantidadFraccion').focus();
+                    return;
+                }
+                
+                productosData[index].es_divisible = true;
+                productosData[index].cantidad_fraccion = cantidadFraccion;
+                actualizarIndicadorFraccionamiento(index);
+                modal.hide();
+            };
+            
+        } else {
+            // DESACTIVAR FRACCIONAMIENTO
+            header.className = 'modal-header bg-danger text-white';
+            titulo.innerHTML = '<i class="bi bi-lock me-2"></i>Desactivar modo FRACCIONABLE';
+            
+            body.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>
+                    <strong>¿Está seguro de desactivar el fraccionamiento?</strong>
+                </div>
+                
+                <p class="mb-3">
+                    <i class="bi bi-x-circle text-danger me-2"></i>
+                    El producto <strong>solo se podrá vender por unidad completa</strong>, no por fracciones.
+                </p>
+                
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <i class="bi bi-info-circle text-primary me-2"></i>
+                        <strong>Esto es útil para:</strong>
+                    </div>
+                    <div class="card-body">
+                        <ul class="mb-0">
+                            <li><strong>Gotas oftálmicas</strong> - No se venden a medias</li>
+                            <li><strong>Inyectables</strong> - Dosis unitarias completas</li>
+                            <li><strong>Jarabes</strong> - Frascos completos</li>
+                            <li><strong>Productos que no se pueden dividir</strong></li>
+                        </ul>
+                    </div>
+                </div>
+                
+                <div class="alert alert-warning">
+                    <i class="bi bi-info-circle me-2"></i>
+                    Esta configuración afectará cómo se puede vender este producto en el sistema de ventas.
+                </div>
+            `;
+            
+            btnConfirmar.className = 'btn btn-danger';
+            btnConfirmar.innerHTML = '<i class="bi bi-lock me-2"></i>Desactivar Fraccionamiento';
+            
+            btnConfirmar.onclick = function() {
+                productosData[index].es_divisible = false;
+                productosData[index].cantidad_fraccion = 1;
+                actualizarIndicadorFraccionamiento(index);
+                modal.hide();
+            };
+        }
+        
+        modal.show();
+        
+        // Asegurar que el input tenga focus cuando se muestre el modal
+        setTimeout(() => {
+            const input = document.getElementById('inputCantidadFraccion');
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        }, 300);
+    }
+
+    // ===================== VALIDACIÓN DE TOTALES =====================
+    
+    function mostrarValidacionTotales() {
+        document.getElementById('validacionTotales').style.display = 'block';
+        document.getElementById('totalXML').textContent = totalFacturaXML.toFixed(2);
+        calcularTotalProductos();
+    }
+
+    function calcularTotalProductos() {
+        let totalCalculado = 0;
+        
+        document.querySelectorAll('.producto-checkbox:checked').forEach(checkbox => {
+            const index = parseInt(checkbox.value);
+            const producto = productosData[index];
+            if (producto) {
+                totalCalculado += producto.total || 0;
+            }
+        });
+        
+        document.getElementById('totalCalculado').textContent = totalCalculado.toFixed(2);
+        
+        const diferencia = Math.abs(totalCalculado - totalFacturaXML);
+        document.getElementById('diferencia').textContent = diferencia.toFixed(2);
+        
+        // Validar coincidencia (tolerancia de 1 centavo por redondeos)
+        const alertaDiv = document.getElementById('alertaValidacion');
+        const headerValidacion = document.getElementById('headerValidacion');
+        
+        if (diferencia <= 0.01) {
+            // ✅ Totales coinciden
+            headerValidacion.className = 'card-header bg-success text-white';
+            document.getElementById('totalCalculadoDisplay').className = 'text-success mb-0';
+            document.getElementById('diferenciaDisplay').className = 'text-success mb-0';
+            
+            alertaDiv.className = 'alert alert-success';
+            alertaDiv.style.display = 'block';
+            alertaDiv.innerHTML = `
+                <i class="bi bi-check-circle-fill"></i>
+                <strong>✓ Validación Correcta</strong><br>
+                El total calculado coincide con el total del XML/SRI. Puede proceder con el ingreso.
+            `;
+            
+            // Habilitar sección de pago
+            document.getElementById('seccionPago').style.display = 'block';
+        } else {
+            // ❌ Totales NO coinciden
+            headerValidacion.className = 'card-header bg-danger text-white';
+            document.getElementById('totalCalculadoDisplay').className = 'text-danger mb-0';
+            document.getElementById('diferenciaDisplay').className = 'text-danger mb-0';
+            
+            alertaDiv.className = 'alert alert-danger';
+            alertaDiv.style.display = 'block';
+            alertaDiv.innerHTML = `
+                <i class="bi bi-exclamation-triangle-fill"></i>
+                <strong>✗ Error de Validación</strong><br>
+                El total calculado <strong>NO coincide</strong> con el total del XML/SRI.<br>
+                Diferencia: <strong>$${diferencia.toFixed(2)}</strong><br>
+                <small>Revise los productos seleccionados y sus cantidades antes de procesar.</small>
+            `;
+            
+            // Ocultar sección de pago y deshabilitar botón procesar
+            document.getElementById('seccionPago').style.display = 'none';
+            document.getElementById('procesarIngresoBtn').disabled = true;
+        }
+    }
+
+    // ===================== FORMA DE PAGO =====================
+    
+    function toggleFormaPago() {
+        const tipoPago = document.getElementById('tipoPago').value;
+        const seccionCredito = document.getElementById('seccionCredito');
+        const seccionAbono = document.getElementById('seccionAbono');
+        const alertaCredito = document.getElementById('alertaCredito');
+        
+        if (tipoPago === 'credito') {
+            seccionCredito.style.display = 'block';
+            seccionAbono.style.display = 'block';
+            alertaCredito.style.display = 'block';
+            
+            // Calcular fecha de vencimiento
+            const diasCredito = parseInt(document.getElementById('diasCredito').value);
+            const fechaVencimiento = new Date();
+            fechaVencimiento.setDate(fechaVencimiento.getDate() + diasCredito);
+            document.getElementById('fechaVencimiento').textContent = 
+                fechaVencimiento.toLocaleDateString('es-EC', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                });
+            
+            // Configurar abono inicial
+            document.getElementById('abonoInicial').max = totalFacturaXML;
+            document.getElementById('saldoPendiente').value = totalFacturaXML.toFixed(2);
+        } else {
+            seccionCredito.style.display = 'none';
+            seccionAbono.style.display = 'none';
+            alertaCredito.style.display = 'none';
+        }
+    }
+
+    // Recalcular saldo pendiente al cambiar abono
+    document.addEventListener('DOMContentLoaded', function() {
+        const abonoInput = document.getElementById('abonoInicial');
+        if (abonoInput) {
+            abonoInput.addEventListener('input', function() {
+                const abono = parseFloat(this.value) || 0;
+                const total = totalFacturaXML || 0;
+                const saldo = total - abono;
+                document.getElementById('saldoPendiente').value = saldo.toFixed(2);
+            });
+        }
+        
+        const diasCreditoInput = document.getElementById('diasCredito');
+        if (diasCreditoInput) {
+            diasCreditoInput.addEventListener('change', toggleFormaPago);
+        }
+    });
 </script>
 
 <!-- Modal de Detección de Duplicados -->
 {% include 'inventario/modal_duplicados.html' %}
+
+<!-- Modal de Configuración de Fraccionamiento -->
+<div class="modal fade" id="modalFraccionamiento" tabindex="-1" aria-labelledby="modalFraccionamientoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header" id="headerModalFraccionamiento">
+                <h5 class="modal-title" id="modalFraccionamientoLabel">
+                    <i class="bi bi-box-seam me-2"></i>
+                    <span id="tituloModalFraccionamiento">Configurar Fraccionamiento</span>
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="bodyModalFraccionamiento" style="max-height: 70vh; overflow-y: auto;">
+                <!-- Contenido dinámico según activar/desactivar -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-2"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" id="btnConfirmarFraccionamiento">
+                    <i class="bi bi-check-circle me-2"></i>Confirmar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- Detector de Duplicados -->
 <script src="{% static 'js/detector_duplicados.js' %}"></script>

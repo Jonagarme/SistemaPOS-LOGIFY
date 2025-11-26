@@ -37,6 +37,8 @@ urlpatterns = [
     path('procesar-xml/', views.procesar_xml_factura, name='procesar_xml'),
     path('consultar-clave/', views.consultar_clave_acceso, name='consultar_clave'),
     path('procesar-ingreso/', views.procesar_ingreso_productos, name='procesar_ingreso'),
+    path('historial-precios/', views.obtener_historial_precios, name='historial_precios'),
+    path('desvincular-codigo/', views.desvincular_codigo_alternativo, name='desvincular_codigo'),
     
     # Procesos de venta
     path('buscar-producto/', views.buscar_producto, name='buscar_producto'),

@@ -61,4 +61,8 @@ urlpatterns = [
     path('api/stock/<int:producto_id>/', api_stock.api_stock_por_ubicacion, name='api_stock_por_ubicacion'),
     path('api/productos-ubicacion/<int:ubicacion_id>/', api_stock.api_productos_con_stock, name='api_productos_con_stock'),
     path('api/resumen-stocks/', api_stock.api_resumen_stocks, name='api_resumen_stocks'),
+    
+    # API Lotes (NUEVO)
+    path('api/lotes-disponibles/', views.obtener_lotes_disponibles, name='api_lotes_disponibles'),
+    path('api/verificar-stock/', views.verificar_stock_producto, name='api_verificar_stock'),
 ]

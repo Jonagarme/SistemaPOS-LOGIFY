@@ -199,9 +199,9 @@ class DetalleOrdenCompra(models.Model):
 class TransferenciaStock(models.Model):
     """Modelo para transferencias de inventario entre ubicaciones"""
     ESTADO_TRANSFERENCIA = (
-        ('pendiente', 'Pendiente'),
-        ('en_transito', 'En Tránsito'),
-        ('recibida', 'Recibida'),
+        ('guardado', 'Guardado'),  # Editable, NO reserva stock
+        ('transferido', 'Transferido'),  # Reserva stock, en empaque/transporte
+        ('procesado', 'Procesado'),  # Inventario movido, transferencia completada
         ('cancelada', 'Cancelada'),
     )
     
@@ -220,7 +220,7 @@ class TransferenciaStock(models.Model):
     fecha_envio = models.DateTimeField(null=True, blank=True)
     fecha_recepcion = models.DateTimeField(null=True, blank=True)
     
-    estado = models.CharField(max_length=15, choices=ESTADO_TRANSFERENCIA, default='pendiente')
+    estado = models.CharField(max_length=15, choices=ESTADO_TRANSFERENCIA, default='guardado')
     tipo = models.CharField(max_length=15, choices=TIPO_TRANSFERENCIA, default='manual')
     
     observaciones = models.TextField(blank=True)
@@ -247,56 +247,67 @@ class TransferenciaStock(models.Model):
     
     def enviar(self, usuario):
         """
-        Marca la transferencia como enviada y descuenta stock de la ubicación origen
+        Marca la transferencia como 'transferido' y RESERVA (no descuenta) stock
+        Estado: guardado → transferido
         """
-        if self.estado != 'pendiente':
-            raise ValueError(f'No se puede enviar una transferencia en estado {self.estado}')
+        if self.estado != 'guardado':
+            raise ValueError(f'No se puede enviar una transferencia en estado {self.estado}. Debe estar en estado "guardado".')
         
-        # Validar y descontar stock en cada ubicación origen
+        # Validar que hay productos
+        if not self.detalles.exists():
+            raise ValueError('La transferencia no tiene productos agregados.')
+        
+        # RESERVAR stock en cada lote (NO descontar aún)
         with transaction.atomic():
             for detalle in self.detalles.all():
-                # Obtener o crear stock en ubicación origen
-                stock_origen, created = StockUbicacion.objects.get_or_create(
-                    producto=detalle.producto,
-                    ubicacion=self.ubicacion_origen,
-                    defaults={'creadoPor': usuario, 'cantidad': 0}
-                )
+                # Validar que tenga lote asignado
+                if not detalle.lote:
+                    raise ValueError(f'El producto {detalle.producto.nombre} no tiene un lote asignado.')
                 
-                # Validar stock suficiente
-                if stock_origen.cantidad < detalle.cantidad:
-                    raise ValueError(
-                        f'Stock insuficiente de {detalle.producto.nombre} en {self.ubicacion_origen.nombre}. '
-                        f'Disponible: {stock_origen.cantidad}, Solicitado: {detalle.cantidad}'
-                    )
+                # Validar que el lote pertenece a la ubicación origen
+                if detalle.lote.ubicacion_id != self.ubicacion_origen_id:
+                    raise ValueError(f'El lote {detalle.lote.numero_lote} no pertenece a la ubicación origen.')
                 
                 # Guardar stock antes del movimiento
-                detalle.stock_origen_antes = stock_origen.cantidad
+                detalle.stock_origen_antes = detalle.lote.cantidad_disponible
                 detalle.save()
                 
-                # Descontar del origen
-                stock_origen.ajustar_stock(
-                    cantidad=-detalle.cantidad,
-                    tipo_movimiento='TRANSFERENCIA SALIDA',
-                    detalle=f'Transferencia {self.numero_transferencia} hacia {self.ubicacion_destino.nombre}',
-                    usuario=usuario
-                )
+                # RESERVAR cantidad en el lote (NO descontar)
+                try:
+                    detalle.lote.reservar_cantidad(
+                        cantidad=detalle.cantidad,
+                        detalle=f'Transferencia {self.numero_transferencia}'
+                    )
+                except ValueError as e:
+                    raise ValueError(f'Error al reservar {detalle.producto.nombre}: {str(e)}')
             
             # Actualizar estado de la transferencia
-            self.estado = 'en_transito'
+            self.estado = 'transferido'
             self.fecha_envio = timezone.now()
             self.usuario_envio = usuario
             self.save()
     
-    def recibir(self, usuario, cantidades_recibidas=None):
+    def procesar(self, usuario, cantidades_recibidas=None):
         """
-        Marca la transferencia como recibida y aumenta stock en la ubicación destino
+        Procesa la transferencia: descuenta stock del origen y suma al destino
+        Estado: transferido → procesado
+        
+        REGLA DE SEGURIDAD: El usuario que procesa NO puede ser el mismo que envió
         
         Args:
-            usuario: Usuario que recibe
-            cantidades_recibidas: Dict con {detalle_id: cantidad_recibida} (opcional, si None recibe todo)
+            usuario: Usuario que recibe/procesa
+            cantidades_recibidas: Dict con {detalle_id: cantidad_recibida} (opcional)
         """
-        if self.estado != 'en_transito':
-            raise ValueError(f'No se puede recibir una transferencia en estado {self.estado}')
+        if self.estado != 'transferido':
+            raise ValueError(f'No se puede procesar una transferencia en estado {self.estado}. Debe estar en estado "transferido".')
+        
+        # VALIDACIÓN CRÍTICA: Usuario receptor ≠ usuario envío
+        if self.usuario_envio and usuario.id == self.usuario_envio.id:
+            raise ValueError(
+                f'ERROR DE SEGURIDAD: El usuario que transfiere ({self.usuario_envio.username}) '
+                f'no puede ser el mismo que procesa la transferencia. '
+                f'Debe ser procesada por un usuario diferente para garantizar auditoría.'
+            )
         
         with transaction.atomic():
             for detalle in self.detalles.all():
@@ -305,28 +316,73 @@ class TransferenciaStock(models.Model):
                 if cantidades_recibidas and detalle.id in cantidades_recibidas:
                     cantidad_a_recibir = cantidades_recibidas[detalle.id]
                 
-                # Obtener o crear stock en ubicación destino
-                stock_destino, created = StockUbicacion.objects.get_or_create(
+                # 1. DESCONTAR del lote origen y liberar reserva
+                detalle.lote.descontar_cantidad(
+                    cantidad=cantidad_a_recibir,
+                    detalle=f'Transferencia {self.numero_transferencia} procesada'
+                )
+                detalle.lote.liberar_reserva(cantidad=cantidad_a_recibir)
+                
+                # 2. CREAR o ACTUALIZAR lote en destino
+                # Buscar si ya existe el mismo lote en destino
+                lote_destino, created = LoteProducto.objects.get_or_create(
                     producto=detalle.producto,
                     ubicacion=self.ubicacion_destino,
-                    defaults={'creadoPor': usuario, 'cantidad': 0}
+                    numero_lote=detalle.lote.numero_lote,
+                    fecha_caducidad=detalle.lote.fecha_caducidad,
+                    defaults={
+                        'creadoPor': usuario,
+                        'fecha_ingreso': timezone.now().date(),
+                        'fecha_creacion': detalle.lote.fecha_creacion,
+                        'cantidad_inicial': cantidad_a_recibir,
+                        'cantidad_disponible': cantidad_a_recibir,
+                        'proveedor': detalle.lote.proveedor,
+                        'costo_unitario': detalle.lote.costo_unitario,
+                    }
                 )
                 
-                # Guardar stock antes del movimiento
-                detalle.stock_destino_antes = stock_destino.cantidad
+                if not created:
+                    # Si ya existía, solo sumar la cantidad
+                    lote_destino.cantidad_disponible += Decimal(str(cantidad_a_recibir))
+                    lote_destino.save()
+                
+                # Guardar información en el detalle
+                detalle.stock_destino_antes = lote_destino.cantidad_disponible - Decimal(str(cantidad_a_recibir))
                 detalle.cantidad_recibida = cantidad_a_recibir
+                
+                # Aplicar cambio de precio si corresponde
+                if detalle.cambio_precio and detalle.precio_destino != detalle.precio_origen:
+                    # Aquí podrías actualizar el precio en StockUbicacion o en el producto
+                    # Por ahora solo lo registramos en el detalle
+                    detalle.observaciones += f'\nPrecio cambiado de ${detalle.precio_origen} a ${detalle.precio_destino}'
+                
                 detalle.save()
                 
-                # Aumentar en destino
-                stock_destino.ajustar_stock(
-                    cantidad=cantidad_a_recibir,
-                    tipo_movimiento='TRANSFERENCIA ENTRADA',
-                    detalle=f'Transferencia {self.numero_transferencia} desde {self.ubicacion_origen.nombre}',
-                    usuario=usuario
+                # 3. Registrar en kardex
+                # Salida en origen
+                KardexMovimiento.objects.create(
+                    idProducto=detalle.producto.id,
+                    idUbicacion=self.ubicacion_origen.id,
+                    tipoMovimiento='TRANSFERENCIA SALIDA',
+                    detalle=f'Transfer. {self.numero_transferencia} → {self.ubicacion_destino.nombre} (Lote: {detalle.lote.numero_lote})',
+                    egreso=cantidad_a_recibir,
+                    ingreso=0,
+                    saldo=detalle.lote.cantidad_disponible
+                )
+                
+                # Entrada en destino
+                KardexMovimiento.objects.create(
+                    idProducto=detalle.producto.id,
+                    idUbicacion=self.ubicacion_destino.id,
+                    tipoMovimiento='TRANSFERENCIA ENTRADA',
+                    detalle=f'Transfer. {self.numero_transferencia} ← {self.ubicacion_origen.nombre} (Lote: {detalle.lote.numero_lote})',
+                    ingreso=cantidad_a_recibir,
+                    egreso=0,
+                    saldo=lote_destino.cantidad_disponible
                 )
             
             # Actualizar estado de la transferencia
-            self.estado = 'recibida'
+            self.estado = 'procesado'
             self.fecha_recepcion = timezone.now()
             self.usuario_recepcion = usuario
             self.save()
@@ -340,12 +396,113 @@ class TransferenciaStock(models.Model):
         return sum(detalle.cantidad for detalle in self.detalles.all())
 
 
+class LoteProducto(models.Model):
+    """Modelo para gestión de lotes y trazabilidad de productos"""
+    producto = models.ForeignKey(Producto, on_delete=models.PROTECT, related_name='lotes')
+    ubicacion = models.ForeignKey(Ubicacion, on_delete=models.PROTECT, related_name='lotes')
+    
+    numero_lote = models.CharField(max_length=100, help_text='Número de lote del fabricante')
+    fecha_ingreso = models.DateField(default=timezone.now, help_text='Fecha de ingreso del lote al sistema')
+    fecha_caducidad = models.DateField(help_text='Fecha de vencimiento del producto')
+    fecha_creacion = models.DateField(null=True, blank=True, help_text='Fecha de fabricación (opcional)')
+    
+    cantidad_inicial = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    cantidad_disponible = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    cantidad_reservada = models.DecimalField(max_digits=12, decimal_places=2, default=0, 
+                                            help_text='Cantidad reservada en transferencias pendientes')
+    
+    # Información adicional
+    proveedor = models.ForeignKey(Proveedor, on_delete=models.SET_NULL, null=True, blank=True)
+    numero_factura = models.CharField(max_length=50, blank=True, help_text='Factura de compra asociada')
+    costo_unitario = models.DecimalField(max_digits=12, decimal_places=2, default=0)
+    
+    activo = models.BooleanField(default=True)
+    observaciones = models.TextField(blank=True)
+    
+    # Campos de auditoría
+    creadoPor = models.ForeignKey(User, on_delete=models.PROTECT, related_name='lotes_creados')
+    creadoDate = models.DateTimeField(auto_now_add=True)
+    editadoPor = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='lotes_editados')
+    editadoDate = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = "Lote de Producto"
+        verbose_name_plural = "Lotes de Productos"
+        ordering = ['fecha_caducidad', 'fecha_ingreso']  # FEFO: First Expired, First Out
+        unique_together = [['producto', 'ubicacion', 'numero_lote', 'fecha_caducidad']]
+    
+    def __str__(self):
+        return f"{self.producto.nombre} - Lote {self.numero_lote} - Venc: {self.fecha_caducidad}"
+    
+    @property
+    def dias_para_vencer(self):
+        """Calcula los días que faltan para que venza el lote"""
+        from datetime import date
+        if self.fecha_caducidad:
+            delta = self.fecha_caducidad - date.today()
+            return delta.days
+        return None
+    
+    @property
+    def esta_vencido(self):
+        """Verifica si el lote está vencido"""
+        from datetime import date
+        return self.fecha_caducidad < date.today()
+    
+    @property
+    def por_vencer(self):
+        """Verifica si el lote está por vencer (menos de 60 días)"""
+        dias = self.dias_para_vencer
+        return dias is not None and 0 < dias <= 60
+    
+    @property
+    def cantidad_disponible_real(self):
+        """Cantidad disponible menos la reservada"""
+        return self.cantidad_disponible - self.cantidad_reservada
+    
+    def reservar_cantidad(self, cantidad, detalle=''):
+        """Reserva cantidad para una transferencia"""
+        if cantidad > self.cantidad_disponible_real:
+            raise ValueError(f'No hay suficiente stock disponible en el lote. Disponible: {self.cantidad_disponible_real}, Solicitado: {cantidad}')
+        
+        self.cantidad_reservada += Decimal(str(cantidad))
+        self.save()
+    
+    def liberar_reserva(self, cantidad):
+        """Libera cantidad reservada"""
+        self.cantidad_reservada = max(0, self.cantidad_reservada - Decimal(str(cantidad)))
+        self.save()
+    
+    def descontar_cantidad(self, cantidad, detalle=''):
+        """Descuenta cantidad del lote (usado en transferencias y ventas)"""
+        if cantidad > self.cantidad_disponible:
+            raise ValueError(f'No hay suficiente stock en el lote. Disponible: {self.cantidad_disponible}, Solicitado: {cantidad}')
+        
+        self.cantidad_disponible -= Decimal(str(cantidad))
+        self.save()
+
+
 class DetalleTransferencia(models.Model):
     """Detalle de productos en una transferencia"""
     transferencia = models.ForeignKey(TransferenciaStock, on_delete=models.CASCADE, related_name='detalles')
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT)
-    cantidad = models.PositiveIntegerField()
+    lote = models.ForeignKey(LoteProducto, on_delete=models.PROTECT, null=True, blank=True, 
+                            help_text='Lote específico del cual se toma el producto')
+    
+    # Cantidades
+    cantidad = models.PositiveIntegerField(help_text='Cantidad total en unidades')
+    cantidad_cajas = models.PositiveIntegerField(default=0, help_text='Número de cajas completas')
+    cantidad_fracciones = models.PositiveIntegerField(default=0, help_text='Cantidad de fracciones/unidades sueltas')
+    unidades_por_caja = models.PositiveIntegerField(default=1, help_text='Unidades que contiene cada caja')
     cantidad_recibida = models.PositiveIntegerField(default=0)
+    
+    # Precios
+    precio_origen = models.DecimalField(max_digits=12, decimal_places=2, default=0, 
+                                       help_text='PVP en ubicación origen')
+    precio_destino = models.DecimalField(max_digits=12, decimal_places=2, default=0, 
+                                        help_text='PVP en ubicación destino (puede ser diferente)')
+    cambio_precio = models.BooleanField(default=False, 
+                                       help_text='Indica si se modificó el precio para el destino')
     
     # Información adicional
     stock_origen_antes = models.PositiveIntegerField(default=0)

@@ -1000,3 +1000,120 @@ def registrar_movimiento_kardex(producto_id, tipo_movimiento, detalle, ingreso=0
     except Exception as e:
         print(f"Error al registrar movimiento kardex: {e}")
         return False
+
+
+# ===================== API ENDPOINTS PARA TRANSFERENCIAS =====================
+
+@login_required
+def obtener_lotes_disponibles(request):
+    """
+    API endpoint para obtener lotes disponibles de un producto en una ubicación
+    
+    Parámetros:
+        - producto_id: ID del producto
+        - ubicacion_id: ID de la ubicación origen
+    
+    Retorna JSON con lotes ordenados por FEFO (First Expired, First Out)
+    """
+    from .models import LoteProducto
+    from datetime import date
+    
+    try:
+        producto_id = request.GET.get('producto_id')
+        ubicacion_id = request.GET.get('ubicacion_id')
+        
+        if not producto_id or not ubicacion_id:
+            return JsonResponse({
+                'success': False,
+                'error': 'Parámetros faltantes: producto_id y ubicacion_id son requeridos'
+            }, status=400)
+        
+        # Obtener lotes disponibles (con stock > 0 y no vencidos)
+        lotes = LoteProducto.objects.filter(
+            producto_id=producto_id,
+            ubicacion_id=ubicacion_id,
+            activo=True,
+            cantidad_disponible__gt=0
+        ).select_related('producto', 'ubicacion', 'proveedor')
+        
+        # Serializar lotes
+        lotes_data = []
+        for lote in lotes:
+            dias_vencer = lote.dias_para_vencer
+            
+            # Determinar estado del lote
+            if lote.esta_vencido:
+                estado = 'vencido'
+                estado_clase = 'danger'
+            elif lote.por_vencer:
+                estado = 'por_vencer'
+                estado_clase = 'warning'
+            else:
+                estado = 'vigente'
+                estado_clase = 'success'
+            
+            lotes_data.append({
+                'id': lote.id,
+                'numero_lote': lote.numero_lote,
+                'fecha_caducidad': lote.fecha_caducidad.strftime('%Y-%m-%d'),
+                'fecha_caducidad_fmt': lote.fecha_caducidad.strftime('%d/%m/%Y'),
+                'fecha_ingreso': lote.fecha_ingreso.strftime('%Y-%m-%d'),
+                'cantidad_disponible': float(lote.cantidad_disponible),
+                'cantidad_reservada': float(lote.cantidad_reservada),
+                'cantidad_disponible_real': float(lote.cantidad_disponible_real),
+                'dias_para_vencer': dias_vencer,
+                'esta_vencido': lote.esta_vencido,
+                'por_vencer': lote.por_vencer,
+                'estado': estado,
+                'estado_clase': estado_clase,
+                'proveedor_nombre': lote.proveedor.nombre if lote.proveedor else 'N/A',
+                'costo_unitario': float(lote.costo_unitario),
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'lotes': lotes_data,
+            'total_lotes': len(lotes_data)
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': f'Error al obtener lotes: {str(e)}'
+        }, status=500)
+
+
+@login_required
+def verificar_stock_producto(request):
+    """
+    API para verificar stock total de un producto en una ubicación (sumando todos los lotes)
+    """
+    from .models import LoteProducto
+    
+    try:
+        producto_id = request.GET.get('producto_id')
+        ubicacion_id = request.GET.get('ubicacion_id')
+        
+        if not producto_id or not ubicacion_id:
+            return JsonResponse({'success': False, 'error': 'Parámetros faltantes'}, status=400)
+        
+        # Sumar stock de todos los lotes
+        stock_total = LoteProducto.objects.filter(
+            producto_id=producto_id,
+            ubicacion_id=ubicacion_id,
+            activo=True
+        ).aggregate(
+            total_disponible=Sum('cantidad_disponible'),
+            total_reservado=Sum('cantidad_reservada')
+        )
+        
+        return JsonResponse({
+            'success': True,
+            'stock_disponible': float(stock_total['total_disponible'] or 0),
+            'stock_reservado': float(stock_total['total_reservado'] or 0),
+            'stock_real': float((stock_total['total_disponible'] or 0) - (stock_total['total_reservado'] or 0))
+        })
+        
+    except Exception as e:
+        return JsonResponse({'success': False, 'error': str(e)}, status=500)
+

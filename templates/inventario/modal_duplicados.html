@@ -52,8 +52,25 @@
                             <i class="fas fa-search"></i> Productos Similares en Inventario
                         </h6>
                         
+                        <!-- Campo para Scanner de Código de Barras -->
                         <div class="mb-3">
-                            <label class="form-label fw-bold">Selecciona una opción:</label>
+                            <label class="form-label fw-bold">
+                                <i class="fas fa-barcode"></i> Buscar con Código de Barras
+                            </label>
+                            <input type="text" 
+                                   class="form-control form-control-lg" 
+                                   id="input-scanner-barcode" 
+                                   placeholder="Escanea o ingresa código de barras..." 
+                                   autocomplete="off"
+                                   autofocus>
+                            <small class="text-muted">
+                                <i class="fas fa-info-circle"></i> 
+                                Usa el lector de códigos de barras o ingresa manualmente y presiona Enter
+                            </small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">O selecciona una opción:</label>
                             <select class="form-select form-select-lg" id="select-producto-destino" size="5">
                                 <option value="nuevo" data-accion="crear">
                                     ✨ Crear como nuevo producto
@@ -105,6 +122,20 @@
                         </div>
                     </div>
                 </div>
+                
+                <!-- Botón para desvincular si ya está vinculado -->
+                <div class="row mt-3" id="seccion-desvincular" style="display: none;">
+                    <div class="col-12">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-unlink"></i>
+                            <strong>Este código ya está vinculado.</strong>
+                            Si deseas corregir la vinculación, puedes quitarla primero.
+                            <button type="button" class="btn btn-sm btn-danger ms-3" id="btn-desvincular">
+                                <i class="fas fa-times-circle"></i> Quitar y Desvincular
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <div class="modal-footer">
@@ -147,3 +178,94 @@
     background-color: #f8d7da !important;
 }
 </style>
+
+<script>
+// Soporte para scanner de código de barras
+document.addEventListener('DOMContentLoaded', function() {
+    const scannerInput = document.getElementById('input-scanner-barcode');
+    const btnDesvincular = document.getElementById('btn-desvincular');
+    
+    if (scannerInput) {
+        scannerInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const codigo = this.value.trim();
+                if (codigo) {
+                    buscarProductoPorCodigo(codigo);
+                }
+            }
+        });
+    }
+    
+    if (btnDesvincular) {
+        btnDesvincular.addEventListener('click', async function() {
+            const codigoFactura = document.getElementById('factura-codigo').textContent;
+            
+            if (!confirm(`¿Está seguro de desvincular el código ${codigoFactura}?\n\nEsto permitirá vincularlo nuevamente con el producto correcto.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/ventas/desvincular-codigo/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    },
+                    body: JSON.stringify({ codigo: codigoFactura })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.mensaje + '\n\nAhora puedes vincular el código con el producto correcto.');
+                    document.getElementById('seccion-desvincular').style.display = 'none';
+                    // Resetear modal para permitir nueva vinculación
+                    document.getElementById('select-producto-destino').selectedIndex = 0;
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error al desvincular:', error);
+                alert('Error al desvincular el código');
+            }
+        });
+    }
+});
+
+async function buscarProductoPorCodigo(codigo) {
+    try {
+        const select = document.getElementById('select-producto-destino');
+        const options = select.querySelectorAll('option[data-codigo]');
+        
+        let encontrado = false;
+        options.forEach(option => {
+            if (option.getAttribute('data-codigo') === codigo) {
+                option.selected = true;
+                select.dispatchEvent(new Event('change'));
+                encontrado = true;
+                
+                // Highlight visual
+                const scannerInput = document.getElementById('input-scanner-barcode');
+                scannerInput.classList.add('is-valid');
+                scannerInput.value = '';
+                setTimeout(() => {
+                    scannerInput.classList.remove('is-valid');
+                }, 1000);
+            }
+        });
+        
+        if (!encontrado) {
+            const scannerInput = document.getElementById('input-scanner-barcode');
+            scannerInput.classList.add('is-invalid');
+            setTimeout(() => {
+                scannerInput.classList.remove('is-invalid');
+            }, 1500);
+            alert('No se encontró ningún producto con el código: ' + codigo);
+        }
+    } catch (error) {
+        console.error('Error al buscar código:', error);
+    }
+}
+</script>
+
