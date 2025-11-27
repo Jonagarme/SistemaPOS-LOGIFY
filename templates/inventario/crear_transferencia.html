@@ -499,25 +499,46 @@ function seleccionarProducto(id, nombre, codigo, stock, precio) {
 document.getElementById('btn-cargar-lotes').addEventListener('click', function() {
     const ubicacionOrigen = document.getElementById('ubicacion-origen').value;
     
-    if (!productoSeleccionado) return;
+    console.log('Producto seleccionado:', productoSeleccionado);
+    console.log('Ubicación origen:', ubicacionOrigen);
+    
+    if (!productoSeleccionado) {
+        alert('⚠️ No hay producto seleccionado');
+        return;
+    }
+    
+    if (!ubicacionOrigen) {
+        alert('⚠️ Debe seleccionar ubicación de origen');
+        return;
+    }
     
     // Mostrar loading
     this.disabled = true;
     this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Cargando lotes...';
     
+    const url = `/inventario/api/lotes-disponibles/?producto_id=${productoSeleccionado.id}&ubicacion_id=${ubicacionOrigen}`;
+    console.log('Consultando URL:', url);
+    
     // Consultar API
-    fetch(`/inventario/api/lotes-disponibles/?producto_id=${productoSeleccionado.id}&ubicacion_id=${ubicacionOrigen}`)
-        .then(response => response.json())
+    fetch(url)
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.json();
+        })
         .then(data => {
+            console.log('Data recibida:', data);
+            
             this.disabled = false;
             this.innerHTML = '<i class="fas fa-search me-2"></i>Buscar Lotes Disponibles';
             
             if (data.success) {
                 lotesDisponibles = data.lotes;
+                console.log('Total lotes:', lotesDisponibles.length);
                 
                 if (lotesDisponibles.length === 0) {
                     document.getElementById('sin-lotes').style.display = 'block';
                     document.getElementById('contenedor-lotes').style.display = 'none';
+                    alert('ℹ️ No hay lotes disponibles para este producto en esta ubicación');
                 } else {
                     mostrarTablaLotes();
                     document.getElementById('contenedor-lotes').style.display = 'block';
@@ -528,6 +549,7 @@ document.getElementById('btn-cargar-lotes').addEventListener('click', function()
             }
         })
         .catch(error => {
+            console.error('Error:', error);
             this.disabled = false;
             this.innerHTML = '<i class="fas fa-search me-2"></i>Buscar Lotes Disponibles';
             alert('Error de conexión: ' + error);

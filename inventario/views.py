@@ -1042,28 +1042,39 @@ def obtener_lotes_disponibles(request):
             dias_vencer = lote.dias_para_vencer
             
             # Determinar estado del lote
-            if lote.esta_vencido:
+            if lote.fecha_caducidad is None:
+                estado = 'sin_caducidad'
+                estado_clase = 'secondary'
+                fecha_cad = None
+                fecha_cad_fmt = 'Sin caducidad'
+            elif lote.esta_vencido:
                 estado = 'vencido'
                 estado_clase = 'danger'
+                fecha_cad = lote.fecha_caducidad.strftime('%Y-%m-%d')
+                fecha_cad_fmt = lote.fecha_caducidad.strftime('%d/%m/%Y')
             elif lote.por_vencer:
                 estado = 'por_vencer'
                 estado_clase = 'warning'
+                fecha_cad = lote.fecha_caducidad.strftime('%Y-%m-%d')
+                fecha_cad_fmt = lote.fecha_caducidad.strftime('%d/%m/%Y')
             else:
                 estado = 'vigente'
                 estado_clase = 'success'
+                fecha_cad = lote.fecha_caducidad.strftime('%Y-%m-%d')
+                fecha_cad_fmt = lote.fecha_caducidad.strftime('%d/%m/%Y')
             
             lotes_data.append({
                 'id': lote.id,
                 'numero_lote': lote.numero_lote,
-                'fecha_caducidad': lote.fecha_caducidad.strftime('%Y-%m-%d'),
-                'fecha_caducidad_fmt': lote.fecha_caducidad.strftime('%d/%m/%Y'),
+                'fecha_caducidad': fecha_cad,
+                'fecha_caducidad_fmt': fecha_cad_fmt,
                 'fecha_ingreso': lote.fecha_ingreso.strftime('%Y-%m-%d'),
                 'cantidad_disponible': float(lote.cantidad_disponible),
                 'cantidad_reservada': float(lote.cantidad_reservada),
                 'cantidad_disponible_real': float(lote.cantidad_disponible_real),
                 'dias_para_vencer': dias_vencer,
-                'esta_vencido': lote.esta_vencido,
-                'por_vencer': lote.por_vencer,
+                'esta_vencido': lote.esta_vencido if lote.fecha_caducidad else False,
+                'por_vencer': lote.por_vencer if lote.fecha_caducidad else False,
                 'estado': estado,
                 'estado_clase': estado_clase,
                 'proveedor_nombre': lote.proveedor.nombre if lote.proveedor else 'N/A',
