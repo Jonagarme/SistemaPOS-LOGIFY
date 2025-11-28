@@ -2122,7 +2122,7 @@
         return carts[currentTabId];
     }
 
-    function createNewTab() {
+ function createNewTab() {
         tabCounter++;
         const newTabId = `venta${tabCounter}`;
 
@@ -2145,6 +2145,45 @@
         const newTabButton = document.querySelector('.btn-add-tab').parentElement;
         tabNav.insertBefore(newTabItem, newTabButton);
 
+        // Crear el contenido del tab (clonar el contenido de venta1)
+        const tabContent = document.querySelector('.tab-content');
+        const originalContent = document.getElementById('venta1');
+        const newTabContent = originalContent.cloneNode(true);
+        
+        // Actualizar el ID del nuevo contenido
+        newTabContent.id = newTabId;
+        newTabContent.classList.remove('show', 'active');
+        
+        // LIMPIAR el carrito visual del nuevo tab (es un clon)
+        const cartBody = newTabContent.querySelector('#cart-items-body');
+        if (cartBody) {
+            cartBody.innerHTML = `
+                <tr>
+                    <td colspan="12" class="text-center text-muted py-4">
+                        <i class="fas fa-shopping-cart fa-3x mb-3"></i>
+                        <p>Carrito vacío</p>
+                        <small>Seleccione productos para agregar</small>
+                    </td>
+                </tr>
+            `;
+        }
+        
+        // LIMPIAR los datos del cliente clonados
+        const clienteInput = newTabContent.querySelector('[id^="cliente-seleccionado"]');
+        if (clienteInput) clienteInput.value = '';
+        
+        const clienteInfo = newTabContent.querySelector('[id^="cliente-info"]');
+        if (clienteInfo) clienteInfo.style.display = 'none';
+        
+        // Actualizar IDs de elementos importantes dentro del tab clonado
+        updateTabElementIds(newTabContent, newTabId);
+        
+        // Volver a vincular los event listeners de los productos en el nuevo tab
+        rebindProductCards(newTabContent, newTabId);
+        
+        // Agregar el nuevo contenido al contenedor de tabs
+        tabContent.appendChild(newTabContent);
+
         // Inicializar carrito para el nuevo tab
         carts[newTabId] = {
             items: [],
@@ -2152,7 +2191,10 @@
             subtotal: 0,
             discount: 0,
             tax: 0,
-            cliente: null
+            cliente: null,
+            cliente_id: null,
+            cliente_nombre: null,
+            cliente_documento: null
         };
 
         // Mostrar botones de cierre
@@ -2162,6 +2204,156 @@
         switchToTab(newTabId);
 
         showToast('Nueva venta creada', 'success');
+    }
+
+    function rebindProductCards(tabElement, tabId) {
+    const productCards = tabElement.querySelectorAll('.product-card-enhanced');
+    
+    console.log(`🔗 Vinculando ${productCards.length} productos al tab ${tabId}`);
+    
+    productCards.forEach(card => {
+        // Remover el onclick anterior
+        card.removeAttribute('onclick');
+        
+        // IMPORTANTE: Almacenar el tabId en el elemento
+        card.setAttribute('data-tab-id', tabId);
+        
+        // Agregar nuevo event listener
+        card.addEventListener('click', function(e) {
+            e.stopPropagation();
+            
+            // Obtener el tab al que pertenece este producto
+            const cardTabId = this.getAttribute('data-tab-id');
+            
+            console.log('🖱️ Click en producto');
+            console.log('   Tab actual:', currentTabId);
+            console.log('   Tab del producto:', cardTabId);
+            
+            // Guardar el tab actual
+            const previousTabId = currentTabId;
+            
+            // Cambiar temporalmente al tab del producto para agregar al carrito correcto
+            currentTabId = cardTabId;
+            
+            // Agregar producto
+            addToCartFromElement(this);
+            
+            // CRUCIAL: Actualizar el panel de totales del tab correcto inmediatamente
+            updateTotalsForTab(cardTabId);
+            
+            // Restaurar el tab anterior si es necesario
+            setTimeout(() => {
+                if (previousTabId !== cardTabId) {
+                    currentTabId = previousTabId;
+                    // Actualizar la vista del tab actual también
+                    updateCartDisplay();
+                    updateTotals();
+                }
+            }, 0);
+        });
+    });
+}
+
+function updateTotalsForTab(tabId) {
+    const cart = carts[tabId];
+    if (!cart) return;
+    
+    // Calcular subtotal
+    const subtotal = cart.items.reduce((sum, item) => {
+        return sum + (parseFloat(item.price) * parseInt(item.quantity));
+    }, 0);
+    
+    // Calcular descuento
+    const discountAmount = subtotal * (parseFloat(currentDiscount) / 100);
+    
+    // Base imponible
+    const baseImponible = subtotal - discountAmount;
+    
+    // IVA
+    const tax = baseImponible * 0.15;
+    
+    // Total
+    const total = baseImponible + tax;
+    
+    // Actualizar valores en el carrito
+    cart.subtotal = subtotal;
+    cart.discount = discountAmount;
+    cart.tax = tax;
+    cart.total = total;
+    
+    // IMPORTANTE: Buscar elementos en el tab específico
+    const tabElement = document.getElementById(tabId);
+    if (!tabElement) return;
+    
+    // Actualizar displays
+    const subtotalEl = tabElement.querySelector(`#subtotal-display-${tabId}`) || 
+                      tabElement.querySelector('#subtotal-display');
+    const discountEl = tabElement.querySelector(`#discount-display-${tabId}`) || 
+                      tabElement.querySelector('#discount-display');
+    const baseEl = tabElement.querySelector(`#base-imponible-${tabId}`) || 
+                  tabElement.querySelector('#base-imponible');
+    const taxEl = tabElement.querySelector(`#tax-display-${tabId}`) || 
+                 tabElement.querySelector('#tax-display');
+    const totalEl = tabElement.querySelector(`#total-display-${tabId}`) || 
+                   tabElement.querySelector('#total-display');
+    const previewEl = tabElement.querySelector(`#total-preview-${tabId}`) || 
+                     tabElement.querySelector('#total-preview');
+    const efectivoEl = tabElement.querySelector(`#total-efectivo-preview-${tabId}`) || 
+                      tabElement.querySelector('#total-efectivo-preview');
+    const tarjetaEl = tabElement.querySelector(`#total-tarjeta-preview-${tabId}`) || 
+                     tabElement.querySelector('#total-tarjeta-preview');
+    
+    if (subtotalEl) subtotalEl.textContent = `$ ${subtotal.toFixed(2)}`;
+    if (discountEl) discountEl.textContent = `$ ${discountAmount.toFixed(2)}`;
+    if (baseEl) baseEl.textContent = `$ ${baseImponible.toFixed(2)}`;
+    if (taxEl) taxEl.textContent = `$ ${tax.toFixed(2)}`;
+    if (totalEl) totalEl.textContent = `$ ${total.toFixed(2)}`;
+    if (previewEl) previewEl.textContent = total.toFixed(2);
+    if (efectivoEl) efectivoEl.textContent = (total * 0.95).toFixed(2);
+    if (tarjetaEl) tarjetaEl.textContent = (total * 1.03).toFixed(2);
+    
+    // Habilitar/deshabilitar botón procesar
+    const btnProcesar = tabElement.querySelector(`#btn-procesar-${tabId}`) || 
+                       tabElement.querySelector('#btn-procesar');
+    if (btnProcesar) {
+        btnProcesar.disabled = cart.items.length === 0;
+    }
+    
+    console.log(`💰 Totales actualizados para ${tabId}:`, { subtotal, total });
+}
+
+    function updateTabElementIds(tabElement, tabId) {
+        // Lista de IDs que necesitan ser únicos por tab
+        const idsToUpdate = [
+            'cart-items-body',
+            'cart-items-table',
+            'cliente-search',
+            'cliente-id',
+            'client-info',
+            'client-name',
+            'client-document',
+            'clear-client',
+            'subtotal-display',
+            'discount-display',
+            'base-imponible',
+            'tax-display',
+            'total-display',
+            'total-preview',
+            'total-efectivo-preview',
+            'total-tarjeta-preview',
+            'discount-percent',
+            'custom-discount',
+            'monto-recibido',
+            'cambio-display',
+            'btn-procesar'
+        ];
+
+        idsToUpdate.forEach(oldId => {
+            const element = tabElement.querySelector(`#${oldId}`);
+            if (element) {
+                element.id = `${oldId}-${tabId}`;
+            }
+        });
     }
 
     function switchToTab(tabId) {
@@ -2390,117 +2582,149 @@
         if (index >= 0 && index < currentCart.items.length) {
             const removedItem = currentCart.items[index];
             currentCart.items.splice(index, 1);
+            
+            // Actualizar vista y totales
             updateCartDisplay();
-            updateTotals();
+            updateTotalsForTab(currentTabId); // ✅ Esto resetea los totales
+            
             showToast(`${removedItem.name} eliminado del carrito`, 'info');
         }
     }
 
-    async function clearCart() {
-        const confirmed = await showConfirm({
-            title: '¿Limpiar Carrito?',
-            message: '¿Está seguro de que desea eliminar todos los productos del carrito?',
-            type: 'warning',
-            confirmText: 'Sí, limpiar',
-            cancelText: 'No, cancelar'
-        });
-        
-        if (!confirmed) return;
+async function clearCart() {
+    const confirmed = await showConfirm({
+        title: '¿Limpiar Carrito?',
+        message: '¿Está seguro de que desea eliminar todos los productos del carrito?',
+        type: 'warning',
+        confirmText: 'Sí, limpiar',
+        cancelText: 'No, cancelar'
+    });
+    
+    if (!confirmed) return;
 
-        const currentCart = getCurrentCart();
-        currentCart.items = [];
-        currentCart.total = 0;
-        currentCart.subtotal = 0;
-        currentCart.discount = 0;
-        currentCart.tax = 0;
+    const currentCart = getCurrentCart();
+    currentCart.items = [];
+    currentCart.total = 0;
+    currentCart.subtotal = 0;
+    currentCart.discount = 0;
+    currentCart.tax = 0;
 
-        updateCartDisplay();
-        updateTotals();
-        showToast('Carrito limpiado', 'info');
-    }
+    updateCartDisplay();
+    updateTotalsForTab(currentTabId); // ✅ Esto resetea los totales
+    
+    showToast('Carrito limpiado', 'info');
+}
 
     // ============================================
     // FUNCIONES DE VISUALIZACIÓN
     // ============================================
 
     function updateCartDisplay() {
-        const currentCart = getCurrentCart();
-        const tbody = document.getElementById('cart-items-body');
-
-        if (!tbody) return;
-
-        if (currentCart.items.length === 0) {
-            tbody.innerHTML = `
-            <tr>
-                <td colspan="12" class="text-center text-muted py-4">
-                    <i class="fas fa-shopping-cart fa-3x mb-3"></i>
-                    <p>Carrito vacío</p>
-                    <small>Seleccione productos para agregar</small>
-                </td>
-            </tr>
-        `;
-            updateTabBadge();
-            return;
-        }
-
-        let cartHTML = '';
-        currentCart.items.forEach((item, index) => {
-            // Asegurar que los valores sean números
-            const precio = parseFloat(item.price);
-            const cantidad = parseInt(item.quantity);
-            const tasaImpuesto = parseFloat(item.taxRate || 0.15);
-            
-            // Calcular subtotal del item (precio * cantidad)
-            const subtotalItem = precio * cantidad;
-            
-            // Calcular descuento del item
-            const descuentoItem = subtotalItem * (parseFloat(currentDiscount) / 100);
-            
-            // Calcular valor después del descuento
-            const despuesDescuento = subtotalItem - descuentoItem;
-            
-            // Calcular IVA del item
-            const ivaItem = despuesDescuento * tasaImpuesto;
-            
-            // Calcular total del item
-            const totalItem = despuesDescuento + ivaItem;
-
-            cartHTML += `
-            <tr>
-                <td>${index + 1}</td>
-                <td>${item.id}</td>
-                <td>
-                    <div class="product-name">${item.name}</div>
-                    <div class="product-code">Stock: ${item.stock}</div>
-                </td>
-                <td>
-                    <input type="number" value="${cantidad}" 
-                           onchange="setQuantity(${index}, this.value)" 
-                           min="1" max="${item.stock}"
-                           style="width: 60px;">
-                </td>
-                <td>$ ${precio.toFixed(2)}</td>
-                <td>$ ${precio.toFixed(2)}</td>
-                <td>0%</td>
-                <td>${currentDiscount}%</td>
-                <td>$ ${ivaItem.toFixed(2)}</td>
-                <td>$ ${subtotalItem.toFixed(2)}</td>
-                <td><strong>$ ${totalItem.toFixed(2)}</strong></td>
-                <td>
-                    <button class="btn-action btn-edit" onclick="editCartItem(${index})" title="Editar">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-action btn-delete" onclick="removeFromCart(${index})" title="Eliminar">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-        });
-
-        tbody.innerHTML = cartHTML;
-        updateTabBadge();
+    const currentCart = getCurrentCart();
+    
+    // Buscar tbody en el tab actual
+    const tabElement = document.getElementById(currentTabId);
+    if (!tabElement) {
+        console.error('No se encontró el tab:', currentTabId);
+        return;
     }
+    
+    const tbody = tabElement.querySelector(`#cart-items-body-${currentTabId}`) || 
+                  tabElement.querySelector('#cart-items-body');
+
+    if (!tbody) {
+        console.error(`No se encontró tbody para el tab: ${currentTabId}`);
+        return;
+    }
+
+    if (currentCart.items.length === 0) {
+        tbody.innerHTML = `
+        <tr>
+            <td colspan="12" class="text-center text-muted py-4">
+                <i class="fas fa-shopping-cart fa-3x mb-3"></i>
+                <p>Carrito vacío</p>
+                <small>Seleccione productos para agregar</small>
+            </td>
+        </tr>
+    `;
+        updateTabBadge();
+        return;
+    }
+
+    let cartHTML = '';
+    currentCart.items.forEach((item, index) => {
+        const precio = parseFloat(item.price);
+        const cantidad = parseInt(item.quantity);
+        const tasaImpuesto = parseFloat(item.taxRate || 0.15);
+        
+        const subtotalItem = precio * cantidad;
+        const descuentoItem = subtotalItem * (parseFloat(currentDiscount) / 100);
+        const despuesDescuento = subtotalItem - descuentoItem;
+        const ivaItem = despuesDescuento * tasaImpuesto;
+        const totalItem = despuesDescuento + ivaItem;
+
+        cartHTML += `
+        <tr>
+            <td>${index + 1}</td>
+            <td>${item.id}</td>
+            <td>
+                <div class="product-name">${item.name}</div>
+                <div class="product-code">Stock: ${item.stock}</div>
+            </td>
+            <td>
+                <input type="number" value="${cantidad}" 
+                       data-index="${index}"
+                       class="quantity-input"
+                       min="1" max="${item.stock}"
+                       style="width: 60px;">
+            </td>
+            <td>$ ${precio.toFixed(2)}</td>
+            <td>$ ${precio.toFixed(2)}</td>
+            <td>0%</td>
+            <td>${currentDiscount}%</td>
+            <td>$ ${ivaItem.toFixed(2)}</td>
+            <td>$ ${subtotalItem.toFixed(2)}</td>
+            <td><strong>$ ${totalItem.toFixed(2)}</strong></td>
+            <td>
+                <button class="btn-action btn-edit" data-index="${index}" data-action="edit" title="Editar">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-action btn-delete" data-index="${index}" data-action="delete" title="Eliminar">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+    });
+
+    tbody.innerHTML = cartHTML;
+    updateTabBadge();
+    
+    // Re-vincular event listeners
+    const quantityInputs = tbody.querySelectorAll('.quantity-input');
+    quantityInputs.forEach(input => {
+        input.addEventListener('change', function() {
+            const index = parseInt(this.getAttribute('data-index'));
+            setQuantity(index, this.value);
+        });
+    });
+    
+    const actionButtons = tbody.querySelectorAll('[data-action]');
+    actionButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const index = parseInt(this.getAttribute('data-index'));
+            const action = this.getAttribute('data-action');
+            
+            if (action === 'edit') {
+                editCartItem(index);
+            } else if (action === 'delete') {
+                removeFromCart(index);
+            }
+        });
+    });
+    
+    console.log(`🛒 Carrito actualizado para ${currentTabId}: ${currentCart.items.length} items`);
+}
 
     function updateTotals() {
         const currentCart = getCurrentCart();
