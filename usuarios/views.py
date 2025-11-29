@@ -514,14 +514,16 @@ def anular_usuario(request, usuario_id):
 # Gestión de roles
 @login_required
 def lista_roles(request):
-    """Lista todos los roles del sistema"""
+    """Lista todos los roles del sistema con sus permisos"""
     try:
         with connection.cursor() as cursor:
             cursor.execute("""
                 SELECT r.id, r.nombre, r.descripcion, (NOT r.anulado) as activo, r.creadoDate,
-                       COUNT(u.id) as total_usuarios
+                       COUNT(DISTINCT u.id) as total_usuarios,
+                       COUNT(DISTINCT rp.id) as total_permisos
                 FROM roles r
                 LEFT JOIN usuarios u ON r.id = u.idRol AND u.anulado = 0
+                LEFT JOIN rol_permisos rp ON r.id = rp.idRol
                 GROUP BY r.id, r.nombre, r.descripcion, r.anulado, r.creadoDate
                 ORDER BY r.nombre
             """)
@@ -534,18 +536,87 @@ def lista_roles(request):
                     'descripcion': row[2],
                     'activo': bool(row[3]),
                     'fecha_creacion': row[4],
-                    'total_usuarios': row[5]
+                    'total_usuarios': row[5],
+                    'total_permisos': row[6] or 0
                 })
         
-        return render(request, 'usuarios/lista_roles.html', {'roles': roles})
+        return render(request, 'usuarios/lista_roles.html', {
+            'roles': roles,
+            'titulo': 'Gestión de Roles'
+        })
         
     except Exception as e:
+        print(f"Error en lista_roles: {e}")
+        messages.error(request, f'Error al cargar roles: {str(e)}')
+        return redirect('usuarios:dashboard')
         messages.error(request, f'Error al cargar roles: {str(e)}')
         return redirect('usuarios:dashboard')
 
 @login_required
 def crear_rol(request):
-    """Crear nuevo rol"""
+    """Crear nuevo rol con permisos"""
+    # Definir todos los permisos disponibles organizados por módulo
+    PERMISOS_DISPONIBLES = {
+        'productos': [
+            {'nombre': 'listar_productos', 'descripcion': 'Ver lista de productos'},
+            {'nombre': 'crear_producto', 'descripcion': 'Crear productos'},
+            {'nombre': 'editar_producto', 'descripcion': 'Editar productos'},
+            {'nombre': 'eliminar_producto', 'descripcion': 'Eliminar productos'},
+        ],
+        'ventas': [
+            {'nombre': 'crear_venta', 'descripcion': 'Crear ventas'},
+            {'nombre': 'listar_ventas', 'descripcion': 'Ver historial de ventas'},
+            {'nombre': 'anular_venta', 'descripcion': 'Anular ventas'},
+        ],
+        'caja': [
+            {'nombre': 'abrir_caja', 'descripcion': 'Abrir caja'},
+            {'nombre': 'cerrar_caja', 'descripcion': 'Cerrar caja'},
+            {'nombre': 'movimientos_caja', 'descripcion': 'Ver movimientos de caja'},
+        ],
+        'clientes': [
+            {'nombre': 'listar_clientes', 'descripcion': 'Ver lista de clientes'},
+            {'nombre': 'crear_cliente', 'descripcion': 'Crear clientes'},
+            {'nombre': 'editar_cliente', 'descripcion': 'Editar clientes'},
+        ],
+        'inventario': [
+            {'nombre': 'kardex', 'descripcion': 'Ver kardex'},
+            {'nombre': 'ajustes', 'descripcion': 'Realizar ajustes de inventario'},
+            {'nombre': 'stock_minimo', 'descripcion': 'Configurar stock mínimo'},
+            {'nombre': 'transferencias', 'descripcion': 'Gestionar transferencias'},
+            {'nombre': 'ubicaciones', 'descripcion': 'Gestionar ubicaciones'},
+        ],
+        'proveedores': [
+            {'nombre': 'listar_proveedores', 'descripcion': 'Ver lista de proveedores'},
+            {'nombre': 'crear_proveedor', 'descripcion': 'Crear proveedores'},
+        ],
+        'cotizaciones': [
+            {'nombre': 'crear_cotizacion', 'descripcion': 'Crear cotizaciones'},
+            {'nombre': 'listar_cotizaciones', 'descripcion': 'Ver cotizaciones'},
+        ],
+        'reportes': [
+            {'nombre': 'ventas', 'descripcion': 'Reportes de ventas'},
+            {'nombre': 'productos_caducados', 'descripcion': 'Productos caducados'},
+            {'nombre': 'inventario', 'descripcion': 'Reporte de inventario'},
+            {'nombre': 'kardex', 'descripcion': 'Reporte de kardex'},
+        ],
+        'contabilidad': [
+            {'nombre': 'gastos', 'descripcion': 'Gestionar gastos'},
+            {'nombre': 'cuentas_por_cobrar', 'descripcion': 'Cuentas por cobrar'},
+            {'nombre': 'cuentas_por_pagar', 'descripcion': 'Cuentas por pagar'},
+        ],
+        'usuarios': [
+            {'nombre': 'listar_usuarios', 'descripcion': 'Ver usuarios'},
+            {'nombre': 'crear_usuario', 'descripcion': 'Crear usuarios'},
+            {'nombre': 'editar_usuario', 'descripcion': 'Editar usuarios'},
+            {'nombre': 'gestionar_permisos', 'descripcion': 'Gestionar permisos'},
+        ],
+        'roles': [
+            {'nombre': 'listar_roles', 'descripcion': 'Ver roles'},
+            {'nombre': 'crear_rol', 'descripcion': 'Crear roles'},
+            {'nombre': 'editar_rol', 'descripcion': 'Editar roles'},
+        ],
+    }
+    
     if request.method == 'POST':
         try:
             nombre = request.POST.get('nombre')
@@ -555,30 +626,118 @@ def crear_rol(request):
                 messages.error(request, 'El nombre del rol es obligatorio.')
                 return redirect('usuarios:crear_rol')
             
+            usuario_id = request.session.get('usuario_sistema_id')
+            
             with connection.cursor() as cursor:
                 # Verificar si ya existe
-                cursor.execute("SELECT id FROM roles WHERE nombre = %s", [nombre])
+                cursor.execute("SELECT id FROM roles WHERE nombre = %s AND anulado = 0", [nombre])
                 if cursor.fetchone():
                     messages.error(request, 'Ya existe un rol con ese nombre.')
                     return redirect('usuarios:crear_rol')
                 
                 # Crear rol
                 cursor.execute("""
-                    INSERT INTO roles (nombre, descripcion, anulado, creadoDate)
-                    VALUES (%s, %s, 0, NOW())
-                """, [nombre, descripcion])
+                    INSERT INTO roles (nombre, descripcion, anulado, creadoPor, creadoDate)
+                    VALUES (%s, %s, 0, %s, NOW())
+                """, [nombre, descripcion, usuario_id])
+                
+                # Obtener el ID del rol recién creado
+                cursor.execute("SELECT LAST_INSERT_ID()")
+                rol_id = cursor.fetchone()[0]
+                
+                # Insertar permisos seleccionados
+                for modulo, permisos in PERMISOS_DISPONIBLES.items():
+                    for permiso_item in permisos:
+                        permiso_key = permiso_item['nombre']
+                        
+                        # Verificar si el checkbox está marcado
+                        if request.POST.get(f'permiso_{modulo}_{permiso_key}'):
+                            puede_ver = request.POST.get(f'ver_{modulo}_{permiso_key}') == 'on'
+                            puede_crear = request.POST.get(f'crear_{modulo}_{permiso_key}') == 'on'
+                            puede_editar = request.POST.get(f'editar_{modulo}_{permiso_key}') == 'on'
+                            puede_eliminar = request.POST.get(f'eliminar_{modulo}_{permiso_key}') == 'on'
+                            
+                            cursor.execute("""
+                                INSERT INTO rol_permisos 
+                                (idRol, modulo, permiso, puede_ver, puede_crear, puede_editar, puede_eliminar, creadoPor, creadoDate)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                            """, [rol_id, modulo, permiso_key, puede_ver, puede_crear, puede_editar, puede_eliminar, usuario_id])
                 
                 messages.success(request, f'Rol {nombre} creado exitosamente.')
                 return redirect('usuarios:lista_roles')
                 
         except Exception as e:
             messages.error(request, f'Error al crear rol: {str(e)}')
+            print(f"Error detallado: {e}")
     
-    return render(request, 'usuarios/crear_rol.html')
+    return render(request, 'usuarios/crear_rol.html', {
+        'permisos_disponibles': PERMISOS_DISPONIBLES
+    })
 
 @login_required
 def editar_rol(request, rol_id):
-    """Editar rol existente"""
+    """Editar rol existente con sus permisos"""
+    PERMISOS_DISPONIBLES = {
+        'productos': [
+            {'nombre': 'listar_productos', 'descripcion': 'Ver lista de productos'},
+            {'nombre': 'crear_producto', 'descripcion': 'Crear productos'},
+            {'nombre': 'editar_producto', 'descripcion': 'Editar productos'},
+            {'nombre': 'eliminar_producto', 'descripcion': 'Eliminar productos'},
+        ],
+        'ventas': [
+            {'nombre': 'crear_venta', 'descripcion': 'Crear ventas'},
+            {'nombre': 'listar_ventas', 'descripcion': 'Ver historial de ventas'},
+            {'nombre': 'anular_venta', 'descripcion': 'Anular ventas'},
+        ],
+        'caja': [
+            {'nombre': 'abrir_caja', 'descripcion': 'Abrir caja'},
+            {'nombre': 'cerrar_caja', 'descripcion': 'Cerrar caja'},
+            {'nombre': 'movimientos_caja', 'descripcion': 'Ver movimientos de caja'},
+        ],
+        'clientes': [
+            {'nombre': 'listar_clientes', 'descripcion': 'Ver lista de clientes'},
+            {'nombre': 'crear_cliente', 'descripcion': 'Crear clientes'},
+            {'nombre': 'editar_cliente', 'descripcion': 'Editar clientes'},
+        ],
+        'inventario': [
+            {'nombre': 'kardex', 'descripcion': 'Ver kardex'},
+            {'nombre': 'ajustes', 'descripcion': 'Realizar ajustes de inventario'},
+            {'nombre': 'stock_minimo', 'descripcion': 'Configurar stock mínimo'},
+            {'nombre': 'transferencias', 'descripcion': 'Gestionar transferencias'},
+            {'nombre': 'ubicaciones', 'descripcion': 'Gestionar ubicaciones'},
+        ],
+        'proveedores': [
+            {'nombre': 'listar_proveedores', 'descripcion': 'Ver lista de proveedores'},
+            {'nombre': 'crear_proveedor', 'descripcion': 'Crear proveedores'},
+        ],
+        'cotizaciones': [
+            {'nombre': 'crear_cotizacion', 'descripcion': 'Crear cotizaciones'},
+            {'nombre': 'listar_cotizaciones', 'descripcion': 'Ver cotizaciones'},
+        ],
+        'reportes': [
+            {'nombre': 'ventas', 'descripcion': 'Reportes de ventas'},
+            {'nombre': 'productos_caducados', 'descripcion': 'Productos caducados'},
+            {'nombre': 'inventario', 'descripcion': 'Reporte de inventario'},
+            {'nombre': 'kardex', 'descripcion': 'Reporte de kardex'},
+        ],
+        'contabilidad': [
+            {'nombre': 'gastos', 'descripcion': 'Gestionar gastos'},
+            {'nombre': 'cuentas_por_cobrar', 'descripcion': 'Cuentas por cobrar'},
+            {'nombre': 'cuentas_por_pagar', 'descripcion': 'Cuentas por pagar'},
+        ],
+        'usuarios': [
+            {'nombre': 'listar_usuarios', 'descripcion': 'Ver usuarios'},
+            {'nombre': 'crear_usuario', 'descripcion': 'Crear usuarios'},
+            {'nombre': 'editar_usuario', 'descripcion': 'Editar usuarios'},
+            {'nombre': 'gestionar_permisos', 'descripcion': 'Gestionar permisos'},
+        ],
+        'roles': [
+            {'nombre': 'listar_roles', 'descripcion': 'Ver roles'},
+            {'nombre': 'crear_rol', 'descripcion': 'Crear roles'},
+            {'nombre': 'editar_rol', 'descripcion': 'Editar roles'},
+        ],
+    }
+    
     try:
         # Obtener datos del rol
         with connection.cursor() as cursor:
@@ -595,15 +754,32 @@ def editar_rol(request, rol_id):
                 'descripcion': row[2],
                 'activo': bool(row[3])
             }
+            
+            # Obtener permisos actuales del rol
+            cursor.execute("""
+                SELECT modulo, permiso, puede_ver, puede_crear, puede_editar, puede_eliminar
+                FROM rol_permisos
+                WHERE idRol = %s
+            """, [rol_id])
+            
+            permisos_actuales = {}
+            for perm_row in cursor.fetchall():
+                key = f"{perm_row[0]}_{perm_row[1]}"
+                permisos_actuales[key] = {
+                    'ver': bool(perm_row[2]),
+                    'crear': bool(perm_row[3]),
+                    'editar': bool(perm_row[4]),
+                    'eliminar': bool(perm_row[5])
+                }
         
         if request.method == 'POST':
             nombre = request.POST.get('nombre')
             descripcion = request.POST.get('descripcion', '')
-            activo = request.POST.get('activo') == 'on'
+            usuario_id = request.session.get('usuario_sistema_id')
             
             with connection.cursor() as cursor:
                 # Verificar nombre único (excluyendo el rol actual)
-                cursor.execute("SELECT id FROM roles WHERE nombre = %s AND id != %s", 
+                cursor.execute("SELECT id FROM roles WHERE nombre = %s AND id != %s AND anulado = 0", 
                              [nombre, rol_id])
                 if cursor.fetchone():
                     messages.error(request, 'Ya existe otro rol con ese nombre.')
@@ -612,17 +788,46 @@ def editar_rol(request, rol_id):
                 # Actualizar rol
                 cursor.execute("""
                     UPDATE roles 
-                    SET nombre = %s, descripcion = %s, activo = %s
+                    SET nombre = %s, descripcion = %s, editadoPor = %s, editadoDate = NOW()
                     WHERE id = %s
-                """, [nombre, descripcion, activo, rol_id])
+                """, [nombre, descripcion, usuario_id, rol_id])
+                
+                # Eliminar permisos antiguos
+                cursor.execute("DELETE FROM rol_permisos WHERE idRol = %s", [rol_id])
+                
+                # Insertar nuevos permisos
+                for modulo, permisos in PERMISOS_DISPONIBLES.items():
+                    for permiso_item in permisos:
+                        permiso_key = permiso_item['nombre']
+                        
+                        if request.POST.get(f'permiso_{modulo}_{permiso_key}'):
+                            puede_ver = request.POST.get(f'ver_{modulo}_{permiso_key}') == 'on'
+                            puede_crear = request.POST.get(f'crear_{modulo}_{permiso_key}') == 'on'
+                            puede_editar = request.POST.get(f'editar_{modulo}_{permiso_key}') == 'on'
+                            puede_eliminar = request.POST.get(f'eliminar_{modulo}_{permiso_key}') == 'on'
+                            
+                            cursor.execute("""
+                                INSERT INTO rol_permisos 
+                                (idRol, modulo, permiso, puede_ver, puede_crear, puede_editar, puede_eliminar, creadoPor, creadoDate)
+                                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, NOW())
+                            """, [rol_id, modulo, permiso_key, puede_ver, puede_crear, puede_editar, puede_eliminar, usuario_id])
                 
                 messages.success(request, f'Rol {nombre} actualizado exitosamente.')
                 return redirect('usuarios:lista_roles')
         
-        return render(request, 'usuarios/editar_rol.html', {'rol': rol})
+        # Convertir permisos_actuales a JSON para JavaScript
+        import json
+        permisos_actuales_json = json.dumps(permisos_actuales)
+        
+        return render(request, 'usuarios/editar_rol.html', {
+            'rol': rol,
+            'permisos_disponibles': PERMISOS_DISPONIBLES,
+            'permisos_actuales': permisos_actuales_json
+        })
         
     except Exception as e:
         messages.error(request, f'Error al editar rol: {str(e)}')
+        print(f"Error detallado: {e}")
         return redirect('usuarios:lista_roles')
 
 @login_required

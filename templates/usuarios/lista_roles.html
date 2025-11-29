@@ -37,7 +37,7 @@
                     </div>
                     
                     <!-- Tabla de roles -->
-                    {% if page_obj %}
+                    {% if roles %}
                         <div class="table-responsive">
                             <table class="table table-hover">
                                 <thead class="table-light">
@@ -45,12 +45,13 @@
                                         <th>Nombre</th>
                                         <th>Descripción</th>
                                         <th>Usuarios</th>
+                                        <th>Permisos</th>
                                         <th>Creado</th>
                                         <th class="text-center">Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {% for rol in page_obj %}
+                                    {% for rol in roles %}
                                     <tr>
                                         <td>
                                             <div class="d-flex align-items-center">
@@ -62,77 +63,35 @@
                                         </td>
                                         <td>{{ rol.descripcion|default:"Sin descripción" }}</td>
                                         <td>
-                                            <span class="badge bg-secondary">
-                                                {{ rol.usuariosistema_set.count }} usuario{{ rol.usuariosistema_set.count|pluralize }}
+                                            <span class="badge bg-info">
+                                                {{ rol.total_usuarios }} usuario{{ rol.total_usuarios|pluralize }}
                                             </span>
                                         </td>
-                                        <td>{{ rol.creado_date|date:"d/m/Y H:i" }}</td>
+                                        <td>
+                                            <span class="badge bg-success">
+                                                {{ rol.total_permisos }} permiso{{ rol.total_permisos|pluralize }}
+                                            </span>
+                                        </td>
+                                        <td>{{ rol.fecha_creacion|date:"d/m/Y H:i" }}</td>
                                         <td class="text-center">
                                             <div class="btn-group" role="group">
                                                 <a href="{% url 'usuarios:editar_rol' rol.id %}" 
                                                    class="btn btn-sm btn-outline-primary" title="Editar">
-                                                    <i class="fas fa-edit"></i>
+                                                    <i class="fas fa-edit"></i> Editar
                                                 </a>
                                             </div>
-                                        </td>
-                                    </tr>
-                                    {% empty %}
-                                    <tr>
-                                        <td colspan="5" class="text-center py-4">
-                                            <i class="fas fa-user-tag fa-3x text-muted mb-3"></i>
-                                            <p class="text-muted">No se encontraron roles</p>
                                         </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
                         </div>
-                        
-                        <!-- Paginación -->
-                        {% if page_obj.has_other_pages %}
-                        <nav aria-label="Paginación roles">
-                            <ul class="pagination justify-content-center">
-                                {% if page_obj.has_previous %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page=1{% if search %}&search={{ search }}{% endif %}">
-                                            <i class="fas fa-angle-double-left"></i>
-                                        </a>
-                                    </li>
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search %}&search={{ search }}{% endif %}">
-                                            <i class="fas fa-angle-left"></i>
-                                        </a>
-                                    </li>
-                                {% endif %}
-                                
-                                <li class="page-item active">
-                                    <span class="page-link">
-                                        {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
-                                    </span>
-                                </li>
-                                
-                                {% if page_obj.has_next %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search %}&search={{ search }}{% endif %}">
-                                            <i class="fas fa-angle-right"></i>
-                                        </a>
-                                    </li>
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search %}&search={{ search }}{% endif %}">
-                                            <i class="fas fa-angle-double-right"></i>
-                                        </a>
-                                    </li>
-                                {% endif %}
-                            </ul>
-                        </nav>
-                        {% endif %}
                     {% else %}
                         <div class="text-center py-5">
-                            <i class="fas fa-user-tag fa-4x text-muted mb-3"></i>
-                            <h5 class="text-muted">No hay roles registrados</h5>
-                            <p class="text-muted">Comienza creando tu primer rol</p>
+                            <i class="fas fa-user-tag fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No hay roles registrados</p>
                             <a href="{% url 'usuarios:crear_rol' %}" class="btn btn-primary">
-                                <i class="fas fa-plus"></i> Crear Rol
+                                <i class="fas fa-plus"></i> Crear Primer Rol
                             </a>
                         </div>
                     {% endif %}

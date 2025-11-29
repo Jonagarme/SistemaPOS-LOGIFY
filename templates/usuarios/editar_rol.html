@@ -1,87 +1,135 @@
 {% extends 'base.html' %}
 
-{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+{% block title %}Editar Rol{% endblock %}
+
+{% block extra_css %}
+<style>
+    .permiso-item {
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+    .checkbox-group label {
+        margin-right: 15px;
+        font-size: 0.875rem;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container-fluid">
-    <div class="row justify-content-center">
-        <div class="col-12 col-lg-6">
+    <div class="row">
+        <div class="col-12">
             <div class="card">
-                <div class="card-header">
+                <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
-                        <i class="fas fa-user-tag"></i> {{ titulo }}
+                        <i class="fas fa-edit me-2"></i>Editar Rol: {{ rol.nombre }}
                     </h5>
                 </div>
                 
                 <div class="card-body">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
                     <form method="post">
                         {% csrf_token %}
                         
-                        <div class="mb-3">
-                            <label for="{{ form.nombre.id_for_label }}" class="form-label">
-                                {{ form.nombre.label }} <span class="text-danger">*</span>
-                            </label>
-                            {{ form.nombre }}
-                            {% if form.nombre.errors %}
-                                <div class="text-danger small">{{ form.nombre.errors }}</div>
-                            {% endif %}
-                            <div class="form-text">Nombre único para identificar el rol</div>
-                        </div>
-                        
-                        <div class="mb-3">
-                            <label for="{{ form.descripcion.id_for_label }}" class="form-label">
-                                {{ form.descripcion.label }}
-                            </label>
-                            {{ form.descripcion }}
-                            {% if form.descripcion.errors %}
-                                <div class="text-danger small">{{ form.descripcion.errors }}</div>
-                            {% endif %}
-                            <div class="form-text">Descripción opcional del rol y sus responsabilidades</div>
-                        </div>
-                        
-                        <!-- Información adicional para edición -->
-                        {% if rol %}
-                        <hr class="my-4">
-                        <h6 class="text-secondary mb-3">
-                            <i class="fas fa-info-circle"></i> Información Adicional
-                        </h6>
-                        
-                        <div class="row g-3">
+                        <div class="row mb-4">
                             <div class="col-md-6">
-                                <label class="form-label">Usuarios con este rol</label>
-                                <div class="form-control-plaintext">
-                                    <span class="badge bg-secondary">
-                                        {{ rol.usuariosistema_set.count }} usuario{{ rol.usuariosistema_set.count|pluralize }}
-                                    </span>
-                                </div>
+                                <label for="nombre" class="form-label fw-bold">
+                                    Nombre del Rol <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="nombre" name="nombre" value="{{ rol.nombre }}" required>
                             </div>
                             
                             <div class="col-md-6">
-                                <label class="form-label">Creado</label>
-                                <div class="form-control-plaintext">
-                                    {{ rol.creado_date|date:"d/m/Y H:i" }}
-                                </div>
+                                <label for="descripcion" class="form-label fw-bold">
+                                    Descripción
+                                </label>
+                                <input type="text" class="form-control" id="descripcion" name="descripcion" value="{{ rol.descripcion }}">
                             </div>
-                            
-                            {% if rol.editado_date %}
-                            <div class="col-md-6">
-                                <label class="form-label">Última Edición</label>
-                                <div class="form-control-plaintext">
-                                    {{ rol.editado_date|date:"d/m/Y H:i" }}
-                                </div>
-                            </div>
-                            {% endif %}
                         </div>
-                        {% endif %}
                         
-                        <!-- Botones -->
                         <hr class="my-4">
-                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
-                            <a href="{% url 'usuarios:lista_roles' %}" class="btn btn-secondary me-md-2">
-                                <i class="fas fa-times"></i> Cancelar
+                        
+                        <h5 class="mb-3">
+                            <i class="fas fa-lock me-2"></i>Permisos del Rol
+                        </h5>
+                        
+                        <div class="accordion" id="permisosAccordion">
+                            {% for modulo, permisos in permisos_disponibles.items %}
+                            <div class="accordion-item mb-2">
+                                <h2 class="accordion-header">
+                                    <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ modulo }}">
+                                        <strong class="text-capitalize">
+                                            <i class="fas fa-folder me-2"></i>{{ modulo }}
+                                        </strong>
+                                        <span class="badge bg-secondary ms-2">{{ permisos|length }}</span>
+                                    </button>
+                                </h2>
+                                <div id="collapse{{ modulo }}" class="accordion-collapse collapse">
+                                    <div class="accordion-body">
+                                        {% for permiso in permisos %}
+                                        <div class="permiso-item">
+                                            <div class="row align-items-center">
+                                                <div class="col-md-5">
+                                                    <div class="form-check">
+                                                        <input class="form-check-input permiso-checkbox" 
+                                                               type="checkbox" 
+                                                               id="permiso_{{ modulo }}_{{ permiso.nombre }}"
+                                                               name="permiso_{{ modulo }}_{{ permiso.nombre }}"
+                                                               data-modulo="{{ modulo }}"
+                                                               data-permiso="{{ permiso.nombre }}"
+                                                               data-key="{{ modulo }}_{{ permiso.nombre }}">
+                                                        <label class="form-check-label fw-bold" for="permiso_{{ modulo }}_{{ permiso.nombre }}">
+                                                            {{ permiso.descripcion }}
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-7">
+                                                    <div class="checkbox-group" data-permiso-group="{{ modulo }}_{{ permiso.nombre }}">
+                                                        <label class="d-inline-block">
+                                                            <input type="checkbox" name="ver_{{ modulo }}_{{ permiso.nombre }}" class="me-1">
+                                                            <small>Ver</small>
+                                                        </label>
+                                                        <label class="d-inline-block">
+                                                            <input type="checkbox" name="crear_{{ modulo }}_{{ permiso.nombre }}" class="me-1">
+                                                            <small>Crear</small>
+                                                        </label>
+                                                        <label class="d-inline-block">
+                                                            <input type="checkbox" name="editar_{{ modulo }}_{{ permiso.nombre }}" class="me-1">
+                                                            <small>Editar</small>
+                                                        </label>
+                                                        <label class="d-inline-block">
+                                                            <input type="checkbox" name="eliminar_{{ modulo }}_{{ permiso.nombre }}" class="me-1">
+                                                            <small>Eliminar</small>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        
+                        <hr class="my-4">
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'usuarios:lista_roles' %}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancelar
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save"></i> {{ accion }}
+                                <i class="fas fa-save me-2"></i>Actualizar Rol
                             </button>
                         </div>
                     </form>
@@ -90,4 +138,62 @@
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Permisos actuales del rol (pasados desde Django)
+    const permisosActuales = {{ permisos_actuales|safe }};
+    
+    // Cargar permisos actuales en los checkboxes
+    for (const [key, value] of Object.entries(permisosActuales)) {
+        // Marcar el checkbox principal del permiso
+        const mainCheckbox = document.querySelector(`input[data-key="${key}"]`);
+        if (mainCheckbox) {
+            mainCheckbox.checked = true;
+        }
+        
+        // Marcar los checkboxes de acciones (ver, crear, editar, eliminar)
+        if (value.ver) {
+            const verCheckbox = document.querySelector(`input[name="ver_${key}"]`);
+            if (verCheckbox) verCheckbox.checked = true;
+        }
+        if (value.crear) {
+            const crearCheckbox = document.querySelector(`input[name="crear_${key}"]`);
+            if (crearCheckbox) crearCheckbox.checked = true;
+        }
+        if (value.editar) {
+            const editarCheckbox = document.querySelector(`input[name="editar_${key}"]`);
+            if (editarCheckbox) editarCheckbox.checked = true;
+        }
+        if (value.eliminar) {
+            const eliminarCheckbox = document.querySelector(`input[name="eliminar_${key}"]`);
+            if (eliminarCheckbox) eliminarCheckbox.checked = true;
+        }
+    }
+    
+    // Habilitar/deshabilitar opciones de permiso según checkbox principal
+    const checkboxes = document.querySelectorAll('.permiso-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const modulo = this.dataset.modulo;
+            const permiso = this.dataset.permiso;
+            const group = document.querySelector(`[data-permiso-group="${modulo}_${permiso}"]`);
+            
+            if (group) {
+                const inputs = group.querySelectorAll('input[type="checkbox"]');
+                inputs.forEach(input => {
+                    input.disabled = !this.checked;
+                    if (!this.checked) {
+                        input.checked = false;
+                    }
+                });
+            }
+        });
+        
+        // Estado inicial
+        checkbox.dispatchEvent(new Event('change'));
+    });
+});
+</script>
 {% endblock %}

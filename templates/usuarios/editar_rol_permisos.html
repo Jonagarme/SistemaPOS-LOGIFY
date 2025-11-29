@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}Crear Rol{% endblock %}
+{% block title %}Editar Rol{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -24,7 +24,7 @@
             <div class="card">
                 <div class="card-header bg-primary text-white">
                     <h5 class="mb-0">
-                        <i class="fas fa-user-tag me-2"></i>Crear Nuevo Rol
+                        <i class="fas fa-edit me-2"></i>Editar Rol: {{ rol.nombre }}
                     </h5>
                 </div>
                 
@@ -38,7 +38,7 @@
                         {% endfor %}
                     {% endif %}
 
-                    <form method="post" id="formCrearRol">
+                    <form method="post">
                         {% csrf_token %}
                         
                         <div class="row mb-4">
@@ -46,16 +46,14 @@
                                 <label for="nombre" class="form-label fw-bold">
                                     Nombre del Rol <span class="text-danger">*</span>
                                 </label>
-                                <input type="text" class="form-control" id="nombre" name="nombre" required>
-                                <div class="form-text">Ej: Farmacéutico, Cajero, Vendedor</div>
+                                <input type="text" class="form-control" id="nombre" name="nombre" value="{{ rol.nombre }}" required>
                             </div>
                             
                             <div class="col-md-6">
                                 <label for="descripcion" class="form-label fw-bold">
                                     Descripción
                                 </label>
-                                <input type="text" class="form-control" id="descripcion" name="descripcion">
-                                <div class="form-text">Breve descripción de las responsabilidades</div>
+                                <input type="text" class="form-control" id="descripcion" name="descripcion" value="{{ rol.descripcion }}">
                             </div>
                         </div>
                         
@@ -64,9 +62,7 @@
                         <h5 class="mb-3">
                             <i class="fas fa-lock me-2"></i>Permisos del Rol
                         </h5>
-                        <p class="text-muted mb-4">Seleccione los módulos y acciones que podrá realizar este rol</p>
                         
-                        <!-- Accordion de permisos por módulo -->
                         <div class="accordion" id="permisosAccordion">
                             {% for modulo, permisos in permisos_disponibles.items %}
                             <div class="accordion-item mb-2">
@@ -75,12 +71,13 @@
                                         <strong class="text-capitalize">
                                             <i class="fas fa-folder me-2"></i>{{ modulo }}
                                         </strong>
-                                        <span class="badge bg-secondary ms-2">{{ permisos|length }} permisos</span>
+                                        <span class="badge bg-secondary ms-2">{{ permisos|length }}</span>
                                     </button>
                                 </h2>
                                 <div id="collapse{{ modulo }}" class="accordion-collapse collapse">
                                     <div class="accordion-body">
                                         {% for permiso in permisos %}
+                                        {% with key=modulo|add:"_"|add:permiso.nombre %}
                                         <div class="permiso-item">
                                             <div class="row align-items-center">
                                                 <div class="col-md-5">
@@ -90,7 +87,8 @@
                                                                id="permiso_{{ modulo }}_{{ permiso.nombre }}"
                                                                name="permiso_{{ modulo }}_{{ permiso.nombre }}"
                                                                data-modulo="{{ modulo }}"
-                                                               data-permiso="{{ permiso.nombre }}">
+                                                               data-permiso="{{ permiso.nombre }}"
+                                                               {% if permisos_actuales|get:key %}checked{% endif %}>
                                                         <label class="form-check-label fw-bold" for="permiso_{{ modulo }}_{{ permiso.nombre }}">
                                                             {{ permiso.descripcion }}
                                                         </label>
@@ -99,25 +97,30 @@
                                                 <div class="col-md-7">
                                                     <div class="checkbox-group" data-permiso-group="{{ modulo }}_{{ permiso.nombre }}">
                                                         <label class="d-inline-block">
-                                                            <input type="checkbox" name="ver_{{ modulo }}_{{ permiso.nombre }}" class="me-1" checked>
+                                                            <input type="checkbox" name="ver_{{ modulo }}_{{ permiso.nombre }}" class="me-1" 
+                                                                   {% if permisos_actuales|get:key and permisos_actuales|get:key|get:'ver' %}checked{% endif %}>
                                                             <small>Ver</small>
                                                         </label>
                                                         <label class="d-inline-block">
-                                                            <input type="checkbox" name="crear_{{ modulo }}_{{ permiso.nombre }}" class="me-1">
+                                                            <input type="checkbox" name="crear_{{ modulo }}_{{ permiso.nombre }}" class="me-1"
+                                                                   {% if permisos_actuales|get:key and permisos_actuales|get:key|get:'crear' %}checked{% endif %}>
                                                             <small>Crear</small>
                                                         </label>
                                                         <label class="d-inline-block">
-                                                            <input type="checkbox" name="editar_{{ modulo }}_{{ permiso.nombre }}" class="me-1">
+                                                            <input type="checkbox" name="editar_{{ modulo }}_{{ permiso.nombre }}" class="me-1"
+                                                                   {% if permisos_actuales|get:key and permisos_actuales|get:key|get:'editar' %}checked{% endif %}>
                                                             <small>Editar</small>
                                                         </label>
                                                         <label class="d-inline-block">
-                                                            <input type="checkbox" name="eliminar_{{ modulo }}_{{ permiso.nombre }}" class="me-1">
+                                                            <input type="checkbox" name="eliminar_{{ modulo }}_{{ permiso.nombre }}" class="me-1"
+                                                                   {% if permisos_actuales|get:key and permisos_actuales|get:key|get:'eliminar' %}checked{% endif %}>
                                                             <small>Eliminar</small>
                                                         </label>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
+                                        {% endwith %}
                                         {% endfor %}
                                     </div>
                                 </div>
@@ -132,7 +135,7 @@
                                 <i class="fas fa-times me-2"></i>Cancelar
                             </a>
                             <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-save me-2"></i>Guardar Rol
+                                <i class="fas fa-save me-2"></i>Actualizar Rol
                             </button>
                         </div>
                     </form>
@@ -144,7 +147,6 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Habilitar/deshabilitar opciones de permiso según checkbox principal
     const checkboxes = document.querySelectorAll('.permiso-checkbox');
     
     checkboxes.forEach(checkbox => {

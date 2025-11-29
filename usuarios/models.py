@@ -21,6 +21,50 @@ class Rol(models.Model):
         
     def __str__(self):
         return self.nombre
+    
+    def tiene_permiso(self, modulo, permiso, tipo='ver'):
+        """Verifica si el rol tiene un permiso específico"""
+        try:
+            perm = RolPermiso.objects.get(id_rol=self, modulo=modulo, permiso=permiso)
+            if tipo == 'ver':
+                return perm.puede_ver
+            elif tipo == 'crear':
+                return perm.puede_crear
+            elif tipo == 'editar':
+                return perm.puede_editar
+            elif tipo == 'eliminar':
+                return perm.puede_eliminar
+            return False
+        except RolPermiso.DoesNotExist:
+            return False
+    
+    def es_administrador(self):
+        """Verifica si es el rol de administrador"""
+        return self.nombre.lower() == 'administrador'
+
+
+class RolPermiso(models.Model):
+    """Modelo para la tabla rol_permisos"""
+    id = models.AutoField(primary_key=True)
+    id_rol = models.ForeignKey(Rol, on_delete=models.CASCADE, db_column='idRol', related_name='permisos')
+    modulo = models.CharField(max_length=50)
+    permiso = models.CharField(max_length=100)
+    puede_crear = models.BooleanField(default=False, db_column='puede_crear')
+    puede_editar = models.BooleanField(default=False, db_column='puede_editar')
+    puede_eliminar = models.BooleanField(default=False, db_column='puede_eliminar')
+    puede_ver = models.BooleanField(default=True, db_column='puede_ver')
+    creado_por = models.PositiveIntegerField(null=True, blank=True, db_column='creadoPor')
+    creado_date = models.DateTimeField(db_column='creadoDate')
+    editado_por = models.PositiveIntegerField(null=True, blank=True, db_column='editadoPor')
+    editado_date = models.DateTimeField(null=True, blank=True, db_column='editadoDate')
+    
+    class Meta:
+        db_table = 'rol_permisos'
+        managed = False
+        unique_together = [('id_rol', 'modulo', 'permiso')]
+    
+    def __str__(self):
+        return f"{self.id_rol.nombre} - {self.modulo}.{self.permiso}"
 
 
 class UsuarioSistema(models.Model):
@@ -83,6 +127,17 @@ class UsuarioSistema(models.Model):
         """Verificar contraseña"""
         from django.contrib.auth.hashers import check_password
         return check_password(raw_password, self.contrasena_hash)
+    
+    def tiene_permiso(self, modulo, permiso, tipo='ver'):
+        """Verifica si el usuario tiene un permiso específico basado en su rol"""
+        if not self.id_rol:
+            return False
+        
+        # Administrador tiene todos los permisos
+        if self.id_rol.es_administrador():
+            return True
+        
+        return self.id_rol.tiene_permiso(modulo, permiso, tipo)
 
 
 # Otros modelos que necesites (sin cambios en la BD)
