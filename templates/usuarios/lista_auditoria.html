@@ -1,0 +1,246 @@
+{% extends 'base.html' %}
+
+{% block title %}Auditoría del Sistema{% endblock %}
+
+{% block extra_css %}
+<style>
+    .badge-accion {
+        min-width: 80px;
+        font-size: 0.75rem;
+    }
+    .filtros-card {
+        background: #f8f9fa;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+    .table-auditoria tbody tr:hover {
+        background-color: #f8f9fa;
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-clipboard-list me-2"></i>Auditoría del Sistema
+                    </h5>
+                </div>
+                
+                <div class="card-body">
+                    <!-- Filtros -->
+                    <div class="filtros-card">
+                        <form method="get" id="formFiltros">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label fw-bold">Fecha Desde</label>
+                                    <input type="date" class="form-control" name="fecha_desde" value="{{ fecha_desde }}">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label fw-bold">Fecha Hasta</label>
+                                    <input type="date" class="form-control" name="fecha_hasta" value="{{ fecha_hasta }}">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-bold">Usuario</label>
+                                    <input type="text" class="form-control" name="usuario" value="{{ usuario_filtro }}" placeholder="Nombre usuario">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-bold">Módulo</label>
+                                    <select class="form-select" name="modulo">
+                                        <option value="">Todos</option>
+                                        {% for modulo in modulos %}
+                                        <option value="{{ modulo }}" {% if modulo == modulo_filtro %}selected{% endif %}>
+                                            {{ modulo|title }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-bold">Acción</label>
+                                    <select class="form-select" name="accion">
+                                        <option value="">Todas</option>
+                                        {% for accion in acciones %}
+                                        <option value="{{ accion }}" {% if accion == accion_filtro %}selected{% endif %}>
+                                            {{ accion }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-search me-2"></i>Filtrar
+                                    </button>
+                                    <a href="{% url 'usuarios:lista_auditoria' %}" class="btn btn-secondary">
+                                        <i class="fas fa-times me-2"></i>Limpiar
+                                    </a>
+                                    <button type="button" class="btn btn-success" onclick="exportarExcel()">
+                                        <i class="fas fa-file-excel me-2"></i>Exportar Excel
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Tabla -->
+                    {% if page_obj.object_list %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            Mostrando {{ page_obj.start_index }} - {{ page_obj.end_index }} de {{ total_registros }} registro{{ total_registros|pluralize }}
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover table-auditoria">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Usuario</th>
+                                        <th>Módulo</th>
+                                        <th>Acción</th>
+                                        <th>Entidad</th>
+                                        <th>Descripción</th>
+                                        <th>IP</th>
+                                        <th>Origen</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for registro in page_obj.object_list %}
+                                    <tr onclick="verDetalle({{ registro.id }})">
+                                        <td>
+                                            <small>{{ registro.fecha|date:"d/m/Y H:i:s" }}</small>
+                                        </td>
+                                        <td>
+                                            <strong>{{ registro.usuario }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">{{ registro.modulo }}</span>
+                                        </td>
+                                        <td>
+                                            {% if registro.accion == 'CREAR' %}
+                                                <span class="badge bg-success badge-accion">{{ registro.accion }}</span>
+                                            {% elif registro.accion == 'EDITAR' %}
+                                                <span class="badge bg-warning badge-accion">{{ registro.accion }}</span>
+                                            {% elif registro.accion == 'ELIMINAR' or registro.accion == 'ANULAR' %}
+                                                <span class="badge bg-danger badge-accion">{{ registro.accion }}</span>
+                                            {% elif registro.accion == 'VER' %}
+                                                <span class="badge bg-secondary badge-accion">{{ registro.accion }}</span>
+                                            {% elif registro.accion == 'LOGIN' %}
+                                                <span class="badge bg-primary badge-accion">{{ registro.accion }}</span>
+                                            {% else %}
+                                                <span class="badge bg-dark badge-accion">{{ registro.accion }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            {% if registro.entidad %}
+                                                {{ registro.entidad }}
+                                                {% if registro.id_entidad %}
+                                                    <small class="text-muted">#{{ registro.id_entidad }}</small>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <small>{{ registro.descripcion|default:"-"|truncatechars:80 }}</small>
+                                        </td>
+                                        <td>
+                                            <small class="text-muted">{{ registro.ip|default:"-" }}</small>
+                                        </td>
+                                        <td>
+                                            {% if registro.origen == 'mobile' %}
+                                                <i class="fas fa-mobile-alt text-primary" title="Móvil"></i>
+                                            {% elif registro.origen == 'tablet' %}
+                                                <i class="fas fa-tablet-alt text-info" title="Tablet"></i>
+                                            {% else %}
+                                                <i class="fas fa-desktop text-secondary" title="Web"></i>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'usuarios:detalle_auditoria' registro.id %}" 
+                                               class="btn btn-sm btn-outline-primary"
+                                               onclick="event.stopPropagation()">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Paginación -->
+                        {% if page_obj.has_other_pages %}
+                        <nav aria-label="Navegación de páginas" class="mt-4">
+                            <ul class="pagination justify-content-center">
+                                {% if page_obj.has_previous %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page=1{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if modulo_filtro %}&modulo={{ modulo_filtro }}{% endif %}{% if accion_filtro %}&accion={{ accion_filtro }}{% endif %}">
+                                            <i class="fas fa-angle-double-left"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if modulo_filtro %}&modulo={{ modulo_filtro }}{% endif %}{% if accion_filtro %}&accion={{ accion_filtro }}{% endif %}">
+                                            <i class="fas fa-angle-left"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                                
+                                {% for num in page_obj.paginator.page_range %}
+                                    {% if page_obj.number == num %}
+                                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?page={{ num }}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if modulo_filtro %}&modulo={{ modulo_filtro }}{% endif %}{% if accion_filtro %}&accion={{ accion_filtro }}{% endif %}">{{ num }}</a>
+                                        </li>
+                                    {% endif %}
+                                {% endfor %}
+                                
+                                {% if page_obj.has_next %}
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if modulo_filtro %}&modulo={{ modulo_filtro }}{% endif %}{% if accion_filtro %}&accion={{ accion_filtro }}{% endif %}">
+                                            <i class="fas fa-angle-right"></i>
+                                        </a>
+                                    </li>
+                                    <li class="page-item">
+                                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if fecha_desde %}&fecha_desde={{ fecha_desde }}{% endif %}{% if fecha_hasta %}&fecha_hasta={{ fecha_hasta }}{% endif %}{% if usuario_filtro %}&usuario={{ usuario_filtro }}{% endif %}{% if modulo_filtro %}&modulo={{ modulo_filtro }}{% endif %}{% if accion_filtro %}&accion={{ accion_filtro }}{% endif %}">
+                                            <i class="fas fa-angle-double-right"></i>
+                                        </a>
+                                    </li>
+                                {% endif %}
+                            </ul>
+                        </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-clipboard-list fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No hay registros de auditoría con los filtros seleccionados</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function verDetalle(id) {
+    window.location.href = `/usuarios/auditoria/${id}/`;
+}
+
+function exportarExcel() {
+    // Obtener parámetros actuales del formulario
+    const form = document.getElementById('formFiltros');
+    const params = new URLSearchParams(new FormData(form));
+    
+    // TODO: Implementar exportación a Excel
+    alert('Funcionalidad de exportación en desarrollo');
+}
+</script>
+{% endblock %}

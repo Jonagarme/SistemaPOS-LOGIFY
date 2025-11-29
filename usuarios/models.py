@@ -218,3 +218,105 @@ class ConfiguracionEmpresa(models.Model):
     @property
     def direccion(self):
         return self.direccion_matriz
+
+
+class Auditoria(models.Model):
+    """Modelo para registrar todas las acciones de los usuarios"""
+    id = models.BigAutoField(primary_key=True)
+    fecha = models.DateTimeField(auto_now_add=True)
+    id_usuario = models.IntegerField(db_column='idUsuario')
+    usuario = models.CharField(max_length=100, null=True, blank=True)
+    modulo = models.CharField(max_length=100)
+    accion = models.CharField(max_length=30, null=True, blank=True)
+    entidad = models.CharField(max_length=100, null=True, blank=True)
+    id_entidad = models.BigIntegerField(null=True, blank=True, db_column='idEntidad')
+    descripcion = models.TextField(null=True, blank=True)
+    ip = models.CharField(max_length=45, null=True, blank=True)
+    host = models.CharField(max_length=100, null=True, blank=True)
+    origen = models.CharField(max_length=50, null=True, blank=True)
+    extra = models.TextField(null=True, blank=True)
+    
+    class Meta:
+        db_table = 'auditoria'
+        managed = False
+        ordering = ['-fecha']
+        indexes = [
+            models.Index(fields=['fecha']),
+            models.Index(fields=['id_usuario', 'fecha']),
+            models.Index(fields=['modulo', 'accion', 'fecha']),
+            models.Index(fields=['entidad', 'id_entidad']),
+        ]
+    
+    def __str__(self):
+        return f"{self.usuario} - {self.accion} en {self.modulo} ({self.fecha})"
+    
+    @classmethod
+    def registrar(cls, usuario_id, usuario_nombre, modulo, accion, descripcion='', 
+                  entidad=None, id_entidad=None, request=None, extra=None):
+        """
+        Método helper para registrar una acción de auditoría
+        
+        Args:
+            usuario_id: ID del usuario que realiza la acción
+            usuario_nombre: Nombre del usuario
+            modulo: Módulo del sistema (productos, ventas, caja, etc.)
+            accion: Tipo de acción (CREAR, EDITAR, ELIMINAR, VER, LOGIN, etc.)
+            descripcion: Descripción detallada de la acción
+            entidad: Tipo de entidad afectada (producto, venta, cliente, etc.)
+            id_entidad: ID de la entidad afectada
+            request: Request de Django para obtener IP y host
+            extra: Información adicional en formato texto o JSON
+        """
+        ip = None
+        host = None
+        origen = 'web'
+        
+        if request:
+            # Obtener IP del cliente
+            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+            if x_forwarded_for:
+                ip = x_forwarded_for.split(',')[0]
+            else:
+                ip = request.META.get('REMOTE_ADDR')
+            
+            # Obtener host
+            host = request.META.get('HTTP_HOST')
+            
+            # Determinar origen
+            user_agent = request.META.get('HTTP_USER_AGENT', '').lower()
+            if 'mobile' in user_agent:
+                origen = 'mobile'
+            elif 'tablet' in user_agent:
+                origen = 'tablet'
+            else:
+                origen = 'web'
+        
+        # Convertir extra a JSON si es un diccionario
+        if extra and isinstance(extra, dict):
+            import json
+            extra = json.dumps(extra, ensure_ascii=False)
+        
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                INSERT INTO auditoria 
+                (fecha, idUsuario, usuario, modulo, accion, entidad, idEntidad, descripcion, ip, host, origen, extra)
+                VALUES (NOW(), %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, [usuario_id, usuario_nombre, modulo, accion, entidad, id_entidad, 
+                  descripcion, ip, host, origen, extra])
+    
+    @property
+    def accion_color(self):
+        """Retorna un color Bootstrap según el tipo de acción"""
+        colores = {
+            'CREAR': 'success',
+            'EDITAR': 'warning',
+            'ELIMINAR': 'danger',
+            'VER': 'info',
+            'LOGIN': 'primary',
+            'LOGOUT': 'secondary',
+            'ANULAR': 'danger',
+            'APROBAR': 'success',
+            'RECHAZAR': 'danger',
+        }
+        return colores.get(self.accion, 'secondary')

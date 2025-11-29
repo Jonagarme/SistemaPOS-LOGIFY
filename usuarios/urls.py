@@ -26,6 +26,10 @@ urlpatterns = [
     path('roles/crear/', views.crear_rol, name='crear_rol'),
     path('roles/<int:rol_id>/editar/', views.editar_rol, name='editar_rol'),
     
+    # Auditoría
+    path('auditoria/', views.lista_auditoria, name='lista_auditoria'),
+    path('auditoria/<int:auditoria_id>/', views.detalle_auditoria, name='detalle_auditoria'),
+    
     # Gestión de usuarios (manteniendo URLs originales para compatibilidad)
     path('', views.lista_usuarios, name='lista'),
     path('crear/', views.crear_usuario, name='crear'),

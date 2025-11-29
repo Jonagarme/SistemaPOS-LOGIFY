@@ -152,3 +152,94 @@ def solo_administrador(view_func):
             return redirect('usuarios:dashboard')
     
     return wrapper
+
+
+def registrar_auditoria(modulo, accion, entidad=None, obtener_id_entidad=None, descripcion_template=None):
+    """
+    Decorador que registra automáticamente las acciones en la tabla de auditoría
+    
+    Uso:
+        @registrar_auditoria('productos', 'CREAR', 'producto', 
+                            obtener_id_entidad=lambda response: response.context.get('producto_id'),
+                            descripcion_template='Creó el producto {nombre}')
+        def crear_producto(request):
+            ...
+    
+    Args:
+        modulo: Módulo del sistema (productos, ventas, caja, etc.)
+        accion: Tipo de acción (CREAR, EDITAR, ELIMINAR, VER, etc.)
+        entidad: Tipo de entidad (producto, venta, cliente, etc.)
+        obtener_id_entidad: Función para obtener el ID de la entidad desde kwargs o string con nombre del parámetro
+        descripcion_template: Template string para la descripción
+    """
+    def decorator(view_func):
+        @wraps(view_func)
+        def wrapper(request, *args, **kwargs):
+            # Ejecutar la vista original
+            response = view_func(request, *args, **kwargs)
+            
+            try:
+                # Obtener usuario
+                usuario_id = request.session.get('usuario_sistema_id')
+                if not usuario_id:
+                    return response
+                
+                # Obtener nombre de usuario
+                usuario_nombre = request.user.username if hasattr(request.user, 'username') else 'Sistema'
+                
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT nombreCompleto FROM usuarios WHERE id = %s", [usuario_id])
+                    result = cursor.fetchone()
+                    if result:
+                        usuario_nombre = result[0]
+                
+                # Obtener ID de entidad
+                id_entidad = None
+                if obtener_id_entidad:
+                    if callable(obtener_id_entidad):
+                        id_entidad = obtener_id_entidad(*args, **kwargs)
+                    elif isinstance(obtener_id_entidad, str):
+                        id_entidad = kwargs.get(obtener_id_entidad)
+                elif 'pk' in kwargs:
+                    id_entidad = kwargs['pk']
+                elif 'id' in kwargs:
+                    id_entidad = kwargs['id']
+                
+                # Generar descripción
+                descripcion = descripcion_template or f'{accion} en {modulo}'
+                if kwargs:
+                    try:
+                        descripcion = descripcion.format(**kwargs)
+                    except:
+                        pass
+                
+                # Obtener datos extra del POST
+                extra = None
+                if request.method == 'POST' and accion in ['CREAR', 'EDITAR', 'ELIMINAR']:
+                    import json
+                    extra_dict = {key: value for key, value in request.POST.items() 
+                                 if not key.startswith('csrf') and key not in ['password', 'contrasena']}
+                    extra = json.dumps(extra_dict, ensure_ascii=False) if extra_dict else None
+                
+                # Registrar en auditoría
+                from usuarios.models import Auditoria
+                Auditoria.registrar(
+                    usuario_id=usuario_id,
+                    usuario_nombre=usuario_nombre,
+                    modulo=modulo,
+                    accion=accion,
+                    entidad=entidad,
+                    id_entidad=id_entidad,
+                    descripcion=descripcion,
+                    request=request,
+                    extra=extra
+                )
+                
+            except Exception as e:
+                # No fallar la vista si hay error en auditoría
+                print(f"Error registrando auditoría: {e}")
+            
+            return response
+        
+        return wrapper
+    return decorator

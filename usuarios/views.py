@@ -97,6 +97,7 @@ def custom_login(request):
                 # Obtener datos completos del usuario desde tu tabla
                 nombre_completo = getattr(user, 'nombre_completo', user.get_full_name() or user.username)
                 rol_nombre = getattr(user, 'rol_nombre', 'Usuario')
+                usuario_sistema_id = getattr(user, 'usuario_sistema_id', None)
                 
                 # Guardar información del usuario en sesión para modo offline
                 request.session['usuario_offline'] = {
@@ -104,8 +105,19 @@ def custom_login(request):
                     'username': user.username,
                     'nombre_completo': nombre_completo,
                     'rol_nombre': rol_nombre,
-                    'usuario_sistema_id': getattr(user, 'usuario_sistema_id', None)
+                    'usuario_sistema_id': usuario_sistema_id
                 }
+                
+                # Registrar en auditoría
+                from usuarios.models import Auditoria
+                Auditoria.registrar(
+                    usuario_id=usuario_sistema_id or user.id,
+                    usuario_nombre=nombre_completo,
+                    modulo='usuarios',
+                    accion='LOGIN',
+                    descripcion=f'{nombre_completo} ({rol_nombre}) inició sesión',
+                    request=request
+                )
                 
                 # Mensajes de bienvenida personalizados
                 import datetime
@@ -126,6 +138,16 @@ def custom_login(request):
                 next_url = request.GET.get('next', 'usuarios:dashboard')
                 return redirect(next_url)
             else:
+                # Registrar intento fallido
+                from usuarios.models import Auditoria
+                Auditoria.registrar(
+                    usuario_id=0,
+                    usuario_nombre=username,
+                    modulo='usuarios',
+                    accion='LOGIN_FALLIDO',
+                    descripcion=f'Intento fallido de login para usuario: {username}',
+                    request=request
+                )
                 messages.error(request, 'Usuario o contraseña incorrectos, o tu cuenta está desactivada.')
         else:
             messages.error(request, 'Por favor, completa todos los campos.')
@@ -137,6 +159,7 @@ def custom_logout(request):
     """Vista de logout personalizada con mensaje personalizado"""
     nombre_usuario = ""
     rol_usuario = ""
+    usuario_sistema_id = None
     
     # Obtener información del usuario antes del logout
     if request.user.is_authenticated:
@@ -149,8 +172,9 @@ def custom_logout(request):
         if hasattr(request.user, 'rol_nombre'):
             rol_usuario = request.user.rol_nombre
         
-        # Si tenemos ID del usuario del sistema, obtener datos actualizados
+        # Obtener ID del usuario del sistema
         if hasattr(request.user, 'usuario_sistema_id'):
+            usuario_sistema_id = request.user.usuario_sistema_id
             try:
                 with connection.cursor() as cursor:
                     cursor.execute("""
@@ -166,6 +190,17 @@ def custom_logout(request):
                         rol_usuario = row[1] or "Usuario"
             except:
                 pass  # Si hay error, usar los datos que ya tenemos
+        
+        # Registrar logout en auditoría ANTES de cerrar sesión
+        from usuarios.models import Auditoria
+        Auditoria.registrar(
+            usuario_id=usuario_sistema_id or request.user.id,
+            usuario_nombre=nombre_usuario,
+            modulo='usuarios',
+            accion='LOGOUT',
+            descripcion=f'{nombre_usuario} ({rol_usuario}) cerró sesión',
+            request=request
+        )
     
     logout(request)
     
@@ -829,6 +864,145 @@ def editar_rol(request, rol_id):
         messages.error(request, f'Error al editar rol: {str(e)}')
         print(f"Error detallado: {e}")
         return redirect('usuarios:lista_roles')
+
+@login_required
+def lista_auditoria(request):
+    """Lista todos los registros de auditoría con filtros y paginación"""
+    try:
+        from django.core.paginator import Paginator
+        
+        # Obtener parámetros de filtro
+        fecha_desde = request.GET.get('fecha_desde', '')
+        fecha_hasta = request.GET.get('fecha_hasta', '')
+        usuario_filtro = request.GET.get('usuario', '')
+        modulo_filtro = request.GET.get('modulo', '')
+        accion_filtro = request.GET.get('accion', '')
+        page_number = request.GET.get('page', 1)
+        
+        # Construir query con filtros
+        query = """
+            SELECT a.id, a.fecha, a.usuario, a.modulo, a.accion, a.entidad, 
+                   a.idEntidad, a.descripcion, a.ip, a.origen
+            FROM auditoria a
+            WHERE 1=1
+        """
+        params = []
+        
+        if fecha_desde:
+            query += " AND DATE(a.fecha) >= %s"
+            params.append(fecha_desde)
+        
+        if fecha_hasta:
+            query += " AND DATE(a.fecha) <= %s"
+            params.append(fecha_hasta)
+        
+        if usuario_filtro:
+            query += " AND a.usuario LIKE %s"
+            params.append(f'%{usuario_filtro}%')
+        
+        if modulo_filtro:
+            query += " AND a.modulo = %s"
+            params.append(modulo_filtro)
+        
+        if accion_filtro:
+            query += " AND a.accion = %s"
+            params.append(accion_filtro)
+        
+        query += " ORDER BY a.fecha DESC"
+        
+        with connection.cursor() as cursor:
+            cursor.execute(query, params)
+            
+            registros = []
+            for row in cursor.fetchall():
+                registros.append({
+                    'id': row[0],
+                    'fecha': row[1],
+                    'usuario': row[2],
+                    'modulo': row[3],
+                    'accion': row[4],
+                    'entidad': row[5],
+                    'id_entidad': row[6],
+                    'descripcion': row[7],
+                    'ip': row[8],
+                    'origen': row[9],
+                })
+            
+            # Obtener listado de módulos y acciones para filtros
+            cursor.execute("SELECT DISTINCT modulo FROM auditoria ORDER BY modulo")
+            modulos = [row[0] for row in cursor.fetchall()]
+            
+            cursor.execute("SELECT DISTINCT accion FROM auditoria WHERE accion IS NOT NULL ORDER BY accion")
+            acciones = [row[0] for row in cursor.fetchall()]
+        
+        # Aplicar paginación
+        paginator = Paginator(registros, 50)  # 50 registros por página
+        page_obj = paginator.get_page(page_number)
+        
+        return render(request, 'usuarios/lista_auditoria.html', {
+            'page_obj': page_obj,
+            'modulos': modulos,
+            'acciones': acciones,
+            'fecha_desde': fecha_desde,
+            'fecha_hasta': fecha_hasta,
+            'usuario_filtro': usuario_filtro,
+            'modulo_filtro': modulo_filtro,
+            'accion_filtro': accion_filtro,
+            'total_registros': len(registros),
+        })
+        
+    except Exception as e:
+        messages.error(request, f'Error al cargar auditoría: {str(e)}')
+        print(f"Error en lista_auditoria: {e}")
+        return redirect('usuarios:dashboard')
+
+@login_required
+def detalle_auditoria(request, auditoria_id):
+    """Muestra el detalle completo de un registro de auditoría"""
+    try:
+        with connection.cursor() as cursor:
+            cursor.execute("""
+                SELECT a.id, a.fecha, a.idUsuario, a.usuario, a.modulo, a.accion,
+                       a.entidad, a.idEntidad, a.descripcion, a.ip, a.host, 
+                       a.origen, a.extra
+                FROM auditoria a
+                WHERE a.id = %s
+            """, [auditoria_id])
+            
+            row = cursor.fetchone()
+            if not row:
+                messages.error(request, 'Registro de auditoría no encontrado')
+                return redirect('usuarios:lista_auditoria')
+            
+            registro = {
+                'id': row[0],
+                'fecha': row[1],
+                'id_usuario': row[2],
+                'usuario': row[3],
+                'modulo': row[4],
+                'accion': row[5],
+                'entidad': row[6],
+                'id_entidad': row[7],
+                'descripcion': row[8],
+                'ip': row[9],
+                'host': row[10],
+                'origen': row[11],
+                'extra': row[12],
+            }
+            
+            # Parsear extra si es JSON
+            if registro['extra']:
+                try:
+                    import json
+                    registro['extra_json'] = json.loads(registro['extra'])
+                except:
+                    registro['extra_json'] = None
+        
+        return render(request, 'usuarios/detalle_auditoria.html', {'registro': registro})
+        
+    except Exception as e:
+        messages.error(request, f'Error al cargar detalle: {str(e)}')
+        return redirect('usuarios:lista_auditoria')
 
 @login_required
 def perfil_usuario(request):

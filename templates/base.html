@@ -460,10 +460,18 @@
                             <!-- Gestión de Roles -->
                             <li><h6 class="dropdown-header">Roles y Permisos</h6></li>
                             <li><a class="dropdown-item" href="{% url 'usuarios:lista_roles' %}">
-                                <i class="fas fa-user-tag"></i> Lista de Roles
+                                <i class="fas fa-user-shield"></i> Lista de Roles
                             </a></li>
                             <li><a class="dropdown-item" href="{% url 'usuarios:crear_rol' %}">
                                 <i class="fas fa-plus-circle"></i> Crear Rol
+                            </a></li>
+                            
+                            <li><hr class="dropdown-divider"></li>
+                            
+                            <!-- Auditoría -->
+                            <li><h6 class="dropdown-header">Auditoría</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'usuarios:lista_auditoria' %}">
+                                <i class="fas fa-clipboard-list"></i> Registro de Auditoría
                             </a></li>
                         </ul>
                     </li>
