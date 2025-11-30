@@ -1,0 +1,159 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-edit text-primary"></i> {{ titulo }}
+                </h2>
+                <div>
+                    <a href="{% url 'productos:categorias' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver a Categorías
+                    </a>
+                </div>
+            </div>
+
+            <!-- Mensajes -->
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Formulario -->
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-tags"></i> Datos de la Categoría
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" id="form-categoria">
+                                {% csrf_token %}
+                                
+                                <div class="mb-3">
+                                    <label for="nombre" class="form-label">
+                                        Nombre de la Categoría <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control" 
+                                           id="nombre" 
+                                           name="nombre" 
+                                           value="{{ categoria.nombre }}" 
+                                           required
+                                           placeholder="Ej: Medicamentos, Cosméticos, Vitaminas">
+                                    <small class="text-muted">
+                                        Ingrese un nombre descriptivo para la categoría
+                                    </small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="descripcion" class="form-label">
+                                        Descripción
+                                    </label>
+                                    <textarea class="form-control" 
+                                              id="descripcion" 
+                                              name="descripcion" 
+                                              rows="3"
+                                              placeholder="Descripción opcional de la categoría">{{ categoria.descripcion|default:'' }}</textarea>
+                                    <small class="text-muted">
+                                        Descripción adicional de la categoría (opcional)
+                                    </small>
+                                </div>
+
+                                <div class="mb-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               id="activa" 
+                                               name="activa"
+                                               {% if categoria.activa %}checked{% endif %}>
+                                        <label class="form-check-label" for="activa">
+                                            <i class="fas fa-check-circle text-success"></i> Categoría Activa
+                                        </label>
+                                    </div>
+                                    <small class="text-muted">
+                                        Las categorías inactivas no se mostrarán en los formularios de productos
+                                    </small>
+                                </div>
+
+                                <hr>
+
+                                <div class="d-flex justify-content-between">
+                                    <a href="{% url 'productos:categorias' %}" class="btn btn-secondary">
+                                        <i class="fas fa-times"></i> Cancelar
+                                    </a>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i> Guardar Cambios
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Información adicional -->
+                    <div class="card mt-3">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-info-circle"></i> Información Adicional
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-2">
+                                        <strong>ID de Categoría:</strong> {{ categoria.id }}
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-2">
+                                        <strong>Productos asociados:</strong> 
+                                        <span class="badge bg-info">
+                                            {{ categoria.productos.count|default:0 }} productos
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            {% if categoria.productos.count > 0 %}
+                            <div class="alert alert-warning mt-3">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Esta categoría tiene <strong>{{ categoria.productos.count }} producto(s)</strong> asociado(s). 
+                                Los cambios afectarán a todos estos productos.
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('form-categoria');
+    
+    form.addEventListener('submit', function(e) {
+        const nombre = document.getElementById('nombre').value.trim();
+        
+        if (!nombre) {
+            e.preventDefault();
+            alert('Por favor ingrese el nombre de la categoría');
+            document.getElementById('nombre').focus();
+            return false;
+        }
+    });
+});
+</script>
+{% endblock %}
