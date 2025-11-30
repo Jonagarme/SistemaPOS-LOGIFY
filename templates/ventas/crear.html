@@ -1528,7 +1528,7 @@
             <div class="info-label">Establecimiento</div>
             <div class="info-value">
                 <i class="fas fa-store me-2"></i>
-                FARMACIA MEDICAMPHARMA BOYACÁ
+                {{ empresa.nombre_comercial|upper }}
             </div>
         </div>
 
@@ -1552,7 +1552,11 @@
             <div class="info-label">Usuario</div>
             <div class="info-value">
                 <i class="fas fa-user me-2"></i>
-                {{ request.user.username|upper }}
+                {% if request.user.first_name or request.user.last_name %}
+                    {{ request.user.get_full_name|title }}
+                {% else %}
+                    {{ request.user.username|upper }}
+                {% endif %}
             </div>
         </div>
 
@@ -1645,9 +1649,9 @@
                         Acciones Rápidas
                     </h6>
                     <div class="action-buttons">
-                        <button class="action-btn" onclick="showShiftChange()">
-                            <i class="fas fa-exchange-alt"></i>
-                            Turno
+                        <button class="action-btn" onclick="window.location.href='{% url 'caja:cerrar' %}'">
+                            <i class="fas fa-cash-register"></i>
+                            Cerrar Caja
                             <span class="shortcut">F2</span>
                         </button>
                         <button class="action-btn" onclick="showInvoices()">
@@ -3859,10 +3863,10 @@ document.addEventListener('keydown', function(e) {
         }
     }
     
-    // F2 - Cambio de turno
+    // F2 - Cerrar Caja
     if (e.key === 'F2') {
         e.preventDefault();
-        showShiftChange();
+        window.location.href = '{% url "caja:cerrar" %}';
     }
     // F3 - Facturas
     else if (e.key === 'F3') {

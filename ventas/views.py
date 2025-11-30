@@ -1143,12 +1143,16 @@ def nueva_venta(request):
         if categorias_cache:
             categorias_list = categorias_cache
     
+    # Obtener configuración de la empresa
+    empresa_config = obtener_configuracion_empresa()
+    
     context = {
         'clientes': clientes_list,
         'productos': productos_list,
         'categorias': categorias_list,
         'caja_abierta': caja_abierta_data,
         'modo_offline': modo_offline,
+        'empresa': empresa_config,
         'titulo': 'Punto de Venta' + (' - MODO OFFLINE' if modo_offline else '')
     }
     
