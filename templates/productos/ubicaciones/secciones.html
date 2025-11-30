@@ -7,6 +7,8 @@
     .seccion-card {
         border-left: 4px solid;
         transition: transform 0.2s;
+        position: relative;
+        overflow: visible !important;
     }
     .seccion-card:hover {
         transform: translateY(-2px);
@@ -19,6 +21,20 @@
         display: inline-block;
         border: 2px solid #fff;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .dropdown-menu {
+        position: absolute !important;
+        z-index: 1050 !important;
+        box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+    }
+    .card-body {
+        overflow: visible !important;
+    }
+    #secciones-grid {
+        overflow: visible !important;
+    }
+    .col-lg-6, .col-xl-4 {
+        overflow: visible !important;
     }
 </style>
 {% endblock %}
@@ -133,18 +149,18 @@
                                                 <p class="card-text text-muted small mb-2">{{ seccion.descripcion }}</p>
                                             </div>
                                             <div class="dropdown">
-                                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown">
+                                                <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="dropdown" aria-expanded="false">
                                                     <i class="fas fa-ellipsis-v"></i>
                                                 </button>
-                                                <ul class="dropdown-menu">
-                                                    <li><a class="dropdown-item" href="#" onclick="editarSeccion({{ seccion.id|default:'0' }})">
+                                                <ul class="dropdown-menu dropdown-menu-end shadow">
+                                                    <li><a class="dropdown-item" href="#" onclick="editarSeccion({{ seccion.id|default:'0' }}); return false;">
                                                         <i class="fas fa-edit"></i> Editar
                                                     </a></li>
                                                     <li><a class="dropdown-item" href="{% if seccion.id %}{% url 'productos:gestionar_perchas' seccion.id %}{% else %}#{% endif %}">
                                                         <i class="fas fa-th-large"></i> Gestionar Perchas
                                                     </a></li>
                                                     <li><hr class="dropdown-divider"></li>
-                                                    <li><a class="dropdown-item text-danger" href="#" onclick="eliminarSeccion({{ seccion.id|default:'0' }})">
+                                                    <li><a class="dropdown-item text-danger" href="#" onclick="eliminarSeccion({{ seccion.id|default:'0' }}); return false;">
                                                         <i class="fas fa-trash"></i> Eliminar
                                                     </a></li>
                                                 </ul>

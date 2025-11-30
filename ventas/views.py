@@ -1055,8 +1055,32 @@ def nueva_venta(request):
             try:
                 clientes_list = list(Cliente.objects.filter(estado=True, anulado=False).values('id', 'nombres', 'apellidos', 'cedula_ruc'))
                 
-                # Cargar todos los productos para cache (sin límite)
-                todos_productos = list(Producto.objects.filter(activo=True, stock__gt=0).values())
+                # Cargar productos con información de ubicación usando SQL directo
+                from django.db import connection
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        SELECT p.id, p.codigoPrincipal, p.nombre, p.precioVenta, p.stock,
+                               p.idCategoria, p.activo,
+                               u.fila, u.columna, pr.nombre as percha_nombre, s.nombre as seccion_nombre, s.color as seccion_color
+                        FROM productos p
+                        LEFT JOIN productos_ubicacionproducto u ON p.id = u.producto_id AND u.activo = 1
+                        LEFT JOIN productos_percha pr ON u.percha_id = pr.id
+                        LEFT JOIN productos_seccion s ON pr.seccion_id = s.id
+                        WHERE p.activo = 1 AND p.stock > 0
+                        ORDER BY p.nombre
+                    """)
+                    
+                    columns = [col[0] for col in cursor.description]
+                    todos_productos = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                    
+                    # Formatear ubicación legible
+                    for producto in todos_productos:
+                        if producto.get('fila') and producto.get('columna'):
+                            producto['ubicacion'] = f"{producto.get('seccion_nombre', 'N/A')} - {producto.get('percha_nombre', 'N/A')} (F{producto['fila']}C{producto['columna']})"
+                            producto['tiene_ubicacion'] = True
+                        else:
+                            producto['ubicacion'] = 'Sin ubicar'
+                            producto['tiene_ubicacion'] = False
                 
                 # Solo mostrar primeros 20 productos en la página inicial
                 productos_list = todos_productos[:20]
@@ -1586,7 +1610,7 @@ def buscar_producto(request):
                         p.id, p.codigoPrincipal, p.nombre, p.precioVenta, p.stock,
                         c.nombre as categoria,
                         CASE WHEN u.id IS NOT NULL 
-                             THEN CONCAT(s.nombre, ' > ', pr.nombre, ' > F', u.fila, 'C', u.columna)
+                             THEN CONCAT(s.nombre, ' - ', pr.nombre, ' (F', u.fila, 'C', u.columna, ')')
                              ELSE NULL 
                         END as ubicacion_completa,
                         CASE WHEN u.id IS NOT NULL 
@@ -1611,7 +1635,7 @@ def buscar_producto(request):
                         p.id, p.codigoPrincipal, p.nombre, p.precioVenta, p.stock,
                         c.nombre as categoria,
                         CASE WHEN u.id IS NOT NULL 
-                             THEN CONCAT(s.nombre, ' > ', pr.nombre, ' > F', u.fila, 'C', u.columna)
+                             THEN CONCAT(s.nombre, ' - ', pr.nombre, ' (F', u.fila, 'C', u.columna, ')')
                              ELSE NULL 
                         END as ubicacion_completa,
                         CASE WHEN u.id IS NOT NULL 
@@ -1646,12 +1670,15 @@ def buscar_producto(request):
             productos_data.append({
                 'id': producto[0],
                 'codigo': producto[1],
+                'codigo_principal': producto[1],  # Alias para compatibilidad
                 'nombre': producto[2],
                 'precio': float(producto[3]) if producto[3] else 0,
+                'precio_venta': float(producto[3]) if producto[3] else 0,  # Alias para compatibilidad
                 'stock': float(producto[4]) if producto[4] else 0,
                 'categoria': producto[5] or '',
                 'aplica_iva': True,  # Por defecto para el negocio
                 'tiene_ubicacion': tiene_ubicacion,
+                'ubicacion': producto[6] if tiene_ubicacion else 'Sin ubicar',  # Campo que usa el JavaScript
                 'ubicacion_completa': producto[6] if tiene_ubicacion else None,
                 'codigo_ubicacion': producto[7] if tiene_ubicacion else None,
                 'color_seccion': producto[8] if tiene_ubicacion else None,

@@ -1715,15 +1715,24 @@
                         <div class="product-card-enhanced" 
                             data-product-id="{{ producto.id }}"
                             data-product-name="{{ producto.nombre|escapejs }}"
-                            data-product-price="{% if producto.precio_venta %}{{ producto.precio_venta|stringformat:'.2f' }}{% else %}0.00{% endif %}"
+                            data-product-price="{% if producto.precioVenta %}{{ producto.precioVenta|stringformat:'.2f' }}{% else %}0.00{% endif %}"
                             data-product-stock="{{ producto.stock|default:0 }}"
-                            data-category-id="{% if producto.id_categoria %}{{ producto.id_categoria.id }}{% else %}{% endif %}"
+                            data-category-id="{% if producto.idCategoria %}{{ producto.idCategoria }}{% else %}{% endif %}"
                             data-name="{{ producto.nombre|lower }}"
-                            data-code="{{ producto.codigo_principal }}"
+                            data-code="{{ producto.codigoPrincipal }}"
                             onclick="addToCartFromElement(this)">
                             <div class="name">{{ producto.nombre }}</div>
-                            <div class="code">Cód: {{ producto.codigo_principal }}</div>
-                            <div class="price">$ <span class="price-value">{% if producto.precio_venta %}{{ producto.precio_venta|floatformat:2 }}{% else %}0.00{% endif %}</span></div>
+                            <div class="code">Cód: {{ producto.codigoPrincipal }}</div>
+                            {% if producto.tiene_ubicacion %}
+                            <div class="ubicacion" style="font-size: 0.75rem; color: #17a2b8; margin: 2px 0;">
+                                <i class="fas fa-map-marker-alt"></i> {{ producto.ubicacion }}
+                            </div>
+                            {% else %}
+                            <div class="ubicacion" style="font-size: 0.75rem; color: #6c757d; margin: 2px 0;">
+                                <i class="fas fa-question-circle"></i> Sin ubicar
+                            </div>
+                            {% endif %}
+                            <div class="price">$ <span class="price-value">{% if producto.precioVenta %}{{ producto.precioVenta|floatformat:2 }}{% else %}0.00{% endif %}</span></div>
                             <span class="stock {% if producto.stock > 10 %}stock-high{% elif producto.stock > 0 %}stock-low{% else %}stock-none{% endif %}">
                                 Stock: {{ producto.stock|default:0 }}
                             </span>
@@ -3801,6 +3810,17 @@ function updateProductsGrid(productos, categoryFilter) {
         const codigo = producto.codigo_principal || producto.codigo || 'N/A';
         const nombre = producto.nombre || 'Sin nombre';
         
+        // Información de ubicación
+        const tieneUbicacion = producto.tiene_ubicacion || false;
+        const ubicacion = producto.ubicacion || 'Sin ubicar';
+        const ubicacionHtml = tieneUbicacion 
+            ? `<div class="ubicacion" style="font-size: 0.75rem; color: #17a2b8; margin: 2px 0;">
+                   <i class="fas fa-map-marker-alt"></i> ${ubicacion}
+               </div>`
+            : `<div class="ubicacion" style="font-size: 0.75rem; color: #6c757d; margin: 2px 0;">
+                   <i class="fas fa-question-circle"></i> Sin ubicar
+               </div>`;
+        
         html += `
             <div class="product-card-enhanced" 
                  data-product-id="${producto.id}"
@@ -3813,6 +3833,7 @@ function updateProductsGrid(productos, categoryFilter) {
                  onclick="addToCartFromElement(this)">
                 <div class="name">${nombre}</div>
                 <div class="code">Cód: ${codigo}</div>
+                ${ubicacionHtml}
                 <div class="price">$ ${precioFormateado}</div>
                 <span class="stock ${stockClass}">
                     Stock: ${stock}

@@ -180,42 +180,75 @@ def buscar_productos_api(request):
     if len(term) < 2:
         return JsonResponse({'results': []})
     
-    productos = Producto.objects.filter(
-        Q(nombre__icontains=term) |
-        Q(codigo_principal__icontains=term) |
-        Q(codigo_auxiliar__icontains=term),
-        activo=True,
-        anulado=False
-    ).select_related('id_categoria', 'id_marca', 'id_laboratorio')[:limit]
+    # Usar SQL directo para incluir información de ubicación
+    from django.db import connection
+    
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT p.id, p.codigoPrincipal, p.codigoAuxiliar, p.nombre, p.precioVenta, p.stock,
+                   c.nombre as categoria, m.nombre as marca, l.nombre as laboratorio,
+                   p.esPsicotropico, p.requiereCadenaFrio, p.requiereSeguimiento,
+                   u.fila, u.columna, pr.nombre as percha_nombre, s.nombre as seccion_nombre, s.color as seccion_color
+            FROM productos p
+            LEFT JOIN categorias c ON p.idCategoria = c.id
+            LEFT JOIN marcas m ON p.idMarca = m.id
+            LEFT JOIN laboratorios l ON p.idLaboratorio = l.id
+            LEFT JOIN productos_ubicacionproducto u ON p.id = u.producto_id AND u.activo = 1
+            LEFT JOIN productos_percha pr ON u.percha_id = pr.id
+            LEFT JOIN productos_seccion s ON pr.seccion_id = s.id
+            WHERE (p.nombre LIKE %s OR p.codigoPrincipal LIKE %s OR p.codigoAuxiliar LIKE %s)
+            AND p.activo = 1 AND p.anulado = 0
+            LIMIT %s
+        """, [f'%{term}%', f'%{term}%', f'%{term}%', limit])
+        
+        columns = [col[0] for col in cursor.description]
+        productos = [dict(zip(columns, row)) for row in cursor.fetchall()]
     
     if query_type == 'search':
         # Respuesta detallada para búsquedas
         results = []
         for producto in productos:
+            # Formatear ubicación
+            if producto.get('fila') and producto.get('columna'):
+                ubicacion = f"{producto.get('seccion_nombre', 'N/A')} - {producto.get('percha_nombre', 'N/A')} (F{producto['fila']}C{producto['columna']})"
+                tiene_ubicacion = True
+            else:
+                ubicacion = 'Sin ubicar'
+                tiene_ubicacion = False
+            
             results.append({
-                'id': producto.id,
-                'codigo_principal': producto.codigo_principal,
-                'codigo_auxiliar': producto.codigo_auxiliar or '',
-                'nombre': producto.nombre,
-                'precio_venta': float(producto.precio_venta),
-                'stock': float(producto.stock),
-                'categoria': producto.id_categoria.nombre if producto.id_categoria else '',
-                'marca': producto.id_marca.nombre if producto.id_marca else '',
-                'laboratorio': producto.id_laboratorio.nombre if producto.id_laboratorio else '',
-                'es_psicotropico': producto.es_psicotropico,
-                'requiere_cadena_frio': producto.requiere_cadena_frio,
-                'requiere_seguimiento': producto.requiere_seguimiento,
+                'id': producto['id'],
+                'codigo_principal': producto['codigoPrincipal'],
+                'codigo_auxiliar': producto.get('codigoAuxiliar') or '',
+                'nombre': producto['nombre'],
+                'precio_venta': float(producto['precioVenta'] or 0),
+                'stock': float(producto['stock'] or 0),
+                'categoria': producto.get('categoria') or '',
+                'marca': producto.get('marca') or '',
+                'laboratorio': producto.get('laboratorio') or '',
+                'es_psicotropico': producto.get('esPsicotropico') or False,
+                'requiere_cadena_frio': producto.get('requiereCadenaFrio') or False,
+                'requiere_seguimiento': producto.get('requiereSeguimiento') or False,
+                'ubicacion': ubicacion,
+                'tiene_ubicacion': tiene_ubicacion,
+                'seccion_color': producto.get('seccion_color'),
             })
         return JsonResponse({'productos': results})
     else:
         # Respuesta simple para autocomplete
         results = []
         for producto in productos:
+            # Formatear ubicación para autocomplete
+            if producto.get('fila') and producto.get('columna'):
+                ubicacion_texto = f" 📍 {producto.get('seccion_nombre', 'N/A')} F{producto['fila']}C{producto['columna']}"
+            else:
+                ubicacion_texto = " ❓ Sin ubicar"
+            
             results.append({
-                'id': producto.id,
-                'text': f"{producto.codigo_principal} - {producto.nombre}",
-                'precio': float(producto.precio_venta),
-                'stock': float(producto.stock)
+                'id': producto['id'],
+                'text': f"{producto['codigoPrincipal']} - {producto['nombre']}{ubicacion_texto}",
+                'precio': float(producto['precioVenta'] or 0),
+                'stock': float(producto['stock'] or 0)
             })
         return JsonResponse({'results': results})
 

@@ -403,8 +403,8 @@ def ubicar_producto(request):
             # Crear nueva ubicación
             cursor.execute("""
                 INSERT INTO productos_ubicacionproducto 
-                (producto_id, percha_id, fila, columna, observaciones, activo)
-                VALUES (%s, %s, %s, %s, %s, 1)
+                (producto_id, percha_id, fila, columna, observaciones, fecha_ubicacion, activo)
+                VALUES (%s, %s, %s, %s, %s, NOW(), 1)
             """, [producto_id, percha_id, fila, columna, observaciones])
             
             print(f"✅ Producto {producto[1]} ubicado en F{fila}C{columna}")
