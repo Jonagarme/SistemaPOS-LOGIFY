@@ -135,7 +135,10 @@
                                 </label>
                                 <input type="date" class="form-control" id="fecha_caducidad" name="fecha_caducidad"
                                        value="{{ producto.fecha_caducidad|date:'Y-m-d'|default:'' }}">
-                                <small class="text-muted">Fecha de expiración del producto</small>
+                                <small class="text-muted">Fecha de expiración del producto (debe ser posterior a hoy)</small>
+                                <div class="invalid-feedback">
+                                    La fecha de caducidad no puede ser anterior a la fecha actual
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -486,6 +489,32 @@ document.addEventListener('DOMContentLoaded', function() {
     const stockStatus = document.getElementById('stock-status');
     const puntoReorden = document.getElementById('punto-reorden');
     const form = document.getElementById('producto-form');
+    const fechaCaducidad = document.getElementById('fecha_caducidad');
+
+    // Establecer fecha mínima para caducidad (hoy)
+    const hoy = new Date();
+    const fechaMinima = hoy.toISOString().split('T')[0];
+    fechaCaducidad.setAttribute('min', fechaMinima);
+
+    // Validar fecha de caducidad al cambiar
+    fechaCaducidad.addEventListener('change', function() {
+        if (this.value) {
+            const fechaSeleccionada = new Date(this.value);
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            
+            if (fechaSeleccionada < hoy) {
+                this.setCustomValidity('La fecha de caducidad no puede ser anterior a la fecha actual');
+                this.classList.add('is-invalid');
+            } else {
+                this.setCustomValidity('');
+                this.classList.remove('is-invalid');
+            }
+        } else {
+            this.setCustomValidity('');
+            this.classList.remove('is-invalid');
+        }
+    });
 
     // Función para calcular y mostrar métricas
     function actualizarCalculos() {
@@ -547,8 +576,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Validación del formulario
     form.addEventListener('submit', function(e) {
-        e.preventDefault();
-        
         const costo = parseFloat(costoUnidad.value) || 0;
         const precio = parseFloat(precioVenta.value) || 0;
         const stockMin = parseFloat(stockMinimo.value) || 0;
@@ -565,13 +592,26 @@ document.addEventListener('DOMContentLoaded', function() {
             errores.push('El stock mínimo debe ser menor que el stock máximo');
         }
 
+        // Validar fecha de caducidad
+        if (fechaCaducidad.value) {
+            const fechaSeleccionada = new Date(fechaCaducidad.value);
+            const hoy = new Date();
+            hoy.setHours(0, 0, 0, 0);
+            
+            if (fechaSeleccionada < hoy) {
+                errores.push('La fecha de caducidad no puede ser anterior a la fecha actual');
+                fechaCaducidad.classList.add('is-invalid');
+            }
+        }
+
         if (errores.length > 0) {
+            e.preventDefault();
             alert('Errores encontrados:\n' + errores.join('\n'));
             return false;
         }
 
-        // Si todo está bien, enviar el formulario
-        this.submit();
+        // Limpiar el borrador al enviar exitosamente
+        localStorage.removeItem('producto_borrador');
     });
 
     // Autocompletado para códigos
@@ -584,31 +624,20 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Bootstrap form validation
     form.classList.add('needs-validation');
-});
 
-function confirmarEliminacion() {
-    if (confirm('¿Está seguro de que desea eliminar este producto? Esta acción no se puede deshacer.')) {
-        // Aquí implementarías la lógica de eliminación
-        alert('Funcionalidad de eliminación por implementar');
-    }
-}
+    // Auto-guardar borrador cada 2 minutos
+    setInterval(function() {
+        const formData = new FormData(document.getElementById('producto-form'));
+        const borrador = {};
+        for (let [key, value] of formData.entries()) {
+            borrador[key] = value;
+        }
+        localStorage.setItem('producto_borrador', JSON.stringify(borrador));
+    }, 120000);
 
-// Auto-guardar borrador cada 2 minutos
-setInterval(function() {
-    const formData = new FormData(document.getElementById('producto-form'));
-    const borrador = {};
-    for (let [key, value] of formData.entries()) {
-        borrador[key] = value;
-    }
-    localStorage.setItem('producto_borrador', JSON.stringify(borrador));
-}, 120000);
-
-// Cargar borrador al iniciar (solo si estamos creando un nuevo producto)
-window.addEventListener('load', function() {
-    // Verificar si es un producto existente (modo edición)
+    // Cargar borrador al iniciar (solo si estamos creando un nuevo producto)
     const esEdicion = document.querySelector('input[name="codigo_principal"]').value !== '';
     
-    // Solo cargar borrador si NO estamos editando un producto existente
     if (!esEdicion) {
         const borrador = localStorage.getItem('producto_borrador');
         if (borrador && confirm('Se encontró un borrador guardado. ¿Desea cargarlo?')) {
@@ -624,36 +653,27 @@ window.addEventListener('load', function() {
                 }
             }
             // Recalcular después de cargar
-            calcularTotales();
+            actualizarCalculos();
         }
+    } else {
+        // Si estamos editando, limpiar cualquier borrador antiguo
+        localStorage.removeItem('producto_borrador');
     }
-    
-    // Validar que precio de venta sea mayor que precio de compra
-    document.querySelector('form').addEventListener('submit', function(e) {
-        const costo = parseFloat(costoUnidad.value) || 0;
-        const venta = parseFloat(precioVenta.value) || 0;
-        
-        if (venta <= costo) {
-            e.preventDefault();
-            alert('El precio de venta debe ser mayor que el costo');
-            precioVenta.focus();
-        } else {
-            // Limpiar el borrador al enviar exitosamente el formulario
-            localStorage.removeItem('producto_borrador');
-        }
-            return false;
-        }
-    });
     
     // Limpiar borrador cuando se hace clic en "Volver a Productos" (Cancelar)
-    document.querySelector('a[href="{% url "productos:lista" %}"]').addEventListener('click', function() {
-        localStorage.removeItem('producto_borrador');
-    });
-    
-    // Si estamos editando, limpiar cualquier borrador antiguo
-    if (document.querySelector('input[name="codigo_principal"]').value !== '') {
-        localStorage.removeItem('producto_borrador');
+    const btnVolver = document.querySelector('a[href*="productos:lista"]');
+    if (btnVolver) {
+        btnVolver.addEventListener('click', function() {
+            localStorage.removeItem('producto_borrador');
+        });
     }
 });
+
+function confirmarEliminacion() {
+    if (confirm('¿Está seguro de que desea eliminar este producto? Esta acción no se puede deshacer.')) {
+        // Aquí implementarías la lógica de eliminación
+        alert('Funcionalidad de eliminación por implementar');
+    }
+}
 </script>
 {% endblock %}
