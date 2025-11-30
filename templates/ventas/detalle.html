@@ -1,0 +1,289 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block extra_css %}
+<style>
+    .factura-container {
+        background: white;
+        border-radius: 10px;
+        box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+    .factura-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 10px 10px 0 0;
+    }
+    .info-section {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+    }
+    .totales-box {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+    }
+    @media print {
+        .no-print {
+            display: none !important;
+        }
+        .factura-container {
+            box-shadow: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Botones de acción -->
+            <div class="d-flex justify-content-between align-items-center mb-4 no-print">
+                <h2>
+                    <i class="fas fa-file-invoice text-primary"></i> {{ titulo }}
+                </h2>
+                <div>
+                    <button onclick="window.print()" class="btn btn-success">
+                        <i class="fas fa-print"></i> Imprimir
+                    </button>
+                    <a href="{% url 'ventas:lista' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                </div>
+            </div>
+
+            <!-- Contenedor de la factura -->
+            <div class="factura-container">
+                <!-- Header -->
+                <div class="factura-header">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h3>FACTURA DE VENTA</h3>
+                            <p class="mb-0">Sistema POS - Farmacia</p>
+                        </div>
+                        <div class="col-md-6 text-end">
+                            <h4>{{ venta.numeroFactura }}</h4>
+                            <p class="mb-0">
+                                <i class="fas fa-calendar"></i> {{ venta.fechaEmision|date:"d/m/Y H:i" }}
+                            </p>
+                            {% if venta.numeroAutorizacion %}
+                            <small>Autorización: {{ venta.numeroAutorizacion }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Información del cliente y estado -->
+                <div class="p-4">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <div class="info-section">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-user text-primary"></i> Datos del Cliente
+                                </h5>
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <strong>Cliente:</strong><br>
+                                        {{ venta.cliente.nombre_completo|default:"Cliente Genérico" }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Identificación:</strong><br>
+                                        {{ venta.cliente.tipo_identificacion|default:"N/A" }}: {{ venta.cliente.cedula_ruc|default:"N/A" }}
+                                    </div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-md-6">
+                                        <strong>Teléfono:</strong> {{ venta.cliente.telefono_principal|default:"N/A" }}
+                                    </div>
+                                    <div class="col-md-6">
+                                        <strong>Email:</strong> {{ venta.cliente.email|default:"N/A" }}
+                                    </div>
+                                </div>
+                                {% if venta.cliente.direccion %}
+                                <div class="row mt-2">
+                                    <div class="col-12">
+                                        <strong>Dirección:</strong> {{ venta.cliente.direccion }}
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="info-section">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-info-circle text-success"></i> Estado de la Factura
+                                </h5>
+                                <div class="text-center">
+                                    {% if venta.anulado %}
+                                        <span class="badge bg-danger fs-5 p-3">
+                                            <i class="fas fa-ban"></i> ANULADA
+                                        </span>
+                                    {% elif venta.estado == 'PAGADA' %}
+                                        <span class="badge bg-success fs-5 p-3">
+                                            <i class="fas fa-check-circle"></i> PAGADA
+                                        </span>
+                                    {% elif venta.estado == 'EMITIDA' %}
+                                        <span class="badge bg-warning fs-5 p-3">
+                                            <i class="fas fa-clock"></i> EMITIDA
+                                        </span>
+                                    {% else %}
+                                        <span class="badge bg-secondary fs-5 p-3">
+                                            {{ venta.estado }}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                                <div class="mt-3 text-center">
+                                    <small class="text-muted">
+                                        Vendedor: {{ venta.usuario.get_full_name|default:"N/A" }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Detalle de productos -->
+                    <div class="table-responsive mt-4">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Producto</th>
+                                    <th class="text-center">Cantidad</th>
+                                    <th class="text-end">Precio Unit.</th>
+                                    <th class="text-end">Descuento</th>
+                                    <th class="text-end">IVA</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for detalle in detalles %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>
+                                        <strong>{{ detalle.productoNombre|default:"Producto" }}</strong>
+                                        <br>
+                                        <small class="text-muted">ID: {{ detalle.idProducto }}</small>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-info">{{ detalle.cantidad }}</span>
+                                    </td>
+                                    <td class="text-end">${{ detalle.precioUnitario|floatformat:2 }}</td>
+                                    <td class="text-end">
+                                        {% if detalle.descuentoValor > 0 %}
+                                            <span class="text-danger">-${{ detalle.descuentoValor|floatformat:2 }}</span>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end">${{ detalle.ivaValor|floatformat:2 }}</td>
+                                    <td class="text-end">
+                                        <strong>${{ detalle.total|floatformat:2 }}</strong>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center text-muted">
+                                        No hay productos en esta factura
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Totales -->
+                    <div class="row mt-4">
+                        <div class="col-md-8">
+                            <!-- Espacio para notas o información adicional -->
+                        </div>
+                        <div class="col-md-4">
+                            <div class="totales-box">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Subtotal:</span>
+                                    <strong>${{ venta.subtotal|floatformat:2 }}</strong>
+                                </div>
+                                {% if venta.descuento > 0 %}
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Descuento:</span>
+                                    <strong class="text-warning">-${{ venta.descuento|floatformat:2 }}</strong>
+                                </div>
+                                {% endif %}
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>IVA (15%):</span>
+                                    <strong>${{ venta.iva|floatformat:2 }}</strong>
+                                </div>
+                                <hr style="border-color: rgba(255,255,255,0.3);">
+                                <div class="d-flex justify-content-between">
+                                    <h4>TOTAL:</h4>
+                                    <h4><strong>${{ venta.total|floatformat:2 }}</strong></h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Información adicional -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Información:</strong> Esta factura fue creada el {{ venta.creadoDate|date:"d/m/Y H:i" }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Acciones adicionales (solo visible en pantalla) -->
+            <div class="mt-4 no-print">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cogs"></i> Acciones
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <button onclick="window.print()" class="btn btn-success w-100">
+                                    <i class="fas fa-print"></i> Imprimir Factura
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <a href="{% url 'clientes:historial' venta.idCliente %}" class="btn btn-info w-100">
+                                    <i class="fas fa-history"></i> Ver Historial del Cliente
+                                </a>
+                            </div>
+                            <div class="col-md-4">
+                                {% if not venta.anulado %}
+                                <button class="btn btn-danger w-100" onclick="confirmarAnulacion()">
+                                    <i class="fas fa-ban"></i> Anular Factura
+                                </button>
+                                {% else %}
+                                <button class="btn btn-secondary w-100" disabled>
+                                    <i class="fas fa-ban"></i> Factura Anulada
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmarAnulacion() {
+    if (confirm('¿Está seguro de que desea anular esta factura? Esta acción no se puede deshacer.')) {
+        // Aquí se implementaría la lógica de anulación
+        window.location.href = "{% url 'ventas:anular' venta.idFactura %}";
+    }
+}
+</script>
+{% endblock %}
