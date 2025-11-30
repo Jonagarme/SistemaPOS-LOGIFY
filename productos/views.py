@@ -493,9 +493,25 @@ def editar_categoria(request, pk):
     categoria = get_object_or_404(Categoria, pk=pk)
     
     if request.method == 'POST':
-        # Lógica para editar categoría
-        messages.success(request, 'Categoría actualizada exitosamente')
-        return redirect('productos:categorias')
+        nombre = request.POST.get('nombre', '').strip()
+        descripcion = request.POST.get('descripcion', '').strip()
+        activa = request.POST.get('activa') == 'on'
+        
+        if not nombre:
+            messages.error(request, 'El nombre de la categoría es obligatorio')
+        else:
+            try:
+                categoria.nombre = nombre
+                if hasattr(categoria, 'descripcion'):
+                    categoria.descripcion = descripcion
+                if hasattr(categoria, 'activa'):
+                    categoria.activa = activa
+                categoria.save()
+                
+                messages.success(request, f'Categoría "{nombre}" actualizada exitosamente')
+                return redirect('productos:categorias')
+            except Exception as e:
+                messages.error(request, f'Error al actualizar la categoría: {str(e)}')
     
     context = {
         'categoria': categoria,
@@ -521,9 +537,29 @@ def lista_marcas(request):
 def crear_marca(request):
     """Crear nueva marca"""
     if request.method == 'POST':
-        # Lógica para crear marca
-        messages.success(request, 'Marca creada exitosamente')
-        return redirect('productos:marcas')
+        nombre = request.POST.get('nombre', '').strip()
+        descripcion = request.POST.get('descripcion', '').strip()
+        activa = request.POST.get('activa') == 'on'
+        
+        if not nombre:
+            messages.error(request, 'El nombre de la marca es obligatorio')
+        else:
+            try:
+                # Verificar si ya existe una marca con ese nombre
+                if Marca.objects.filter(nombre__iexact=nombre).exists():
+                    messages.warning(request, f'Ya existe una marca con el nombre "{nombre}"')
+                else:
+                    marca = Marca(nombre=nombre)
+                    if hasattr(Marca, 'descripcion'):
+                        marca.descripcion = descripcion
+                    if hasattr(Marca, 'activa'):
+                        marca.activa = activa
+                    marca.save()
+                    
+                    messages.success(request, f'Marca "{nombre}" creada exitosamente')
+                    return redirect('productos:marcas')
+            except Exception as e:
+                messages.error(request, f'Error al crear la marca: {str(e)}')
     
     context = {
         'titulo': 'Crear Marca'

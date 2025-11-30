@@ -32,6 +32,7 @@ urlpatterns = [
     # Categorías
     path('categorias/', views.lista_categorias, name='categorias'),
     path('categorias/crear/', views.crear_categoria, name='crear_categoria'),
+    path('categorias/<int:pk>/editar/', views.editar_categoria, name='editar_categoria'),
     
     # Marcas
     path('marcas/', views.lista_marcas, name='marcas'),

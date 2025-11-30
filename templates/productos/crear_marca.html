@@ -1,0 +1,161 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-plus-circle text-primary"></i> {{ titulo }}
+                </h2>
+                <div>
+                    <a href="{% url 'productos:marcas' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver a Marcas
+                    </a>
+                </div>
+            </div>
+
+            <!-- Mensajes -->
+            {% if messages %}
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            {% endif %}
+
+            <!-- Formulario -->
+            <div class="row justify-content-center">
+                <div class="col-md-8">
+                    <div class="card shadow">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-award"></i> Datos de la Marca
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form method="post" id="form-marca">
+                                {% csrf_token %}
+                                
+                                <div class="mb-4">
+                                    <label for="nombre" class="form-label">
+                                        <i class="fas fa-tag text-primary"></i> Nombre de la Marca <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" 
+                                           class="form-control form-control-lg" 
+                                           id="nombre" 
+                                           name="nombre" 
+                                           required
+                                           placeholder="Ej: Pfizer, Bayer, Johnson & Johnson"
+                                           autofocus>
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle"></i> Ingrese el nombre de la marca o fabricante
+                                    </small>
+                                </div>
+
+                                <div class="mb-4">
+                                    <label for="descripcion" class="form-label">
+                                        <i class="fas fa-align-left text-info"></i> Descripción
+                                    </label>
+                                    <textarea class="form-control" 
+                                              id="descripcion" 
+                                              name="descripcion" 
+                                              rows="3"
+                                              placeholder="Descripción opcional de la marca (país de origen, tipo de productos, etc.)"></textarea>
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle"></i> Información adicional sobre la marca (opcional)
+                                    </small>
+                                </div>
+
+                                <div class="mb-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" 
+                                               type="checkbox" 
+                                               id="activa" 
+                                               name="activa"
+                                               checked>
+                                        <label class="form-check-label" for="activa">
+                                            <i class="fas fa-check-circle text-success"></i> Marca Activa
+                                        </label>
+                                    </div>
+                                    <small class="text-muted">
+                                        Las marcas inactivas no se mostrarán en los formularios de productos
+                                    </small>
+                                </div>
+
+                                <hr>
+
+                                <div class="d-flex justify-content-between">
+                                    <a href="{% url 'productos:marcas' %}" class="btn btn-secondary btn-lg">
+                                        <i class="fas fa-times"></i> Cancelar
+                                    </a>
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-save"></i> Crear Marca
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Ayuda -->
+                    <div class="card mt-3">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0">
+                                <i class="fas fa-lightbulb"></i> Consejos
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <ul class="mb-0">
+                                <li>Use nombres oficiales de marcas para mantener consistencia</li>
+                                <li>Evite crear marcas duplicadas, verifique primero en la lista</li>
+                                <li>Puede agregar información del país de origen en la descripción</li>
+                                <li>Las marcas se pueden asociar a múltiples productos</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('form-marca');
+    const nombreInput = document.getElementById('nombre');
+    
+    form.addEventListener('submit', function(e) {
+        const nombre = nombreInput.value.trim();
+        
+        if (!nombre) {
+            e.preventDefault();
+            alert('Por favor ingrese el nombre de la marca');
+            nombreInput.focus();
+            return false;
+        }
+        
+        if (nombre.length < 2) {
+            e.preventDefault();
+            alert('El nombre de la marca debe tener al menos 2 caracteres');
+            nombreInput.focus();
+            return false;
+        }
+    });
+    
+    // Capitalizar primera letra al escribir
+    nombreInput.addEventListener('blur', function() {
+        if (this.value) {
+            // Capitalizar cada palabra
+            this.value = this.value
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+                .join(' ');
+        }
+    });
+});
+</script>
+{% endblock %}
