@@ -156,12 +156,28 @@ def eliminar_cliente(request, pk):
 @login_required
 def historial_cliente(request, pk):
     """Ver historial de compras del cliente"""
+    from ventas.models import FacturaVenta
+    
     cliente = get_object_or_404(Cliente, pk=pk)
-    ventas = cliente.ventas.all()[:20]
+    # Obtener facturas del cliente usando el campo idCliente
+    ventas = FacturaVenta.objects.filter(idCliente=pk).order_by('-fechaEmision')[:50]
+    
+    # Calcular totales (excluyendo anuladas)
+    total_subtotal = sum(float(v.subtotal) for v in ventas if not v.anulado)
+    total_iva = sum(float(v.iva) for v in ventas if not v.anulado)
+    total_general = sum(float(v.total) for v in ventas if not v.anulado)
+    
+    # Calcular promedio
+    ventas_validas = [v for v in ventas if not v.anulado]
+    promedio_compra = total_general / len(ventas_validas) if ventas_validas else 0
     
     context = {
         'cliente': cliente,
         'ventas': ventas,
+        'total_subtotal': total_subtotal,
+        'total_iva': total_iva,
+        'total_general': total_general,
+        'promedio_compra': promedio_compra,
         'titulo': f'Historial: {cliente.nombre_completo}'
     }
     return render(request, 'clientes/historial.html', context)

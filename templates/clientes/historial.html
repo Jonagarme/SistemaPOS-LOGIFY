@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>
+                    <i class="fas fa-history text-primary"></i> {{ titulo }}
+                </h2>
+                <div>
+                    <a href="{% url 'clientes:lista' %}" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver a Clientes
+                    </a>
+                </div>
+            </div>
+
+            <!-- Información del Cliente -->
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user"></i> Información del Cliente
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong><i class="fas fa-id-card text-primary"></i> Identificación:</strong><br>
+                            {{ cliente.tipo_identificacion }}: {{ cliente.cedula_ruc }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong><i class="fas fa-user text-success"></i> Cliente:</strong><br>
+                            {{ cliente.nombre_completo }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong><i class="fas fa-phone text-info"></i> Teléfono:</strong><br>
+                            {{ cliente.telefono_principal|default:"No registrado" }}
+                        </div>
+                        <div class="col-md-3">
+                            <strong><i class="fas fa-envelope text-warning"></i> Email:</strong><br>
+                            {{ cliente.email|default:"No registrado" }}
+                        </div>
+                    </div>
+                    {% if cliente.direccion %}
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <strong><i class="fas fa-map-marker-alt text-danger"></i> Dirección:</strong><br>
+                            {{ cliente.direccion }}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Historial de Compras -->
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-shopping-cart"></i> Historial de Compras
+                        <span class="badge bg-light text-dark float-end">{{ ventas.count }} venta{{ ventas.count|pluralize }}</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if ventas %}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-striped">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Fecha</th>
+                                        <th>N° Factura</th>
+                                        <th>Productos</th>
+                                        <th>Subtotal</th>
+                                        <th>IVA</th>
+                                        <th>Total</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for venta in ventas %}
+                                    <tr>
+                                        <td>{{ forloop.counter }}</td>
+                                        <td>
+                                            <small>{{ venta.fechaEmision|date:"d/m/Y H:i" }}</small>
+                                        </td>
+                                        <td>
+                                            <strong>{{ venta.numeroFactura|default:"-" }}</strong>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-info">Ver detalle</span>
+                                        </td>
+                                        <td>${{ venta.subtotal|floatformat:2 }}</td>
+                                        <td>${{ venta.iva|floatformat:2 }}</td>
+                                        <td>
+                                            <strong class="text-success">${{ venta.total|floatformat:2 }}</strong>
+                                        </td>
+                                        <td>
+                                            {% if venta.anulado %}
+                                                <span class="badge bg-danger">
+                                                    <i class="fas fa-ban"></i> Anulada
+                                                </span>
+                                            {% elif venta.estado == 'PAGADA' %}
+                                                <span class="badge bg-success">
+                                                    <i class="fas fa-check"></i> Pagada
+                                                </span>
+                                            {% elif venta.estado == 'EMITIDA' %}
+                                                <span class="badge bg-warning">
+                                                    <i class="fas fa-clock"></i> Emitida
+                                                </span>
+                                            {% else %}
+                                                <span class="badge bg-secondary">{{ venta.estado }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'ventas:detalle' venta.idFactura %}" 
+                                               class="btn btn-sm btn-outline-primary" 
+                                               title="Ver detalle">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                            
+                            <!-- Resumen de totales -->
+                            <div class="alert alert-info mt-3">
+                                <div class="row text-center">
+                                    <div class="col-md-4">
+                                        <strong>Subtotal Total:</strong> ${{ total_subtotal|floatformat:2 }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong>IVA Total:</strong> ${{ total_iva|floatformat:2 }}
+                                    </div>
+                                    <div class="col-md-4">
+                                        <strong class="text-success">TOTAL GENERAL:</strong> 
+                                        <span class="text-success fs-5">${{ total_general|floatformat:2 }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            </table>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Este cliente aún no tiene compras registradas</p>
+                            <a href="{% url 'ventas:crear' %}" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Registrar Primera Venta
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Estadísticas Resumidas -->
+            {% if ventas %}
+            <div class="row mt-4">
+                <div class="col-md-3">
+                    <div class="card text-white bg-primary">
+                        <div class="card-body text-center">
+                            <h3>{{ ventas.count }}</h3>
+                            <p class="mb-0">Total de Compras</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-success">
+                        <div class="card-body text-center">
+                            <h3>${{ total_general|floatformat:2 }}</h3>
+                            <p class="mb-0">Monto Total</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-info">
+                        <div class="card-body text-center">
+                            <h3>${{ promedio_compra|floatformat:2 }}</h3>
+                            <p class="mb-0">Promedio por Compra</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card text-white bg-warning">
+                        <div class="card-body text-center">
+                            <h3>
+                                {% if ventas.first %}
+                                    {{ ventas.first.fechaEmision|timesince }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </h3>
+                            <p class="mb-0">Última Compra</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

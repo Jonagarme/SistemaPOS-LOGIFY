@@ -1689,11 +1689,15 @@ def procesar_venta(request):
 @login_required
 def detalle_venta(request, pk):
     """Ver detalles de una venta"""
-    venta = get_object_or_404(Venta, pk=pk)
+    from .models import FacturaVenta, FacturaVentaDetalle
+    
+    venta = get_object_or_404(FacturaVenta, pk=pk)
+    detalles = FacturaVentaDetalle.objects.filter(idFacturaVenta=pk)
     
     context = {
         'venta': venta,
-        'titulo': f'Venta {venta.numero_factura}'
+        'detalles': detalles,
+        'titulo': f'Factura {venta.numeroFactura}'
     }
     return render(request, 'ventas/detalle.html', context)
 
