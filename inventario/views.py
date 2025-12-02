@@ -346,6 +346,7 @@ def lista_ajustes(request):
     
     context = {
         'page_obj': page_obj,
+        'productos': Producto.objects.filter(activo=True).order_by('nombre'),
         'titulo': 'Ajustes de Inventario'
     }
     return render(request, 'inventario/ajustes.html', context)

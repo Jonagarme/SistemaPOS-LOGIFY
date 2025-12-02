@@ -20,7 +20,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <div class="card-body">
                 <!-- Filtros -->
                 <div class="row mb-4">
@@ -51,7 +51,7 @@
                         </select>
                     </div>
                 </div>
-                
+
                 <!-- Estadísticas -->
                 <div class="row mb-4">
                     <div class="col-md-3">
@@ -115,7 +115,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Lista de ajustes -->
                 <div class="table-responsive">
                     <table class="table table-striped table-hover">
@@ -147,17 +147,17 @@
                                 </td>
                                 <td>
                                     {% if ajuste.tipo == 'ENTRADA' %}
-                                        <span class="badge bg-success">
-                                            <i class="fas fa-arrow-up"></i> Entrada
-                                        </span>
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-arrow-up"></i> Entrada
+                                    </span>
                                     {% elif ajuste.tipo == 'SALIDA' %}
-                                        <span class="badge bg-danger">
-                                            <i class="fas fa-arrow-down"></i> Salida
-                                        </span>
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-arrow-down"></i> Salida
+                                    </span>
                                     {% elif ajuste.tipo == 'CORRECCION' %}
-                                        <span class="badge bg-warning">
-                                            <i class="fas fa-edit"></i> Corrección
-                                        </span>
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-edit"></i> Corrección
+                                    </span>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -168,24 +168,24 @@
                                 </td>
                                 <td>
                                     {% if ajuste.cantidad_nueva > ajuste.cantidad_anterior %}
-                                        <span class="text-success">
-                                            <i class="fas fa-plus"></i> Aumento
+                                    <span class="text-success">
+                                        <i class="fas fa-plus"></i> Aumento
+                                    </span>
+                                    {% elif ajuste.cantidad_nueva < ajuste.cantidad_anterior %} <span
+                                        class="text-danger">
+                                        <i class="fas fa-minus"></i> Reducción
                                         </span>
-                                    {% elif ajuste.cantidad_nueva < ajuste.cantidad_anterior %}
-                                        <span class="text-danger">
-                                            <i class="fas fa-minus"></i> Reducción
-                                        </span>
-                                    {% else %}
+                                        {% else %}
                                         <span class="text-muted">Sin cambio</span>
-                                    {% endif %}
+                                        {% endif %}
                                 </td>
                                 <td>
                                     {% if ajuste.motivo %}
-                                        <span title="{{ ajuste.motivo }}">
-                                            {{ ajuste.motivo|truncatechars:30 }}
-                                        </span>
+                                    <span title="{{ ajuste.motivo }}">
+                                        {{ ajuste.motivo|truncatechars:30 }}
+                                    </span>
                                     {% else %}
-                                        <span class="text-muted">Sin motivo</span>
+                                    <span class="text-muted">Sin motivo</span>
                                     {% endif %}
                                 </td>
                                 <td>
@@ -195,13 +195,13 @@
                                 </td>
                                 <td>
                                     <div class="btn-group" role="group">
-                                        <button class="btn btn-sm btn-outline-primary" 
-                                                onclick="verDetalleAjuste('{{ ajuste.id }}')" title="Ver detalles">
+                                        <button class="btn btn-sm btn-outline-primary"
+                                            onclick="verDetalleAjuste('{{ ajuste.id }}')" title="Ver detalles">
                                             <i class="fas fa-eye"></i>
                                         </button>
                                         {% if ajuste.puede_revertir %}
-                                        <button class="btn btn-sm btn-outline-warning" 
-                                                onclick="revertirAjuste('{{ ajuste.id }}')" title="Revertir ajuste">
+                                        <button class="btn btn-sm btn-outline-warning"
+                                            onclick="revertirAjuste('{{ ajuste.id }}')" title="Revertir ajuste">
                                             <i class="fas fa-undo"></i>
                                         </button>
                                         {% endif %}
@@ -220,7 +220,7 @@
                         </tbody>
                     </table>
                 </div>
-                
+
                 <!-- Paginación -->
                 {% if is_paginated %}
                 <nav aria-label="Paginación de ajustes">
@@ -233,27 +233,27 @@
                             <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a>
                         </li>
                         {% endif %}
-                        
+
                         {% for num in page_obj.paginator.page_range %}
                         {% if page_obj.number == num %}
                         <li class="page-item active">
                             <span class="page-link">{{ num }}</span>
                         </li>
-                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                        <li class="page-item">
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %} <li
+                            class="page-item">
                             <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                        </li>
-                        {% endif %}
-                        {% endfor %}
-                        
-                        {% if page_obj.has_next %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
-                        </li>
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última &raquo;</a>
-                        </li>
-                        {% endif %}
+                            </li>
+                            {% endif %}
+                            {% endfor %}
+
+                            {% if page_obj.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a>
+                            </li>
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Última &raquo;</a>
+                            </li>
+                            {% endif %}
                     </ul>
                 </nav>
                 {% endif %}
@@ -284,15 +284,13 @@
                                 <select class="form-select" id="producto_ajuste" name="producto" required>
                                     <option value="">Seleccionar producto...</option>
                                     {% for producto in productos %}
-                                    <option value="{{ producto.id }}" 
-                                            data-stock="{{ producto.stock_actual }}"
-                                            data-unidad="{{ producto.unidad_medida }}">
-                                        {{ producto.nombre }} ({{ producto.codigo }})
+                                    <option value="{{ producto.id }}" data-stock="{{ producto.stock }}" data-unidad="U">
+                                        {{ producto.nombre }} ({{ producto.codigo_principal }})
                                     </option>
                                     {% endfor %}
                                 </select>
                             </div>
-                            
+
                             <div class="mb-3">
                                 <label for="tipo_ajuste" class="form-label">
                                     Tipo de Ajuste <span class="text-danger">*</span>
@@ -304,43 +302,44 @@
                                     <option value="CORRECCION">Corrección</option>
                                 </select>
                             </div>
-                            
+
                             <div class="mb-3" id="info_stock" style="display: none;">
                                 <div class="alert alert-info">
-                                    <strong>Stock actual:</strong> <span id="stock_actual">0</span> <span id="unidad_medida"></span>
+                                    <strong>Stock actual:</strong> <span id="stock_actual">0</span> <span
+                                        id="unidad_medida"></span>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div class="col-md-6">
                             <div class="mb-3" id="grupo_cantidad_entrada" style="display: none;">
                                 <label for="cantidad_entrada" class="form-label">
                                     Cantidad a Agregar <span class="text-danger">*</span>
                                 </label>
-                                <input type="number" class="form-control" id="cantidad_entrada" 
-                                       name="cantidad" min="1" step="0.01">
+                                <input type="number" class="form-control" id="cantidad_entrada" name="cantidad" min="1"
+                                    step="0.01">
                             </div>
-                            
+
                             <div class="mb-3" id="grupo_cantidad_salida" style="display: none;">
                                 <label for="cantidad_salida" class="form-label">
                                     Cantidad a Reducir <span class="text-danger">*</span>
                                 </label>
-                                <input type="number" class="form-control" id="cantidad_salida" 
-                                       name="cantidad" min="1" step="0.01">
+                                <input type="number" class="form-control" id="cantidad_salida" name="cantidad" min="1"
+                                    step="0.01">
                             </div>
-                            
+
                             <div class="mb-3" id="grupo_cantidad_nueva" style="display: none;">
                                 <label for="cantidad_nueva" class="form-label">
                                     Nueva Cantidad <span class="text-danger">*</span>
                                 </label>
-                                <input type="number" class="form-control" id="cantidad_nueva" 
-                                       name="cantidad" min="0" step="0.01">
+                                <input type="number" class="form-control" id="cantidad_nueva" name="cantidad" min="0"
+                                    step="0.01">
                             </div>
-                            
+
                             <div class="mb-3">
                                 <label for="motivo_ajuste" class="form-label">Motivo del Ajuste</label>
                                 <textarea class="form-control" id="motivo_ajuste" name="motivo" rows="3"
-                                          placeholder="Describe el motivo del ajuste..."></textarea>
+                                    placeholder="Describe el motivo del ajuste..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -357,75 +356,104 @@
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Manejar cambio de producto
-    document.getElementById('producto_ajuste').addEventListener('change', function() {
-        const option = this.selectedOptions[0];
-        const infoStock = document.getElementById('info_stock');
-        
-        if (option.value) {
-            const stock = option.dataset.stock;
-            const unidad = option.dataset.unidad;
-            
-            document.getElementById('stock_actual').textContent = stock;
-            document.getElementById('unidad_medida').textContent = unidad;
-            infoStock.style.display = 'block';
-        } else {
-            infoStock.style.display = 'none';
-        }
+    document.addEventListener('DOMContentLoaded', function () {
+        // Inicializar Select2
+        $('#producto_ajuste').select2({
+            theme: 'bootstrap-5',
+            dropdownParent: $('#modalNuevoAjuste'),
+            placeholder: 'Buscar producto por nombre o código...',
+            allowClear: true,
+            width: '100%',
+            language: {
+                noResults: function () {
+                    return "No se encontraron productos";
+                },
+                searching: function () {
+                    return "Buscando...";
+                }
+            }
+        });
+
+        // Manejar cambio de producto (usando jQuery para compatibilidad con Select2)
+        $('#producto_ajuste').on('change', function () {
+            const selectedOption = $(this).find(':selected');
+            const infoStock = document.getElementById('info_stock');
+
+            if ($(this).val()) {
+                const stock = selectedOption.data('stock');
+                const unidad = selectedOption.data('unidad');
+
+                document.getElementById('stock_actual').textContent = stock;
+                document.getElementById('unidad_medida').textContent = unidad;
+                infoStock.style.display = 'block';
+            } else {
+                infoStock.style.display = 'none';
+            }
+        });
+
+        // Manejar cambio de tipo de ajuste
+        document.getElementById('tipo_ajuste').addEventListener('change', function () {
+            const tipo = this.value;
+            const grupoEntrada = document.getElementById('grupo_cantidad_entrada');
+            const grupoSalida = document.getElementById('grupo_cantidad_salida');
+            const grupoNueva = document.getElementById('grupo_cantidad_nueva');
+
+            // Ocultar todos
+            grupoEntrada.style.display = 'none';
+            grupoSalida.style.display = 'none';
+            grupoNueva.style.display = 'none';
+
+            // Mostrar el correspondiente
+            if (tipo === 'ENTRADA') {
+                grupoEntrada.style.display = 'block';
+            } else if (tipo === 'SALIDA') {
+                grupoSalida.style.display = 'block';
+            } else if (tipo === 'CORRECCION') {
+                grupoNueva.style.display = 'block';
+            }
+        });
     });
-    
-    // Manejar cambio de tipo de ajuste
-    document.getElementById('tipo_ajuste').addEventListener('change', function() {
-        const tipo = this.value;
-        const grupoEntrada = document.getElementById('grupo_cantidad_entrada');
-        const grupoSalida = document.getElementById('grupo_cantidad_salida');
-        const grupoNueva = document.getElementById('grupo_cantidad_nueva');
-        
-        // Ocultar todos
-        grupoEntrada.style.display = 'none';
-        grupoSalida.style.display = 'none';
-        grupoNueva.style.display = 'none';
-        
-        // Mostrar el correspondiente
-        if (tipo === 'ENTRADA') {
-            grupoEntrada.style.display = 'block';
-        } else if (tipo === 'SALIDA') {
-            grupoSalida.style.display = 'block';
-        } else if (tipo === 'CORRECCION') {
-            grupoNueva.style.display = 'block';
+
+    function guardarAjuste() {
+        const form = document.getElementById('formNuevoAjuste');
+        // const formData = new FormData(form); // No usado actualmente
+
+        // Validar campos requeridos
+        const producto = $('#producto_ajuste').val(); // Usar jQuery para obtener valor de Select2
+        const tipo = document.getElementById('tipo_ajuste').value;
+
+        if (!producto || !tipo) {
+            alert('Por favor complete todos los campos requeridos');
+            return;
         }
-    });
-});
 
-function guardarAjuste() {
-    const form = document.getElementById('formNuevoAjuste');
-    const formData = new FormData(form);
-    
-    // Validar campos requeridos
-    const producto = document.getElementById('producto_ajuste').value;
-    const tipo = document.getElementById('tipo_ajuste').value;
-    
-    if (!producto || !tipo) {
-        alert('Por favor complete todos los campos requeridos');
-        return;
+        // Aquí iría la lógica para enviar el ajuste
+        console.log('Guardando ajuste...');
+        // location.reload();
     }
-    
-    // Aquí iría la lógica para enviar el ajuste
-    console.log('Guardando ajuste...');
-    // location.reload();
-}
 
-function verDetalleAjuste(ajusteId) {
-    // Mostrar modal con detalles del ajuste
-    console.log('Ver detalle del ajuste:', ajusteId);
-}
-
-function revertirAjuste(ajusteId) {
-    if (confirm('¿Está seguro de revertir este ajuste? Esta acción creará un ajuste contrario.')) {
-        // Lógica para revertir ajuste
-        console.log('Revertir ajuste:', ajusteId);
+    function verDetalleAjuste(ajusteId) {
+        // Mostrar modal con detalles del ajuste
+        console.log('Ver detalle del ajuste:', ajusteId);
     }
-}
+
+    function revertirAjuste(ajusteId) {
+        if (confirm('¿Está seguro de revertir este ajuste? Esta acción creará un ajuste contrario.')) {
+            // Lógica para revertir ajuste
+            console.log('Revertir ajuste:', ajusteId);
+        }
+    }
 </script>
+{% endblock %}
+
+{% block extra_css %}
+<!-- Select2 CSS -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
+    rel="stylesheet" />
+{% endblock %}
+
+{% block extra_js %}
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 {% endblock %}

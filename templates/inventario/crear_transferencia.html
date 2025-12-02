@@ -9,14 +9,17 @@
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
     }
+
     .btn-primary {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         border: none;
     }
+
     .btn-primary:hover {
         background: linear-gradient(135deg, #5a6fd8 0%, #6a4190 100%);
         transform: translateY(-1px);
     }
+
     .producto-item {
         border: 1px solid #e9ecef;
         border-radius: 8px;
@@ -24,6 +27,7 @@
         margin-bottom: 10px;
         background: #f8f9fa;
     }
+
     .stock-badge {
         font-size: 0.8em;
     }
@@ -40,17 +44,17 @@
     </div>
 
     {% if messages %}
-        {% for message in messages %}
-            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {% endfor %}
+    {% for message in messages %}
+    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    {% endfor %}
     {% endif %}
 
     <form method="POST" id="form-transferencia">
         {% csrf_token %}
-        
+
         <!-- Información General -->
         <div class="card mb-4">
             <div class="card-header">
@@ -63,28 +67,28 @@
                         <select class="form-select" name="ubicacion_origen" id="ubicacion-origen" required>
                             <option value="">Seleccione ubicación origen...</option>
                             {% for ubicacion in ubicaciones %}
-                                <option value="{{ ubicacion.id }}">{{ ubicacion.nombre }} - {{ ubicacion.tipo }}</option>
+                            <option value="{{ ubicacion.id }}">{{ ubicacion.nombre }} - {{ ubicacion.tipo }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    
+
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Ubicación Destino *</label>
                         <select class="form-select" name="ubicacion_destino" id="ubicacion-destino" required>
                             <option value="">Seleccione ubicación destino...</option>
                             {% for ubicacion in ubicaciones %}
-                                <option value="{{ ubicacion.id }}">{{ ubicacion.nombre }} - {{ ubicacion.tipo }}</option>
+                            <option value="{{ ubicacion.id }}">{{ ubicacion.nombre }} - {{ ubicacion.tipo }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    
+
                     <div class="col-md-4 mb-3">
                         <label class="form-label">Fecha de Transferencia *</label>
-                        <input type="date" class="form-control" name="fecha_transferencia" 
-                               value="{{ today|date:'Y-m-d' }}" required>
+                        <input type="date" class="form-control" name="fecha_transferencia"
+                            value="{{ today|date:'Y-m-d' }}" required>
                     </div>
                 </div>
-                
+
                 <div class="row">
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Motivo de Transferencia *</label>
@@ -97,11 +101,11 @@
                             <option value="otro">Otro</option>
                         </select>
                     </div>
-                    
+
                     <div class="col-md-6 mb-3">
                         <label class="form-label">Observaciones</label>
-                        <textarea class="form-control" name="observaciones" rows="2" 
-                                  placeholder="Observaciones adicionales sobre la transferencia..."></textarea>
+                        <textarea class="form-control" name="observaciones" rows="2"
+                            placeholder="Observaciones adicionales sobre la transferencia..."></textarea>
                     </div>
                 </div>
             </div>
@@ -111,7 +115,8 @@
         <div class="card mb-4">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="fas fa-boxes"></i> Productos a Transferir</h5>
-                <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal" data-bs-target="#modalAgregarProducto">
+                <button type="button" class="btn btn-light btn-sm" data-bs-toggle="modal"
+                    data-bs-target="#modalAgregarProducto">
                     <i class="fas fa-plus"></i> Agregar Producto
                 </button>
             </div>
@@ -123,7 +128,7 @@
                         <p class="text-muted">Agregue productos para transferir usando el botón "Agregar Producto"</p>
                     </div>
                 </div>
-                
+
                 <div class="row mt-3" id="totales" style="display: none;">
                     <div class="col-md-6 offset-md-6">
                         <div class="card bg-light">
@@ -162,7 +167,6 @@
     </form>
 </div>
 
-<!-- Modal para agregar productos -->
 <div class="modal fade" id="modalAgregarProducto" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
@@ -176,31 +180,51 @@
                 <!-- Búsqueda de productos -->
                 <div class="mb-3">
                     <label class="form-label">Buscar Producto</label>
-                    <input type="text" class="form-control" id="buscar-producto" 
-                           placeholder="Escriba el nombre o código del producto...">
+                    <input type="text" class="form-control" id="buscar-producto"
+                        placeholder="Escriba el nombre o código del producto...">
                 </div>
-                
+
                 <!-- Lista de productos -->
-                <div class="row" id="lista-productos">
+                <div class="list-group" id="lista-productos" style="max-height: 400px; overflow-y: auto;">
                     {% for producto in productos %}
-                        <div class="col-md-6 mb-2 producto-card" data-nombre="{{ producto.nombre|lower }}" data-codigo="{{ producto.codigo_principal|lower }}">
-                            <div class="producto-item">
-                                <div class="d-flex justify-content-between align-items-start">
-                                    <div class="flex-grow-1">
-                                        <h6 class="mb-1">{{ producto.nombre }}</h6>
-                                        <small class="text-muted">{{ producto.codigo_principal }}</small>
-                                        <div class="mt-1">
-                                            <span class="badge bg-info stock-badge">Stock: {{ producto.stock }}</span>
-                                            <span class="badge bg-success stock-badge">${{ producto.precio_venta|floatformat:2 }}</span>
-                                        </div>
-                                    </div>
-                                    <button type="button" class="btn btn-sm btn-primary" 
-                                            onclick="seleccionarProducto({{ producto.id }}, '{{ producto.nombre }}', '{{ producto.codigo_principal }}', {{ producto.stock }}, {{ producto.precio_venta }})">
-                                        <i class="fas fa-plus"></i>
-                                    </button>
+                    <button type="button" class="list-group-item list-group-item-action producto-card p-2 border-bottom"
+                        data-producto-id="{{ producto.id }}" data-producto-nombre="{{ producto.nombre }}"
+                        data-producto-codigo="{{ producto.codigo_principal }}"
+                        data-producto-stock="{{ producto.stock }}" data-producto-precio="{{ producto.precio_venta }}"
+                        data-nombre-buscar="{{ producto.nombre|lower }}"
+                        data-codigo-buscar="{{ producto.codigo_principal|lower }}">
+
+                        <div class="row align-items-center g-0">
+                            <div class="col-8 pe-2">
+                                <div class="fw-bold text-truncate text-dark mb-0" style="font-size: 0.9rem;">
+                                    {{ producto.nombre }}
+                                </div>
+                                <div class="small text-muted d-flex align-items-center">
+                                    <i class="fas fa-barcode fa-xs me-1"></i>
+                                    <span class="text-truncate">{{ producto.codigo_principal }}</span>
                                 </div>
                             </div>
+                            <div class="col-3 text-end pe-2">
+                                <div class="d-flex flex-column align-items-end gap-1">
+                                    <span class="badge bg-light text-dark border fw-normal"
+                                        style="font-size: 0.75rem; width: 85px;">
+                                        Stock: {{ producto.stock }}
+                                    </span>
+                                    <span class="badge bg-light text-success border border-success-subtle fw-bold"
+                                        style="font-size: 0.75rem; width: 85px;">
+                                        ${{ producto.precio_venta|floatformat:2 }}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="col-1 text-center">
+                                <i class="fas fa-plus-circle text-primary fa-lg"></i>
+                            </div>
                         </div>
+                    </button>
+                    {% empty %}
+                    <div class="alert alert-warning m-2">
+                        No hay productos disponibles para transferir
+                    </div>
                     {% endfor %}
                 </div>
             </div>
@@ -230,7 +254,7 @@
                         <input type="number" class="form-control" id="stock-disponible" readonly>
                     </div>
                 </div>
-                
+
                 <!-- PASO 1: Seleccionar Lote -->
                 <div class="card mb-3 border-primary">
                     <div class="card-header bg-primary text-white">
@@ -245,7 +269,7 @@
                                 <i class="fas fa-search me-2"></i>Buscar Lotes Disponibles
                             </button>
                         </div>
-                        
+
                         <div id="contenedor-lotes" style="display: none;">
                             <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
                                 <table class="table table-sm table-hover">
@@ -268,7 +292,7 @@
                                 <strong>Lote seleccionado:</strong> <span id="info-lote"></span>
                             </div>
                         </div>
-                        
+
                         <div id="sin-lotes" style="display: none;">
                             <div class="alert alert-warning">
                                 <i class="fas fa-exclamation-triangle me-2"></i>
@@ -277,7 +301,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- PASO 2: Cantidad (Cajas/Fracciones) -->
                 <div class="card mb-3 border-success" id="card-cantidad" style="display: none;">
                     <div class="card-header bg-success text-white">
@@ -291,70 +315,72 @@
                             <div class="col-md-12 mb-3">
                                 <label class="form-label">Tipo de Transferencia</label>
                                 <div class="btn-group w-100" role="group">
-                                    <input type="radio" class="btn-check" name="tipo-cantidad" id="tipo-unidades" value="unidades" checked>
+                                    <input type="radio" class="btn-check" name="tipo-cantidad" id="tipo-unidades"
+                                        value="unidades" checked>
                                     <label class="btn btn-outline-primary" for="tipo-unidades">
                                         <i class="fas fa-box me-1"></i>Solo Unidades
                                     </label>
-                                    
-                                    <input type="radio" class="btn-check" name="tipo-cantidad" id="tipo-cajas" value="cajas">
+
+                                    <input type="radio" class="btn-check" name="tipo-cantidad" id="tipo-cajas"
+                                        value="cajas">
                                     <label class="btn btn-outline-success" for="tipo-cajas">
                                         <i class="fas fa-boxes me-1"></i>Cajas Completas
                                     </label>
-                                    
-                                    <input type="radio" class="btn-check" name="tipo-cantidad" id="tipo-mixto" value="mixto">
+
+                                    <input type="radio" class="btn-check" name="tipo-cantidad" id="tipo-mixto"
+                                        value="mixto">
                                     <label class="btn btn-outline-info" for="tipo-mixto">
                                         <i class="fas fa-layer-group me-1"></i>Cajas + Fracciones
                                     </label>
                                 </div>
                             </div>
                         </div>
-                        
+
                         <!-- Cantidad por unidades -->
                         <div id="seccion-unidades">
                             <div class="mb-3">
                                 <label class="form-label">Cantidad (Unidades) *</label>
-                                <input type="number" class="form-control" id="cantidad-transferir" 
-                                       min="1" placeholder="Ingrese la cantidad...">
-                                <div class="form-text">Máximo disponible en lote: <span id="max-cantidad-lote">0</span></div>
+                                <input type="number" class="form-control" id="cantidad-transferir" min="1"
+                                    placeholder="Ingrese la cantidad...">
+                                <div class="form-text">Máximo disponible en lote: <span id="max-cantidad-lote">0</span>
+                                </div>
                             </div>
                         </div>
-                        
+
                         <!-- Cantidad por cajas -->
                         <div id="seccion-cajas" style="display: none;">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Unidades por Caja *</label>
-                                    <input type="number" class="form-control" id="unidades-por-caja" 
-                                           min="1" value="1" placeholder="Ej: 6, 12, 24...">
+                                    <input type="number" class="form-control" id="unidades-por-caja" min="1" value="1"
+                                        placeholder="Ej: 6, 12, 24...">
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Número de Cajas *</label>
-                                    <input type="number" class="form-control" id="numero-cajas" 
-                                           min="1" placeholder="Cajas a transferir">
+                                    <input type="number" class="form-control" id="numero-cajas" min="1"
+                                        placeholder="Cajas a transferir">
                                 </div>
                             </div>
                             <div class="alert alert-info">
                                 Total de unidades: <strong id="total-unidades-cajas">0</strong>
                             </div>
                         </div>
-                        
+
                         <!-- Cantidad mixta -->
                         <div id="seccion-mixto" style="display: none;">
                             <div class="row">
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label">Unidades por Caja</label>
-                                    <input type="number" class="form-control" id="unidades-por-caja-mixto" 
-                                           min="1" value="1">
+                                    <input type="number" class="form-control" id="unidades-por-caja-mixto" min="1"
+                                        value="1">
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label">Cajas Completas</label>
-                                    <input type="number" class="form-control" id="cajas-mixto" 
-                                           min="0" value="0">
+                                    <input type="number" class="form-control" id="cajas-mixto" min="0" value="0">
                                 </div>
                                 <div class="col-md-4 mb-3">
                                     <label class="form-label">Fracciones (Unidades Sueltas)</label>
-                                    <input type="number" class="form-control" id="fracciones-mixto" 
-                                           min="0" value="0">
+                                    <input type="number" class="form-control" id="fracciones-mixto" min="0" value="0">
                                 </div>
                             </div>
                             <div class="alert alert-info">
@@ -363,7 +389,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- PASO 3: Precio (Opcional) -->
                 <div class="card border-warning" id="card-precio" style="display: none;">
                     <div class="card-header bg-warning">
@@ -379,7 +405,7 @@
                                 <strong>Cambiar precio PVP en la ubicación destino</strong>
                             </label>
                         </div>
-                        
+
                         <div id="seccion-precio" style="display: none;">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
@@ -393,8 +419,8 @@
                                     <label class="form-label">Nuevo Precio (Destino)</label>
                                     <div class="input-group">
                                         <span class="input-group-text">$</span>
-                                        <input type="number" class="form-control" id="precio-destino" 
-                                               step="0.01" min="0">
+                                        <input type="number" class="form-control" id="precio-destino" step="0.01"
+                                            min="0">
                                     </div>
                                 </div>
                             </div>
@@ -421,168 +447,180 @@
 
 {% block extra_js %}
 <script>
-let productosTransferencia = [];
-let productoSeleccionado = null;
-let loteSeleccionado = null;
-let lotesDisponibles = [];
+    let productosTransferencia = [];
+    let productoSeleccionado = null;
+    let loteSeleccionado = null;
+    let lotesDisponibles = [];
 
-// Filtro de búsqueda de productos
-document.getElementById('buscar-producto').addEventListener('input', function() {
-    const filtro = this.value.toLowerCase();
-    const productos = document.querySelectorAll('.producto-card');
-    
-    productos.forEach(producto => {
-        const nombre = producto.getAttribute('data-nombre');
-        const codigo = producto.getAttribute('data-codigo');
-        const coincide = nombre.includes(filtro) || codigo.includes(filtro);
-        producto.style.display = coincide ? 'block' : 'none';
-    });
-});
+    document.querySelectorAll('.producto-card').forEach(function (card) {
+        card.addEventListener('click', function () {
+            const id = parseInt(this.dataset.productoId);
+            const nombre = this.dataset.productoNombre;
+            const codigo = this.dataset.productoCodigo;
+            const stock = parseFloat(this.dataset.productoStock);
+            const precio = parseFloat(this.dataset.productoPrecio);
 
-// Validar ubicaciones diferentes
-document.getElementById('ubicacion-origen').addEventListener('change', validarUbicaciones);
-document.getElementById('ubicacion-destino').addEventListener('change', validarUbicaciones);
-
-function validarUbicaciones() {
-    const origen = document.getElementById('ubicacion-origen').value;
-    const destino = document.getElementById('ubicacion-destino').value;
-    
-    if (origen && destino && origen === destino) {
-        alert('⚠️ La ubicación de origen y destino deben ser diferentes');
-        document.getElementById('ubicacion-destino').value = '';
-    }
-}
-
-// Seleccionar producto para agregar
-function seleccionarProducto(id, nombre, codigo, stock, precio) {
-    // Verificar si ya está agregado
-    if (productosTransferencia.find(p => p.id === id)) {
-        alert('❌ Este producto ya ha sido agregado a la transferencia');
-        return;
-    }
-    
-    // Verificar que se haya seleccionado ubicación origen
-    const ubicacionOrigen = document.getElementById('ubicacion-origen').value;
-    if (!ubicacionOrigen) {
-        alert('⚠️ Primero debe seleccionar la ubicación de origen');
-        return;
-    }
-    
-    productoSeleccionado = {
-        id: id,
-        nombre: nombre,
-        codigo: codigo,
-        stock: stock,
-        precio: precio
-    };
-    
-    // Reset modal
-    loteSeleccionado = null;
-    lotesDisponibles = [];
-    document.getElementById('contenedor-lotes').style.display = 'none';
-    document.getElementById('sin-lotes').style.display = 'none';
-    document.getElementById('card-cantidad').style.display = 'none';
-    document.getElementById('card-precio').style.display = 'none';
-    document.getElementById('btn-agregar-producto').disabled = true;
-    
-    // Llenar información básica
-    document.getElementById('producto-seleccionado').value = `${nombre} (${codigo})`;
-    document.getElementById('stock-disponible').value = stock;
-    document.getElementById('precio-origen').value = precio;
-    
-    // Cerrar modal de productos y abrir modal de configuración
-    bootstrap.Modal.getInstance(document.getElementById('modalAgregarProducto')).hide();
-    new bootstrap.Modal(document.getElementById('modalCantidad')).show();
-}
-
-// Cargar lotes disponibles
-document.getElementById('btn-cargar-lotes').addEventListener('click', function() {
-    const ubicacionOrigen = document.getElementById('ubicacion-origen').value;
-    
-    console.log('Producto seleccionado:', productoSeleccionado);
-    console.log('Ubicación origen:', ubicacionOrigen);
-    
-    if (!productoSeleccionado) {
-        alert('⚠️ No hay producto seleccionado');
-        return;
-    }
-    
-    if (!ubicacionOrigen) {
-        alert('⚠️ Debe seleccionar ubicación de origen');
-        return;
-    }
-    
-    // Mostrar loading
-    this.disabled = true;
-    this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Cargando lotes...';
-    
-    const url = `/inventario/api/lotes-disponibles/?producto_id=${productoSeleccionado.id}&ubicacion_id=${ubicacionOrigen}`;
-    console.log('Consultando URL:', url);
-    
-    // Consultar API
-    fetch(url)
-        .then(response => {
-            console.log('Response status:', response.status);
-            return response.json();
-        })
-        .then(data => {
-            console.log('Data recibida:', data);
-            
-            this.disabled = false;
-            this.innerHTML = '<i class="fas fa-search me-2"></i>Buscar Lotes Disponibles';
-            
-            if (data.success) {
-                lotesDisponibles = data.lotes;
-                console.log('Total lotes:', lotesDisponibles.length);
-                
-                if (lotesDisponibles.length === 0) {
-                    document.getElementById('sin-lotes').style.display = 'block';
-                    document.getElementById('contenedor-lotes').style.display = 'none';
-                    alert('ℹ️ No hay lotes disponibles para este producto en esta ubicación');
-                } else {
-                    mostrarTablaLotes();
-                    document.getElementById('contenedor-lotes').style.display = 'block';
-                    document.getElementById('sin-lotes').style.display = 'none';
-                }
-            } else {
-                alert('Error al cargar lotes: ' + data.error);
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            this.disabled = false;
-            this.innerHTML = '<i class="fas fa-search me-2"></i>Buscar Lotes Disponibles';
-            alert('Error de conexión: ' + error);
+            seleccionarProducto(id, nombre, codigo, stock, precio);
         });
-});
+    });
 
-function mostrarTablaLotes() {
-    const tbody = document.getElementById('tabla-lotes');
-    tbody.innerHTML = '';
-    
-    lotesDisponibles.forEach(lote => {
-        const tr = document.createElement('tr');
-        
-        // Clase según estado
-        let rowClass = '';
-        let badgeClass = '';
-        let estadoTexto = '';
-        
-        if (lote.esta_vencido) {
-            rowClass = 'table-danger';
-            badgeClass = 'bg-danger';
-            estadoTexto = 'VENCIDO';
-        } else if (lote.por_vencer) {
-            rowClass = 'table-warning';
-            badgeClass = 'bg-warning text-dark';
-            estadoTexto = 'Por Vencer';
-        } else {
-            badgeClass = 'bg-success';
-            estadoTexto = 'Vigente';
+    // Filtro de búsqueda de productos
+    document.getElementById('buscar-producto').addEventListener('input', function () {
+        const filtro = this.value.toLowerCase();
+        const productos = document.querySelectorAll('.producto-card');
+
+        productos.forEach(producto => {
+            const nombre = producto.getAttribute('data-nombre');
+            const codigo = producto.getAttribute('data-codigo');
+            const coincide = nombre.includes(filtro) || codigo.includes(filtro);
+            producto.style.display = coincide ? 'block' : 'none';
+        });
+    });
+
+    // Validar ubicaciones diferentes
+    document.getElementById('ubicacion-origen').addEventListener('change', validarUbicaciones);
+    document.getElementById('ubicacion-destino').addEventListener('change', validarUbicaciones);
+
+    function validarUbicaciones() {
+        const origen = document.getElementById('ubicacion-origen').value;
+        const destino = document.getElementById('ubicacion-destino').value;
+
+        if (origen && destino && origen === destino) {
+            alert('⚠️ La ubicación de origen y destino deben ser diferentes');
+            document.getElementById('ubicacion-destino').value = '';
         }
-        
-        tr.className = rowClass;
-        tr.innerHTML = `
+    }
+
+    // Seleccionar producto para agregar
+    function seleccionarProducto(id, nombre, codigo, stock, precio) {
+        // Verificar si ya está agregado
+        if (productosTransferencia.find(p => p.id === id)) {
+            alert('❌ Este producto ya ha sido agregado a la transferencia');
+            return;
+        }
+
+        // Verificar que se haya seleccionado ubicación origen
+        const ubicacionOrigen = document.getElementById('ubicacion-origen').value;
+        if (!ubicacionOrigen) {
+            alert('⚠️ Primero debe seleccionar la ubicación de origen');
+            return;
+        }
+
+        productoSeleccionado = {
+            id: id,
+            nombre: nombre,
+            codigo: codigo,
+            stock: stock,
+            precio: precio
+        };
+
+        // Reset modal
+        loteSeleccionado = null;
+        lotesDisponibles = [];
+        document.getElementById('contenedor-lotes').style.display = 'none';
+        document.getElementById('sin-lotes').style.display = 'none';
+        document.getElementById('card-cantidad').style.display = 'none';
+        document.getElementById('card-precio').style.display = 'none';
+        document.getElementById('btn-agregar-producto').disabled = true;
+
+        // Llenar información básica
+        document.getElementById('producto-seleccionado').value = `${nombre} (${codigo})`;
+        document.getElementById('stock-disponible').value = stock;
+        document.getElementById('precio-origen').value = precio;
+
+        // Cerrar modal de productos y abrir modal de configuración
+        bootstrap.Modal.getInstance(document.getElementById('modalAgregarProducto')).hide();
+        new bootstrap.Modal(document.getElementById('modalCantidad')).show();
+    }
+
+    // Cargar lotes disponibles
+    document.getElementById('btn-cargar-lotes').addEventListener('click', function () {
+        const ubicacionOrigen = document.getElementById('ubicacion-origen').value;
+
+        console.log('Producto seleccionado:', productoSeleccionado);
+        console.log('Ubicación origen:', ubicacionOrigen);
+
+        if (!productoSeleccionado) {
+            alert('⚠️ No hay producto seleccionado');
+            return;
+        }
+
+        if (!ubicacionOrigen) {
+            alert('⚠️ Debe seleccionar ubicación de origen');
+            return;
+        }
+
+        // Mostrar loading
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Cargando lotes...';
+
+        const url = `/inventario/api/lotes-disponibles/?producto_id=${productoSeleccionado.id}&ubicacion_id=${ubicacionOrigen}`;
+        console.log('Consultando URL:', url);
+
+        // Consultar API
+        fetch(url)
+            .then(response => {
+                console.log('Response status:', response.status);
+                return response.json();
+            })
+            .then(data => {
+                console.log('Data recibida:', data);
+
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-search me-2"></i>Buscar Lotes Disponibles';
+
+                if (data.success) {
+                    lotesDisponibles = data.lotes;
+                    console.log('Total lotes:', lotesDisponibles.length);
+
+                    if (lotesDisponibles.length === 0) {
+                        document.getElementById('sin-lotes').style.display = 'block';
+                        document.getElementById('contenedor-lotes').style.display = 'none';
+                        alert('ℹ️ No hay lotes disponibles para este producto en esta ubicación');
+                    } else {
+                        mostrarTablaLotes();
+                        document.getElementById('contenedor-lotes').style.display = 'block';
+                        document.getElementById('sin-lotes').style.display = 'none';
+                    }
+                } else {
+                    alert('Error al cargar lotes: ' + data.error);
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                this.disabled = false;
+                this.innerHTML = '<i class="fas fa-search me-2"></i>Buscar Lotes Disponibles';
+                alert('Error de conexión: ' + error);
+            });
+    });
+
+    function mostrarTablaLotes() {
+        const tbody = document.getElementById('tabla-lotes');
+        tbody.innerHTML = '';
+
+        lotesDisponibles.forEach(lote => {
+            const tr = document.createElement('tr');
+
+            // Clase según estado
+            let rowClass = '';
+            let badgeClass = '';
+            let estadoTexto = '';
+
+            if (lote.esta_vencido) {
+                rowClass = 'table-danger';
+                badgeClass = 'bg-danger';
+                estadoTexto = 'VENCIDO';
+            } else if (lote.por_vencer) {
+                rowClass = 'table-warning';
+                badgeClass = 'bg-warning text-dark';
+                estadoTexto = 'Por Vencer';
+            } else {
+                badgeClass = 'bg-success';
+                estadoTexto = 'Vigente';
+            }
+
+            tr.className = rowClass;
+            tr.innerHTML = `
             <td>
                 <input type="radio" class="form-check-input" name="lote-radio" value="${lote.id}" 
                        ${lote.esta_vencido ? 'disabled' : ''}>
@@ -595,212 +633,212 @@ function mostrarTablaLotes() {
             <td><strong>${lote.cantidad_disponible_real}</strong> unid.</td>
             <td><span class="badge ${badgeClass}">${estadoTexto}</span></td>
         `;
-        
-        tbody.appendChild(tr);
-    });
-    
-    // Event listener para selección de lote
-    document.querySelectorAll('input[name="lote-radio"]').forEach(radio => {
-        radio.addEventListener('change', function() {
-            seleccionarLote(this.value);
+
+            tbody.appendChild(tr);
+        });
+
+        // Event listener para selección de lote
+        document.querySelectorAll('input[name="lote-radio"]').forEach(radio => {
+            radio.addEventListener('change', function () {
+                seleccionarLote(this.value);
+            });
+        });
+    }
+
+    function seleccionarLote(loteId) {
+        loteSeleccionado = lotesDisponibles.find(l => l.id == loteId);
+
+        if (loteSeleccionado) {
+            document.getElementById('lote-seleccionado-info').style.display = 'block';
+            document.getElementById('info-lote').textContent =
+                `${loteSeleccionado.numero_lote} - Vence: ${loteSeleccionado.fecha_caducidad_fmt} - Disponible: ${loteSeleccionado.cantidad_disponible_real}`;
+
+            document.getElementById('max-cantidad-lote').textContent = loteSeleccionado.cantidad_disponible_real;
+            document.getElementById('cantidad-transferir').max = loteSeleccionado.cantidad_disponible_real;
+
+            // Mostrar secciones de cantidad y precio
+            document.getElementById('card-cantidad').style.display = 'block';
+            document.getElementById('card-precio').style.display = 'block';
+        }
+    }
+
+    // Manejo de tipos de cantidad
+    document.querySelectorAll('input[name="tipo-cantidad"]').forEach(radio => {
+        radio.addEventListener('change', function () {
+            document.getElementById('seccion-unidades').style.display = this.value === 'unidades' ? 'block' : 'none';
+            document.getElementById('seccion-cajas').style.display = this.value === 'cajas' ? 'block' : 'none';
+            document.getElementById('seccion-mixto').style.display = this.value === 'mixto' ? 'block' : 'none';
+            validarCantidad();
         });
     });
-}
 
-function seleccionarLote(loteId) {
-    loteSeleccionado = lotesDisponibles.find(l => l.id == loteId);
-    
-    if (loteSeleccionado) {
-        document.getElementById('lote-seleccionado-info').style.display = 'block';
-        document.getElementById('info-lote').textContent = 
-            `${loteSeleccionado.numero_lote} - Vence: ${loteSeleccionado.fecha_caducidad_fmt} - Disponible: ${loteSeleccionado.cantidad_disponible_real}`;
-        
-        document.getElementById('max-cantidad-lote').textContent = loteSeleccionado.cantidad_disponible_real;
-        document.getElementById('cantidad-transferir').max = loteSeleccionado.cantidad_disponible_real;
-        
-        // Mostrar secciones de cantidad y precio
-        document.getElementById('card-cantidad').style.display = 'block';
-        document.getElementById('card-precio').style.display = 'block';
-    }
-}
-
-// Manejo de tipos de cantidad
-document.querySelectorAll('input[name="tipo-cantidad"]').forEach(radio => {
-    radio.addEventListener('change', function() {
-        document.getElementById('seccion-unidades').style.display = this.value === 'unidades' ? 'block' : 'none';
-        document.getElementById('seccion-cajas').style.display = this.value === 'cajas' ? 'block' : 'none';
-        document.getElementById('seccion-mixto').style.display = this.value === 'mixto' ? 'block' : 'none';
-        validarCantidad();
-    });
-});
-
-// Calcular totales de cajas
-document.getElementById('numero-cajas').addEventListener('input', function() {
-    const unidadesPorCaja = parseInt(document.getElementById('unidades-por-caja').value) || 1;
-    const numeroCajas = parseInt(this.value) || 0;
-    const total = unidadesPorCaja * numeroCajas;
-    document.getElementById('total-unidades-cajas').textContent = total;
-    validarCantidad();
-});
-
-document.getElementById('unidades-por-caja').addEventListener('input', function() {
-    const numeroCajas = parseInt(document.getElementById('numero-cajas').value) || 0;
-    const total = parseInt(this.value) * numeroCajas;
-    document.getElementById('total-unidades-cajas').textContent = total;
-    validarCantidad();
-});
-
-// Calcular totales mixtos
-['unidades-por-caja-mixto', 'cajas-mixto', 'fracciones-mixto'].forEach(id => {
-    document.getElementById(id).addEventListener('input', function() {
-        const unidadesPorCaja = parseInt(document.getElementById('unidades-por-caja-mixto').value) || 1;
-        const cajas = parseInt(document.getElementById('cajas-mixto').value) || 0;
-        const fracciones = parseInt(document.getElementById('fracciones-mixto').value) || 0;
-        const total = (unidadesPorCaja * cajas) + fracciones;
-        document.getElementById('total-unidades-mixto').textContent = total;
-        validarCantidad();
-    });
-});
-
-// Manejo de cambio de precio
-document.getElementById('check-cambiar-precio').addEventListener('change', function() {
-    document.getElementById('seccion-precio').style.display = this.checked ? 'block' : 'none';
-});
-
-document.getElementById('precio-destino').addEventListener('input', function() {
-    const precioOrigen = parseFloat(document.getElementById('precio-origen').value) || 0;
-    const precioDestino = parseFloat(this.value) || 0;
-    const diferencia = precioDestino - precioOrigen;
-    const porcentaje = precioOrigen > 0 ? ((diferencia / precioOrigen) * 100).toFixed(2) : 0;
-    
-    document.getElementById('diferencia-precio').textContent = `$${diferencia.toFixed(2)}`;
-    document.getElementById('porcentaje-diferencia').textContent = `${porcentaje}%`;
-});
-
-function validarCantidad() {
-    const tipoSelect = document.querySelector('input[name="tipo-cantidad"]:checked').value;
-    let cantidadTotal = 0;
-    
-    if (tipoSelect === 'unidades') {
-        cantidadTotal = parseInt(document.getElementById('cantidad-transferir').value) || 0;
-    } else if (tipoSelect === 'cajas') {
+    // Calcular totales de cajas
+    document.getElementById('numero-cajas').addEventListener('input', function () {
         const unidadesPorCaja = parseInt(document.getElementById('unidades-por-caja').value) || 1;
+        const numeroCajas = parseInt(this.value) || 0;
+        const total = unidadesPorCaja * numeroCajas;
+        document.getElementById('total-unidades-cajas').textContent = total;
+        validarCantidad();
+    });
+
+    document.getElementById('unidades-por-caja').addEventListener('input', function () {
         const numeroCajas = parseInt(document.getElementById('numero-cajas').value) || 0;
-        cantidadTotal = unidadesPorCaja * numeroCajas;
-    } else if (tipoSelect === 'mixto') {
-        const unidadesPorCaja = parseInt(document.getElementById('unidades-por-caja-mixto').value) || 1;
-        const cajas = parseInt(document.getElementById('cajas-mixto').value) || 0;
-        const fracciones = parseInt(document.getElementById('fracciones-mixto').value) || 0;
-        cantidadTotal = (unidadesPorCaja * cajas) + fracciones;
-    }
-    
-    const maxDisponible = loteSeleccionado ? loteSeleccionado.cantidad_disponible_real : 0;
-    const esValido = loteSeleccionado && cantidadTotal > 0 && cantidadTotal <= maxDisponible;
-    
-    document.getElementById('btn-agregar-producto').disabled = !esValido;
-}
+        const total = parseInt(this.value) * numeroCajas;
+        document.getElementById('total-unidades-cajas').textContent = total;
+        validarCantidad();
+    });
 
-// Event listeners para validar cantidad
-document.getElementById('cantidad-transferir').addEventListener('input', validarCantidad);
+    // Calcular totales mixtos
+    ['unidades-por-caja-mixto', 'cajas-mixto', 'fracciones-mixto'].forEach(id => {
+        document.getElementById(id).addEventListener('input', function () {
+            const unidadesPorCaja = parseInt(document.getElementById('unidades-por-caja-mixto').value) || 1;
+            const cajas = parseInt(document.getElementById('cajas-mixto').value) || 0;
+            const fracciones = parseInt(document.getElementById('fracciones-mixto').value) || 0;
+            const total = (unidadesPorCaja * cajas) + fracciones;
+            document.getElementById('total-unidades-mixto').textContent = total;
+            validarCantidad();
+        });
+    });
 
-// Event listeners para validar cantidad
-document.getElementById('cantidad-transferir').addEventListener('input', validarCantidad);
+    // Manejo de cambio de precio
+    document.getElementById('check-cambiar-precio').addEventListener('change', function () {
+        document.getElementById('seccion-precio').style.display = this.checked ? 'block' : 'none';
+    });
 
-// Agregar producto a la transferencia
-document.getElementById('btn-agregar-producto').addEventListener('click', function() {
-    if (!loteSeleccionado) {
-        alert('⚠️ Debe seleccionar un lote primero');
-        return;
-    }
-    
-    const tipoSelect = document.querySelector('input[name="tipo-cantidad"]:checked').value;
-    let cantidad = 0;
-    let cantidadCajas = 0;
-    let cantidadFracciones = 0;
-    let unidadesPorCaja = 1;
-    
-    if (tipoSelect === 'unidades') {
-        cantidad = parseInt(document.getElementById('cantidad-transferir').value);
-    } else if (tipoSelect === 'cajas') {
-        unidadesPorCaja = parseInt(document.getElementById('unidades-por-caja').value);
-        cantidadCajas = parseInt(document.getElementById('numero-cajas').value);
-        cantidad = unidadesPorCaja * cantidadCajas;
-    } else if (tipoSelect === 'mixto') {
-        unidadesPorCaja = parseInt(document.getElementById('unidades-por-caja-mixto').value);
-        cantidadCajas = parseInt(document.getElementById('cajas-mixto').value);
-        cantidadFracciones = parseInt(document.getElementById('fracciones-mixto').value);
-        cantidad = (unidadesPorCaja * cantidadCajas) + cantidadFracciones;
-    }
-    
-    if (!cantidad || cantidad <= 0) {
-        alert('⚠️ Ingrese una cantidad válida');
-        return;
-    }
-    
-    if (cantidad > loteSeleccionado.cantidad_disponible_real) {
-        alert('⚠️ La cantidad no puede ser mayor al stock disponible del lote');
-        return;
-    }
-    
-    // Obtener información de precio
-    const cambioPrecio = document.getElementById('check-cambiar-precio').checked;
-    const precioOrigen = parseFloat(document.getElementById('precio-origen').value);
-    const precioDestino = cambioPrecio ? parseFloat(document.getElementById('precio-destino').value) : precioOrigen;
-    
-    // Agregar a la lista
-    const productoData = {
-        ...productoSeleccionado,
-        cantidad: cantidad,
-        cantidad_cajas: cantidadCajas,
-        cantidad_fracciones: cantidadFracciones,
-        unidades_por_caja: unidadesPorCaja,
-        lote: loteSeleccionado,
-        precio_origen: precioOrigen,
-        precio_destino: precioDestino,
-        cambio_precio: cambioPrecio,
-        subtotal: cantidad * precioOrigen
-    };
-    
-    productosTransferencia.push(productoData);
-    
-    // Actualizar interfaz
-    actualizarListaProductos();
-    actualizarTotales();
-    
-    // Cerrar modal
-    bootstrap.Modal.getInstance(document.getElementById('modalCantidad')).hide();
-});
+    document.getElementById('precio-destino').addEventListener('input', function () {
+        const precioOrigen = parseFloat(document.getElementById('precio-origen').value) || 0;
+        const precioDestino = parseFloat(this.value) || 0;
+        const diferencia = precioDestino - precioOrigen;
+        const porcentaje = precioOrigen > 0 ? ((diferencia / precioOrigen) * 100).toFixed(2) : 0;
 
-// Actualizar lista de productos en la interfaz
-function actualizarListaProductos() {
-    const container = document.getElementById('productos-transferencia');
-    const noProductos = document.getElementById('no-productos');
-    
-    if (productosTransferencia.length === 0) {
-        noProductos.style.display = 'block';
-        document.getElementById('totales').style.display = 'none';
-        document.getElementById('btn-guardar').disabled = true;
-        return;
-    }
-    
-    noProductos.style.display = 'none';
-    document.getElementById('totales').style.display = 'block';
-    document.getElementById('btn-guardar').disabled = false;
-    
-    container.innerHTML = productosTransferencia.map((producto, index) => {
-        let cantidadTexto = `${producto.cantidad} unid.`;
-        if (producto.cantidad_cajas > 0) {
-            cantidadTexto = `${producto.cantidad_cajas} caja(s)`;
-            if (producto.cantidad_fracciones > 0) {
-                cantidadTexto += ` + ${producto.cantidad_fracciones} fracc.`;
-            }
+        document.getElementById('diferencia-precio').textContent = `$${diferencia.toFixed(2)}`;
+        document.getElementById('porcentaje-diferencia').textContent = `${porcentaje}%`;
+    });
+
+    function validarCantidad() {
+        const tipoSelect = document.querySelector('input[name="tipo-cantidad"]:checked').value;
+        let cantidadTotal = 0;
+
+        if (tipoSelect === 'unidades') {
+            cantidadTotal = parseInt(document.getElementById('cantidad-transferir').value) || 0;
+        } else if (tipoSelect === 'cajas') {
+            const unidadesPorCaja = parseInt(document.getElementById('unidades-por-caja').value) || 1;
+            const numeroCajas = parseInt(document.getElementById('numero-cajas').value) || 0;
+            cantidadTotal = unidadesPorCaja * numeroCajas;
+        } else if (tipoSelect === 'mixto') {
+            const unidadesPorCaja = parseInt(document.getElementById('unidades-por-caja-mixto').value) || 1;
+            const cajas = parseInt(document.getElementById('cajas-mixto').value) || 0;
+            const fracciones = parseInt(document.getElementById('fracciones-mixto').value) || 0;
+            cantidadTotal = (unidadesPorCaja * cajas) + fracciones;
         }
-        
-        const precioInfo = producto.cambio_precio ? 
-            `<span class="badge bg-warning text-dark">Precio cambiado: $${producto.precio_destino.toFixed(2)}</span>` : 
-            `<span class="badge bg-success">$${producto.precio_origen.toFixed(2)} c/u</span>`;
-        
-        return `
+
+        const maxDisponible = loteSeleccionado ? loteSeleccionado.cantidad_disponible_real : 0;
+        const esValido = loteSeleccionado && cantidadTotal > 0 && cantidadTotal <= maxDisponible;
+
+        document.getElementById('btn-agregar-producto').disabled = !esValido;
+    }
+
+    // Event listeners para validar cantidad
+    document.getElementById('cantidad-transferir').addEventListener('input', validarCantidad);
+
+    // Event listeners para validar cantidad
+    document.getElementById('cantidad-transferir').addEventListener('input', validarCantidad);
+
+    // Agregar producto a la transferencia
+    document.getElementById('btn-agregar-producto').addEventListener('click', function () {
+        if (!loteSeleccionado) {
+            alert('⚠️ Debe seleccionar un lote primero');
+            return;
+        }
+
+        const tipoSelect = document.querySelector('input[name="tipo-cantidad"]:checked').value;
+        let cantidad = 0;
+        let cantidadCajas = 0;
+        let cantidadFracciones = 0;
+        let unidadesPorCaja = 1;
+
+        if (tipoSelect === 'unidades') {
+            cantidad = parseInt(document.getElementById('cantidad-transferir').value);
+        } else if (tipoSelect === 'cajas') {
+            unidadesPorCaja = parseInt(document.getElementById('unidades-por-caja').value);
+            cantidadCajas = parseInt(document.getElementById('numero-cajas').value);
+            cantidad = unidadesPorCaja * cantidadCajas;
+        } else if (tipoSelect === 'mixto') {
+            unidadesPorCaja = parseInt(document.getElementById('unidades-por-caja-mixto').value);
+            cantidadCajas = parseInt(document.getElementById('cajas-mixto').value);
+            cantidadFracciones = parseInt(document.getElementById('fracciones-mixto').value);
+            cantidad = (unidadesPorCaja * cantidadCajas) + cantidadFracciones;
+        }
+
+        if (!cantidad || cantidad <= 0) {
+            alert('⚠️ Ingrese una cantidad válida');
+            return;
+        }
+
+        if (cantidad > loteSeleccionado.cantidad_disponible_real) {
+            alert('⚠️ La cantidad no puede ser mayor al stock disponible del lote');
+            return;
+        }
+
+        // Obtener información de precio
+        const cambioPrecio = document.getElementById('check-cambiar-precio').checked;
+        const precioOrigen = parseFloat(document.getElementById('precio-origen').value);
+        const precioDestino = cambioPrecio ? parseFloat(document.getElementById('precio-destino').value) : precioOrigen;
+
+        // Agregar a la lista
+        const productoData = {
+            ...productoSeleccionado,
+            cantidad: cantidad,
+            cantidad_cajas: cantidadCajas,
+            cantidad_fracciones: cantidadFracciones,
+            unidades_por_caja: unidadesPorCaja,
+            lote: loteSeleccionado,
+            precio_origen: precioOrigen,
+            precio_destino: precioDestino,
+            cambio_precio: cambioPrecio,
+            subtotal: cantidad * precioOrigen
+        };
+
+        productosTransferencia.push(productoData);
+
+        // Actualizar interfaz
+        actualizarListaProductos();
+        actualizarTotales();
+
+        // Cerrar modal
+        bootstrap.Modal.getInstance(document.getElementById('modalCantidad')).hide();
+    });
+
+    // Actualizar lista de productos en la interfaz
+    function actualizarListaProductos() {
+        const container = document.getElementById('productos-transferencia');
+        const noProductos = document.getElementById('no-productos');
+
+        if (productosTransferencia.length === 0) {
+            noProductos.style.display = 'block';
+            document.getElementById('totales').style.display = 'none';
+            document.getElementById('btn-guardar').disabled = true;
+            return;
+        }
+
+        noProductos.style.display = 'none';
+        document.getElementById('totales').style.display = 'block';
+        document.getElementById('btn-guardar').disabled = false;
+
+        container.innerHTML = productosTransferencia.map((producto, index) => {
+            let cantidadTexto = `${producto.cantidad} unid.`;
+            if (producto.cantidad_cajas > 0) {
+                cantidadTexto = `${producto.cantidad_cajas} caja(s)`;
+                if (producto.cantidad_fracciones > 0) {
+                    cantidadTexto += ` + ${producto.cantidad_fracciones} fracc.`;
+                }
+            }
+
+            const precioInfo = producto.cambio_precio ?
+                `<span class="badge bg-warning text-dark">Precio cambiado: $${producto.precio_destino.toFixed(2)}</span>` :
+                `<span class="badge bg-success">$${producto.precio_origen.toFixed(2)} c/u</span>`;
+
+            return `
         <div class="producto-item">
             <div class="d-flex justify-content-between align-items-start">
                 <div class="flex-grow-1">
@@ -835,66 +873,66 @@ function actualizarListaProductos() {
             <input type="hidden" name="cambios_precio[]" value="${producto.cambio_precio ? '1' : '0'}">
         </div>
     `}).join('');
-}
-
-// Eliminar producto de la transferencia
-function eliminarProducto(index) {
-    if (confirm('¿Está seguro de eliminar este producto de la transferencia?')) {
-        productosTransferencia.splice(index, 1);
-        actualizarListaProductos();
-        actualizarTotales();
     }
-}
 
-// Actualizar totales
-function actualizarTotales() {
-    const totalProductos = productosTransferencia.length;
-    const totalCantidad = productosTransferencia.reduce((sum, p) => sum + p.cantidad, 0);
-    const totalValor = productosTransferencia.reduce((sum, p) => sum + p.subtotal, 0);
-    
-    document.getElementById('total-productos').textContent = totalProductos;
-    document.getElementById('total-cantidad').textContent = totalCantidad;
-    document.getElementById('total-valor').textContent = `$${totalValor.toFixed(2)}`;
-}
+    // Eliminar producto de la transferencia
+    function eliminarProducto(index) {
+        if (confirm('¿Está seguro de eliminar este producto de la transferencia?')) {
+            productosTransferencia.splice(index, 1);
+            actualizarListaProductos();
+            actualizarTotales();
+        }
+    }
 
-// Validar formulario antes de enviar
-document.getElementById('form-transferencia').addEventListener('submit', function(e) {
-    if (productosTransferencia.length === 0) {
-        e.preventDefault();
-        alert('⚠️ Debe agregar al menos un producto a la transferencia');
-        return;
-    }
-    
-    const origen = document.getElementById('ubicacion-origen').value;
-    const destino = document.getElementById('ubicacion-destino').value;
-    
-    if (origen === destino) {
-        e.preventDefault();
-        alert('⚠️ La ubicación de origen y destino deben ser diferentes');
-        return;
-    }
-    
-    // Confirmación final
-    if (!confirm(`¿Confirma crear la transferencia con ${productosTransferencia.length} producto(s)?`)) {
-        e.preventDefault();
-    }
-});
+    // Actualizar totales
+    function actualizarTotales() {
+        const totalProductos = productosTransferencia.length;
+        const totalCantidad = productosTransferencia.reduce((sum, p) => sum + p.cantidad, 0);
+        const totalValor = productosTransferencia.reduce((sum, p) => sum + p.subtotal, 0);
 
-// Limpiar modales al cerrarlos
-document.getElementById('modalAgregarProducto').addEventListener('hidden.bs.modal', function () {
-    document.getElementById('buscar-producto').value = '';
-    const productos = document.querySelectorAll('.producto-card');
-    productos.forEach(producto => {
-        producto.style.display = 'block';
+        document.getElementById('total-productos').textContent = totalProductos;
+        document.getElementById('total-cantidad').textContent = totalCantidad;
+        document.getElementById('total-valor').textContent = `$${totalValor.toFixed(2)}`;
+    }
+
+    // Validar formulario antes de enviar
+    document.getElementById('form-transferencia').addEventListener('submit', function (e) {
+        if (productosTransferencia.length === 0) {
+            e.preventDefault();
+            alert('⚠️ Debe agregar al menos un producto a la transferencia');
+            return;
+        }
+
+        const origen = document.getElementById('ubicacion-origen').value;
+        const destino = document.getElementById('ubicacion-destino').value;
+
+        if (origen === destino) {
+            e.preventDefault();
+            alert('⚠️ La ubicación de origen y destino deben ser diferentes');
+            return;
+        }
+
+        // Confirmación final
+        if (!confirm(`¿Confirma crear la transferencia con ${productosTransferencia.length} producto(s)?`)) {
+            e.preventDefault();
+        }
     });
-});
 
-document.getElementById('modalCantidad').addEventListener('hidden.bs.modal', function () {
-    productoSeleccionado = null;
-    loteSeleccionado = null;
-    lotesDisponibles = [];
-    document.getElementById('check-cambiar-precio').checked = false;
-    document.getElementById('seccion-precio').style.display = 'none';
-});
+    // Limpiar modales al cerrarlos
+    document.getElementById('modalAgregarProducto').addEventListener('hidden.bs.modal', function () {
+        document.getElementById('buscar-producto').value = '';
+        const productos = document.querySelectorAll('.producto-card');
+        productos.forEach(producto => {
+            producto.style.display = 'block';
+        });
+    });
+
+    document.getElementById('modalCantidad').addEventListener('hidden.bs.modal', function () {
+        productoSeleccionado = null;
+        loteSeleccionado = null;
+        lotesDisponibles = [];
+        document.getElementById('check-cambiar-precio').checked = false;
+        document.getElementById('seccion-precio').style.display = 'none';
+    });
 </script>
 {% endblock %}
