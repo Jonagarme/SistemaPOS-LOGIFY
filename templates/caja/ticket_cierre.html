@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cierre de Caja - {{ cierre.id }}</title>
+    <style>
+        @page {
+            size: 80mm auto;
+            margin: 0;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            line-height: 1.2;
+            margin: 0;
+            padding: 5mm;
+            background: white;
+            color: black;
+            width: 70mm;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 5px;
+        }
+
+        .empresa-nombre {
+            font-size: 14px;
+            font-weight: bold;
+            margin: 0;
+        }
+
+        .separador {
+            border-top: 1px dashed #000;
+            margin: 8px 0;
+        }
+
+        .titulo-ticket {
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+            margin: 5px 0;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+        }
+
+        .info-label {
+            font-weight: bold;
+        }
+
+        .section-title {
+            font-weight: bold;
+            text-align: center;
+            margin-top: 10px;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #000;
+        }
+
+        .money-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 2px 0;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 5px 0;
+            font-weight: bold;
+            border-top: 1px dashed #000;
+            padding-top: 2px;
+        }
+
+        .arqueo-table {
+            width: 100%;
+            font-size: 9px;
+        }
+
+        .arqueo-row {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 9px;
+        }
+
+        .diferencia-positiva {
+            color: black;
+        }
+
+        .diferencia-negativa {
+            color: black;
+            /* Thermal printers are usually b/w */
+        }
+
+        @media print {
+            body {
+                width: 80mm;
+            }
+
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <div class="header">
+        <div class="empresa-nombre">{{ empresa.nombre_comercial|default:"SISTEMA POS" }}</div>
+        <div>{{ empresa.direccion|default:"" }}</div>
+        <div>{{ empresa.telefono|default:"" }}</div>
+    </div>
+
+    <div class="separador"></div>
+
+    <div class="titulo-ticket">CIERRE DE CAJA #{{ cierre.id }}</div>
+
+    <!-- Info General -->
+    <div class="info-group">
+        <div class="info-row">
+            <span>Caja:</span>
+            <span>{{ caja.nombre }}</span>
+        </div>
+        <div class="info-row">
+            <span>Apertura:</span>
+            <span>{{ cierre.fechaApertura|date:"d/m/Y H:i" }}</span>
+        </div>
+        <div class="info-row">
+            <span>Cierre:</span>
+            <span>{{ cierre.fechaCierre|date:"d/m/Y H:i" }}</span>
+        </div>
+        <div class="info-row">
+            <span>Usuario:</span>
+            <span>{{ usuario_cierre.nombreCompleto }}</span>
+        </div>
+    </div>
+
+    <div class="separador"></div>
+
+    <!-- Resumen Financiero -->
+    <div class="section-title">RESUMEN FINANCIERO</div>
+
+    <div class="money-row">
+        <span>Saldo Inicial:</span>
+        <span>$ {{ cierre.saldoInicial|floatformat:2 }}</span>
+    </div>
+    <div class="money-row">
+        <span>(+) Ventas:</span>
+        <span>$ {{ cierre.totalIngresosSistema|floatformat:2 }}</span>
+    </div>
+    <div class="money-row">
+        <span>(-) Egresos:</span>
+        <span>$ {{ cierre.totalEgresosSistema|floatformat:2 }}</span>
+    </div>
+
+    <div class="total-row">
+        <span>= Saldo Teórico:</span>
+        <span>$ {{ cierre.saldoTeoricoSistema|floatformat:2 }}</span>
+    </div>
+
+    <div class="money-row" style="margin-top: 5px;">
+        <span>Efectivo Contado:</span>
+        <span>$ {{ cierre.totalContadoFisico|floatformat:2 }}</span>
+    </div>
+
+    <div class="total-row">
+        <span>DIFERENCIA:</span>
+        <span>
+            {% if cierre.diferencia > 0 %}
+            + $ {{ cierre.diferencia|floatformat:2 }} (SOBRANTE)
+            {% elif cierre.diferencia < 0 %} - $ {{ cierre.diferencia|floatformat:2|cut:"-" }} (FALTANTE) {% else %} $
+                0.00 (EXACTO) {% endif %} </span>
+    </div>
+
+    <!-- Arqueo (si existe) -->
+    {% if arqueo %}
+    <div class="separador"></div>
+    <div class="section-title">DETALLE DE ARQUEO</div>
+
+    <div style="margin-bottom: 5px;"><strong>Billetes:</strong></div>
+    {% for billete in arqueo.billetes %}
+    {% if billete.cantidad > 0 %}
+    <div class="arqueo-row">
+        <span>${{ billete.valor|floatformat:2 }} x {{ billete.cantidad }}</span>
+        <span>$ {{ billete.total|floatformat:2 }}</span>
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    <div style="margin-top: 5px; margin-bottom: 5px;"><strong>Monedas:</strong></div>
+    {% for moneda in arqueo.monedas %}
+    {% if moneda.cantidad > 0 %}
+    <div class="arqueo-row">
+        <span>${{ moneda.valor|floatformat:2 }} x {{ moneda.cantidad }}</span>
+        <span>$ {{ moneda.total|floatformat:2 }}</span>
+    </div>
+    {% endif %}
+    {% endfor %}
+
+    <div class="total-row" style="margin-top: 5px;">
+        <span>Total Arqueo:</span>
+        <span>$ {{ arqueo.total_general|floatformat:2 }}</span>
+    </div>
+    {% endif %}
+
+    {% if arqueo.notas_arqueo %}
+    <div class="separador"></div>
+    <div><strong>Notas:</strong></div>
+    <div>{{ arqueo.notas_arqueo }}</div>
+    {% endif %}
+
+    <div class="footer">
+        <div class="separador"></div>
+        <div>Firma Cajero</div>
+        <br><br>
+        <div>_______________________</div>
+        <br>
+        <div>Firma Supervisor</div>
+        <br><br>
+        <div>_______________________</div>
+        <br>
+        <div>Generado: {% now "d/m/Y H:i:s" %}</div>
+    </div>
+
+    <!-- Botones -->
+    <div class="no-print" style="text-align: center; margin-top: 20px;">
+        <button onclick="window.print()" style="padding: 5px 15px; cursor: pointer;">Imprimir</button>
+        <button onclick="window.close()" style="padding: 5px 15px; cursor: pointer;">Cerrar</button>
+    </div>
+
+    <script>
+        window.onload = function () {
+            // window.print();
+        }
+    </script>
+</body>
+
+</html>

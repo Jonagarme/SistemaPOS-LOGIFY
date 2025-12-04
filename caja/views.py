@@ -1255,3 +1255,69 @@ def detalle_cierre_api(request, cierre_id):
     except Exception as e:
         print(f"Error en detalle_cierre_api: {e}")
         return JsonResponse({'error': str(e)}, status=500)
+
+
+@login_required
+def imprimir_cierre_ticket(request, cierre_id):
+    """Vista para imprimir el ticket de cierre en HTML"""
+    try:
+        # Obtener el cierre
+        cierre = get_object_or_404(CierreCaja, id=cierre_id)
+        
+        # Obtener la caja
+        try:
+            caja = Caja.objects.get(id=cierre.idCaja)
+        except Caja.DoesNotExist:
+            caja = None
+            
+        # Obtener usuario de cierre
+        usuario_cierre = None
+        if cierre.idUsuarioCierre:
+            try:
+                from usuarios.models import Usuario
+                usuario_cierre = Usuario.objects.get(id=cierre.idUsuarioCierre)
+            except:
+                pass
+                
+        # Obtener configuración de empresa
+        from usuarios.models import ConfiguracionEmpresa
+        empresa = ConfiguracionEmpresa.obtener_configuracion()
+        
+        # Obtener arqueo si existe
+        arqueo = ArqueoCaja.objects.filter(idCierreCaja=cierre.id).order_by('-id').first()
+        
+        arqueo_detalles = None
+        if arqueo:
+            arqueo_detalles = {
+                'billetes': [
+                    {'valor': 100, 'cantidad': arqueo.billete_100, 'total': arqueo.billete_100 * 100},
+                    {'valor': 50, 'cantidad': arqueo.billete_50, 'total': arqueo.billete_50 * 50},
+                    {'valor': 20, 'cantidad': arqueo.billete_20, 'total': arqueo.billete_20 * 20},
+                    {'valor': 10, 'cantidad': arqueo.billete_10, 'total': arqueo.billete_10 * 10},
+                    {'valor': 5, 'cantidad': arqueo.billete_5, 'total': arqueo.billete_5 * 5},
+                ],
+                'monedas': [
+                    {'valor': 1.00, 'cantidad': arqueo.moneda_1, 'total': arqueo.moneda_1 * 1.00},
+                    {'valor': 0.50, 'cantidad': arqueo.moneda_050, 'total': arqueo.moneda_050 * 0.50},
+                    {'valor': 0.25, 'cantidad': arqueo.moneda_025, 'total': arqueo.moneda_025 * 0.25},
+                    {'valor': 0.10, 'cantidad': arqueo.moneda_010, 'total': arqueo.moneda_010 * 0.10},
+                    {'valor': 0.05, 'cantidad': arqueo.moneda_005, 'total': arqueo.moneda_005 * 0.05},
+                    {'valor': 0.01, 'cantidad': arqueo.moneda_001, 'total': arqueo.moneda_001 * 0.01},
+                ],
+                'total_general': arqueo.total_general,
+                'notas_arqueo': arqueo.notas_arqueo
+            }
+        
+        context = {
+            'cierre': cierre,
+            'caja': caja,
+            'usuario_cierre': usuario_cierre,
+            'empresa': empresa,
+            'arqueo': arqueo_detalles,
+        }
+        
+        return render(request, 'caja/ticket_cierre.html', context)
+        
+    except Exception as e:
+        messages.error(request, f'Error al generar ticket: {str(e)}')
+        return redirect('caja:cierres')

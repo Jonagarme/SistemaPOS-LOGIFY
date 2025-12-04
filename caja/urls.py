@@ -32,4 +32,5 @@ urlpatterns = [
     # API
     path('api/verificar-caja/', views.verificar_caja_abierta, name='verificar_caja_abierta'),
     path('api/cierre/<int:cierre_id>/', views.detalle_cierre_api, name='detalle_cierre_api'),
+    path('cierres/<int:cierre_id>/imprimir/', views.imprimir_cierre_ticket, name='imprimir_cierre_ticket'),
 ]
