@@ -132,15 +132,15 @@
                                     </td>
                                     <td>
                                         {% if not caja.activa %}
-                                            <span class="badge badge-secondary">
+                                            <span class="badge bg-secondary">
                                                 <i class="fas fa-ban"></i> Inactiva
                                             </span>
                                         {% elif caja.id in estados_cajas %}
-                                            <span class="badge badge-success">
+                                            <span class="badge bg-success">
                                                 <i class="fas fa-unlock"></i> Abierta
                                             </span>
                                         {% else %}
-                                            <span class="badge badge-warning">
+                                            <span class="badge bg-warning">
                                                 <i class="fas fa-lock"></i> Cerrada
                                             </span>
                                         {% endif %}
