@@ -238,6 +238,9 @@
                 <a class="nav-link" href="{% url 'ventas:facturas_electronicas' %}">
                     <i class="fas fa-file-invoice-dollar"></i> Facturas Electrónicas
                 </a>
+                <a class="nav-link" href="{% url 'ventas:ingreso_productos' %}">
+                    <i class="fas fa-box-open"></i> Ingreso de Productos
+                </a>
             </div>
         </div>
         
@@ -286,6 +289,12 @@
                 <a class="nav-link" href="{% url 'proveedores:crear' %}">
                     <i class="fas fa-plus-circle"></i> Nuevo Proveedor
                 </a>
+                <a class="nav-link" href="{% url 'proveedores:lista_ordenes' %}">
+                    <i class="fas fa-file-invoice"></i> Ver Órdenes
+                </a>
+                <a class="nav-link" href="{% url 'proveedores:crear_orden' %}">
+                    <i class="fas fa-plus-square"></i> Nueva Orden
+                </a>
             </div>
         </div>
         
@@ -302,17 +311,38 @@
                 <a class="nav-link" href="{% url 'inventario:ajustes' %}">
                     <i class="fas fa-balance-scale"></i> Ajustes
                 </a>
+                <a class="nav-link" href="{% url 'inventario:configuracion_stock' %}">
+                    <i class="fas fa-cog"></i> Configuración de Stock
+                </a>
                 <a class="nav-link" href="{% url 'inventario:compras' %}">
                     <i class="fas fa-shopping-cart"></i> Compras
                 </a>
                 <a class="nav-link" href="{% url 'inventario:lista_ordenes_compra' %}">
                     <i class="fas fa-file-invoice"></i> Órdenes de Compra
                 </a>
+                <a class="nav-link" href="{% url 'inventario:crear_orden_compra' %}">
+                    <i class="fas fa-plus-circle"></i> Nueva Orden de Compra
+                </a>
                 <a class="nav-link" href="{% url 'inventario:lista_transferencias' %}">
                     <i class="fas fa-exchange-alt"></i> Transferencias
                 </a>
+                <a class="nav-link" href="{% url 'inventario:crear_transferencia' %}">
+                    <i class="fas fa-arrow-right"></i> Nueva Transferencia
+                </a>
+                <a class="nav-link" href="{% url 'inventario:ubicaciones' %}">
+                    <i class="fas fa-map-marker-alt"></i> Gestionar Ubicaciones
+                </a>
                 <a class="nav-link" href="{% url 'inventario:reportes' %}">
                     <i class="fas fa-chart-line"></i> Reportes
+                </a>
+                <a class="nav-link" href="{% url 'inventario:reporte_productos_caducados' %}">
+                    <i class="fas fa-exclamation-triangle text-warning"></i> Productos Caducados
+                </a>
+                <a class="nav-link" href="{% url 'inventario:inventario_valorado' %}">
+                    <i class="fas fa-dollar-sign"></i> Inventario Valorado
+                </a>
+                <a class="nav-link" href="{% url 'inventario:generar_ordenes_automaticas' %}" onclick="return confirm('¿Generar órdenes automáticas basadas en stock mínimo?')">
+                    <i class="fas fa-magic text-warning"></i> Generar Órdenes Auto
                 </a>
             </div>
         </div>
@@ -324,6 +354,9 @@
                 <i class="fas fa-chevron-down float-end"></i>
             </a>
             <div class="collapse submenu" id="menuCaja">
+                <a class="nav-link" href="{% url 'caja:lista' %}">
+                    <i class="fas fa-cogs"></i> Gestión de Cajas
+                </a>
                 <a class="nav-link" href="{% url 'caja:estado' %}">
                     <i class="fas fa-eye"></i> Estado de Caja
                 </a>
@@ -358,6 +391,15 @@
                 <a class="nav-link" href="{% url 'contabilidad:flujo_caja' %}">
                     <i class="fas fa-chart-line"></i> Flujo de Caja
                 </a>
+                <a class="nav-link" href="{% url 'contabilidad:conciliacion_bancaria' %}">
+                    <i class="fas fa-university"></i> Conciliación Bancaria
+                </a>
+                <a class="nav-link" href="{% url 'contabilidad:control_gastos' %}">
+                    <i class="fas fa-receipt"></i> Control de Gastos
+                </a>
+                <a class="nav-link" href="{% url 'contabilidad:reportes_contables' %}">
+                    <i class="fas fa-file-alt"></i> Reportes Contables
+                </a>
             </div>
         </div>
         
@@ -377,6 +419,12 @@
                 <a class="nav-link" href="{% url 'usuarios:lista_roles' %}">
                     <i class="fas fa-user-tag"></i> Roles
                 </a>
+                <a class="nav-link" href="{% url 'usuarios:crear_rol' %}">
+                    <i class="fas fa-plus-circle"></i> Crear Rol
+                </a>
+                <a class="nav-link" href="{% url 'usuarios:lista_auditoria' %}">
+                    <i class="fas fa-clipboard-list"></i> Auditoría
+                </a>
             </div>
         </div>
         
@@ -392,6 +440,15 @@
                 </a>
                 <a class="nav-link" href="{% url 'reportes:estadisticas' %}">
                     <i class="fas fa-chart-line"></i> Estadísticas
+                </a>
+                <a class="nav-link" href="{% url 'reportes:exportar_productos' %}?formato=csv">
+                    <i class="fas fa-pills"></i> Exportar Productos
+                </a>
+                <a class="nav-link" href="{% url 'reportes:exportar_clientes' %}?formato=csv">
+                    <i class="fas fa-users"></i> Exportar Clientes
+                </a>
+                <a class="nav-link" href="{% url 'reportes:exportar_proveedores' %}?formato=csv">
+                    <i class="fas fa-truck"></i> Exportar Proveedores
                 </a>
             </div>
         </div>
