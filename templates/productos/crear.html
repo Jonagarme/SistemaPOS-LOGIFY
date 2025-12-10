@@ -49,6 +49,12 @@
 </style>
 {% endblock %}
 
+{% block page_actions %}
+<a href="{% url 'productos:lista' %}" class="btn btn-secondary">
+    <i class="fas fa-arrow-left"></i> Volver a Productos
+</a>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid">
     <div class="row">
@@ -58,11 +64,6 @@
                 <h2>
                     <i class="fas fa-pills text-primary"></i> {{ titulo }}
                 </h2>
-                <div>
-                    <a href="{% url 'productos:lista' %}" class="btn btn-secondary">
-                        <i class="fas fa-arrow-left"></i> Volver a Productos
-                    </a>
-                </div>
             </div>
 
             {% if messages %}
@@ -74,7 +75,7 @@
                 {% endfor %}
             {% endif %}
 
-            <form method="post" id="producto-form" novalidate>
+            <form method="post" id="producto-form">
                 {% csrf_token %}
                 
                 <!-- Sección 1: Información Básica -->
@@ -175,8 +176,8 @@
                                 <select class="form-select" id="id_tipo_producto" name="id_tipo_producto" required>
                                     <option value="">Seleccionar tipo...</option>
                                     {% for tipo in tipos_producto %}
-                                    <option value="{{ tipo.id_tipo_producto }}" 
-                                            {% if producto.id_tipo_producto_id == tipo.id_tipo_producto %}selected{% endif %}>
+                                    <option value="{{ tipo.id }}" 
+                                            {% if producto.id_tipo_producto_id == tipo.id %}selected{% endif %}>
                                         {{ tipo.nombre }}
                                     </option>
                                     {% endfor %}
@@ -191,8 +192,8 @@
                                 <select class="form-select" id="id_clase_producto" name="id_clase_producto" required>
                                     <option value="">Seleccionar clase...</option>
                                     {% for clase in clases_producto %}
-                                    <option value="{{ clase.id_clase_producto }}" 
-                                            {% if producto.id_clase_producto_id == clase.id_clase_producto %}selected{% endif %}>
+                                    <option value="{{ clase.id }}" 
+                                            {% if producto.id_clase_producto_id == clase.id %}selected{% endif %}>
                                         {{ clase.nombre }}
                                     </option>
                                     {% endfor %}
@@ -221,8 +222,8 @@
                                 <select class="form-select" id="id_categoria" name="id_categoria" required>
                                     <option value="">Seleccionar categoría...</option>
                                     {% for categoria in categorias %}
-                                    <option value="{{ categoria.id_categoria }}" 
-                                            {% if producto.id_categoria_id == categoria.id_categoria %}selected{% endif %}>
+                                    <option value="{{ categoria.id }}" 
+                                            {% if producto.id_categoria_id == categoria.id %}selected{% endif %}>
                                         {{ categoria.nombre }}
                                     </option>
                                     {% endfor %}
@@ -237,8 +238,8 @@
                                 <select class="form-select" id="id_marca" name="id_marca" required>
                                     <option value="">Seleccionar marca...</option>
                                     {% for marca in marcas %}
-                                    <option value="{{ marca.id_marca }}" 
-                                            {% if producto.id_marca_id == marca.id_marca %}selected{% endif %}>
+                                    <option value="{{ marca.id }}" 
+                                            {% if producto.id_marca_id == marca.id %}selected{% endif %}>
                                         {{ marca.nombre }}
                                     </option>
                                     {% endfor %}
@@ -251,8 +252,8 @@
                                 <select class="form-select" id="id_laboratorio" name="id_laboratorio">
                                     <option value="">Seleccionar laboratorio...</option>
                                     {% for laboratorio in laboratorios %}
-                                    <option value="{{ laboratorio.id_laboratorio }}" 
-                                            {% if producto.id_laboratorio_id == laboratorio.id_laboratorio %}selected{% endif %}>
+                                    <option value="{{ laboratorio.id }}" 
+                                            {% if producto.id_laboratorio_id == laboratorio.id %}selected{% endif %}>
                                         {{ laboratorio.nombre }}
                                     </option>
                                     {% endfor %}

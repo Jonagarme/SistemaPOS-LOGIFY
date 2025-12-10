@@ -340,56 +340,126 @@ def crear_producto(request):
                 messages.error(request, error)
         else:
             try:
-                # Crear nuevo producto con los datos del formulario
-                producto = Producto()
+                from django.db import connection
+                from datetime import datetime
                 
-                # Información básica
-                producto.codigo_principal = request.POST.get('codigo_principal').strip()
-                producto.codigo_auxiliar = request.POST.get('codigo_auxiliar', '').strip() or None
-                producto.nombre = request.POST.get('nombre').strip()
-                producto.descripcion = request.POST.get('descripcion', '').strip() or None
-                producto.observaciones = request.POST.get('observaciones', '').strip() or None
-                producto.registro_sanitario = request.POST.get('registro_sanitario', '').strip() or None
+                # Obtener datos del formulario
+                codigo_principal = request.POST.get('codigo_principal').strip()
+                codigo_auxiliar = request.POST.get('codigo_auxiliar', '').strip() or None
+                nombre = request.POST.get('nombre').strip()
+                descripcion = request.POST.get('descripcion', '').strip() or None
+                observaciones = request.POST.get('observaciones', '').strip() or None
+                registro_sanitario = request.POST.get('registro_sanitario', '').strip() or None
                 
-                # Clasificación
-                producto.id_tipo_producto_id = request.POST.get('id_tipo_producto')
-                producto.id_clase_producto_id = request.POST.get('id_clase_producto')
-                producto.id_categoria_id = request.POST.get('id_categoria')
-                producto.id_marca_id = request.POST.get('id_marca')
-                producto.id_laboratorio_id = request.POST.get('id_laboratorio') or None
-                producto.clasificacion_abc = request.POST.get('clasificacion_abc') or None
+                id_tipo_producto = request.POST.get('id_tipo_producto')
+                id_clase_producto = request.POST.get('id_clase_producto')
+                id_categoria = request.POST.get('id_categoria')
+                id_marca = request.POST.get('id_marca')
+                id_laboratorio = request.POST.get('id_laboratorio') or None
+                clasificacion_abc = request.POST.get('clasificacion_abc') or None
                 
-                # Precios y costos
-                producto.costo_unidad = float(request.POST.get('costo_unidad', 0))
-                producto.costo_caja = float(request.POST.get('costo_caja', 0))
-                producto.pvp_unidad = float(request.POST.get('pvp_unidad', 0))
-                producto.precio_venta = float(request.POST.get('precio_venta', 0))
+                costo_unidad = float(request.POST.get('costo_unidad', 0))
+                costo_caja = float(request.POST.get('costo_caja', 0))
+                pvp_unidad = float(request.POST.get('pvp_unidad', 0))
+                precio_venta = float(request.POST.get('precio_venta', 0))
                 
-                # Inventario
-                producto.stock = float(request.POST.get('stock', 0))
-                producto.stock_minimo = float(request.POST.get('stock_minimo', 0))
-                producto.stock_maximo = float(request.POST.get('stock_maximo', 0))
+                stock = float(request.POST.get('stock', 0))
+                stock_minimo = float(request.POST.get('stock_minimo', 0))
+                stock_maximo = float(request.POST.get('stock_maximo', 0))
                 
-                # Características farmacéuticas (checkboxes)
-                producto.es_divisible = 'es_divisible' in request.POST
-                producto.es_psicotropico = 'es_psicotropico' in request.POST
-                producto.requiere_cadena_frio = 'requiere_cadena_frio' in request.POST
-                producto.requiere_seguimiento = 'requiere_seguimiento' in request.POST
-                producto.calculo_abc_manual = 'calculo_abc_manual' in request.POST
-                producto.activo = 'activo' in request.POST
-                producto.anulado = False
+                es_divisible = 1 if 'es_divisible' in request.POST else 0
+                es_psicotropico = 1 if 'es_psicotropico' in request.POST else 0
+                requiere_cadena_frio = 1 if 'requiere_cadena_frio' in request.POST else 0
+                requiere_seguimiento = 1 if 'requiere_seguimiento' in request.POST else 0
+                calculo_abc_manual = 1 if 'calculo_abc_manual' in request.POST else 0
+                activo = 1 if 'activo' in request.POST else 0
                 
-                # Guardar el producto
-                producto.save()
+                # Insertar usando SQL directo para incluir creadoPor
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        INSERT INTO productos (
+                            codigoPrincipal, codigoAuxiliar, nombre, descripcion, observaciones, 
+                            registroSanitario, idTipoProducto, idClaseProducto, idCategoria, 
+                            idSubcategoria, idMarca, idLaboratorio, clasificacionABC,
+                            stock, stockMinimo, stockMaximo,
+                            costoUnidad, costoCaja, pvpUnidad, precioVenta,
+                            esDivisible, esPsicotropico, requiereCadenaFrio, requiereSeguimiento,
+                            calculoABCManual, activo, anulado, creadoPor, creadoDate
+                        ) VALUES (
+                            %s, %s, %s, %s, %s, %s, %s, %s, %s, 1, %s, %s, %s,
+                            %s, %s, %s, %s, %s, %s, %s,
+                            %s, %s, %s, %s, %s, %s, 0, %s, NOW()
+                        )
+                    """, [
+                        codigo_principal, codigo_auxiliar, nombre, descripcion, observaciones,
+                        registro_sanitario, id_tipo_producto, id_clase_producto, id_categoria,
+                        id_marca, id_laboratorio, clasificacion_abc,
+                        stock, stock_minimo, stock_maximo,
+                        costo_unidad, costo_caja, pvp_unidad, precio_venta,
+                        es_divisible, es_psicotropico, requiere_cadena_frio, requiere_seguimiento,
+                        calculo_abc_manual, activo, request.user.id
+                    ])
                 
-                messages.success(request, f'Producto "{producto.nombre}" creado exitosamente con código {producto.codigo_principal}')
+                messages.success(request, f'Producto "{nombre}" creado exitosamente con código {codigo_principal}')
                 return redirect('productos:lista')
                 
             except Exception as e:
                 messages.error(request, f'Error al crear el producto: {str(e)}')
     
+    # Si hay errores o es GET, mantener los datos ingresados si es POST
+    producto_ctx = None
+    if request.method == 'POST':
+        # Reconstruir producto con datos del formulario para no perder lo escrito
+        producto_ctx = Producto()
+        producto_ctx.codigo_principal = request.POST.get('codigo_principal', '').strip()
+        producto_ctx.codigo_auxiliar = request.POST.get('codigo_auxiliar', '').strip()
+        producto_ctx.nombre = request.POST.get('nombre', '').strip()
+        producto_ctx.descripcion = request.POST.get('descripcion', '').strip()
+        producto_ctx.observaciones = request.POST.get('observaciones', '').strip()
+        producto_ctx.registro_sanitario = request.POST.get('registro_sanitario', '').strip()
+        producto_ctx.fecha_caducidad = request.POST.get('fecha_caducidad') or None
+        
+        # IDs para selects
+        try: producto_ctx.id_tipo_producto_id = int(request.POST.get('id_tipo_producto') or 0)
+        except: pass
+        try: producto_ctx.id_clase_producto_id = int(request.POST.get('id_clase_producto') or 0)
+        except: pass
+        try: producto_ctx.id_categoria_id = int(request.POST.get('id_categoria') or 0)
+        except: pass
+        try: producto_ctx.id_marca_id = int(request.POST.get('id_marca') or 0)
+        except: pass
+        try: producto_ctx.id_laboratorio_id = int(request.POST.get('id_laboratorio') or 0)
+        except: pass
+        
+        producto_ctx.clasificacion_abc = request.POST.get('clasificacion_abc')
+        
+        # Valores numéricos
+        try: producto_ctx.costo_unidad = float(request.POST.get('costo_unidad', 0))
+        except: producto_ctx.costo_unidad = 0
+        try: producto_ctx.costo_caja = float(request.POST.get('costo_caja', 0))
+        except: producto_ctx.costo_caja = 0
+        try: producto_ctx.pvp_unidad = float(request.POST.get('pvp_unidad', 0))
+        except: producto_ctx.pvp_unidad = 0
+        try: producto_ctx.precio_venta = float(request.POST.get('precio_venta', 0))
+        except: producto_ctx.precio_venta = 0
+        try: producto_ctx.stock = float(request.POST.get('stock', 0))
+        except: producto_ctx.stock = 0
+        try: producto_ctx.stock_minimo = float(request.POST.get('stock_minimo', 0))
+        except: producto_ctx.stock_minimo = 0
+        try: producto_ctx.stock_maximo = float(request.POST.get('stock_maximo', 0))
+        except: producto_ctx.stock_maximo = 0
+        
+        # Checkboxes
+        producto_ctx.es_divisible = 'es_divisible' in request.POST
+        producto_ctx.es_psicotropico = 'es_psicotropico' in request.POST
+        producto_ctx.requiere_cadena_frio = 'requiere_cadena_frio' in request.POST
+        producto_ctx.requiere_seguimiento = 'requiere_seguimiento' in request.POST
+        producto_ctx.calculo_abc_manual = 'calculo_abc_manual' in request.POST
+        producto_ctx.activo = 'activo' in request.POST
+
     # Cargar datos para formulario
     context = {
+        'producto': producto_ctx,
         'categorias': Categoria.objects.all().order_by('nombre'),
         'marcas': Marca.objects.all().order_by('nombre'),
         'laboratorios': Laboratorio.objects.all().order_by('nombre'),
