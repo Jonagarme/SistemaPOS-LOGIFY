@@ -38,40 +38,146 @@ def dashboard(request):
         
         # Estadísticas del dashboard
         with connection.cursor() as cursor:
-            # Total de productos
-            cursor.execute("SELECT COUNT(*) FROM productos WHERE activo = 1")
+            # Total de productos activos
+            cursor.execute("SELECT COUNT(*) FROM productos WHERE activo = 1 AND anulado = 0")
             total_productos = cursor.fetchone()[0]
             
+            # Productos con bajo stock
+            cursor.execute("""
+                SELECT COUNT(*) 
+                FROM productos 
+                WHERE activo = 1 AND anulado = 0 
+                AND stock <= stockMinimo
+            """)
+            productos_bajo_stock = cursor.fetchone()[0]
+            
             # Total de clientes
-            cursor.execute("SELECT COUNT(*) FROM clientes WHERE activo = 1")
+            cursor.execute("SELECT COUNT(*) FROM clientes WHERE estado = 1 AND anulado = 0")
             total_clientes = cursor.fetchone()[0]
             
             # Total de proveedores
-            cursor.execute("SELECT COUNT(*) FROM proveedores WHERE activo = 1")
+            cursor.execute("SELECT COUNT(*) FROM proveedores WHERE estado = 1 AND anulado = 0")
             total_proveedores = cursor.fetchone()[0]
             
-            # Ventas del día
+            # Ventas de hoy - Cantidad
+            cursor.execute("""
+                SELECT COUNT(*) 
+                FROM facturas_venta 
+                WHERE DATE(fechaEmision) = CURDATE()
+                AND estado != 'ANULADA'
+            """)
+            ventas_hoy_cantidad = cursor.fetchone()[0] or 0
+            
+            # Ventas de hoy - Monto total
             cursor.execute("""
                 SELECT COALESCE(SUM(total), 0) 
-                FROM ventas 
-                WHERE DATE(fecha_venta) = CURDATE()
+                FROM facturas_venta 
+                WHERE DATE(fechaEmision) = CURDATE()
+                AND estado != 'ANULADA'
             """)
-            ventas_hoy = cursor.fetchone()[0] or 0
+            ventas_hoy_monto = cursor.fetchone()[0] or 0
+            
+            # Últimas 5 ventas
+            cursor.execute("""
+                SELECT fv.numeroFactura, fv.fechaEmision, fv.total, 
+                       c.nombres, c.apellidos
+                FROM facturas_venta fv
+                LEFT JOIN clientes c ON fv.idCliente = c.id
+                WHERE fv.estado != 'ANULADA'
+                ORDER BY fv.fechaEmision DESC
+                LIMIT 5
+            """)
+            ultimas_ventas = []
+            for row in cursor.fetchall():
+                ultimas_ventas.append({
+                    'numero': row[0],
+                    'fecha': row[1],
+                    'total': float(row[2]) if row[2] else 0,
+                    'cliente': f"{row[3] or ''} {row[4] or ''}".strip() or 'Cliente General'
+                })
+            
+            # Top 5 productos más vendidos (últimos 30 días)
+            cursor.execute("""
+                SELECT p.nombre, p.codigoPrincipal, SUM(fvd.cantidad) as total_vendido
+                FROM facturas_venta_detalle fvd
+                JOIN facturas_venta fv ON fvd.idFacturaVenta = fv.id
+                JOIN productos p ON fvd.idProducto = p.id
+                WHERE fv.fechaEmision >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+                AND fv.estado != 'ANULADA'
+                GROUP BY p.id, p.nombre, p.codigoPrincipal
+                ORDER BY total_vendido DESC
+                LIMIT 5
+            """)
+            productos_top = []
+            for row in cursor.fetchall():
+                productos_top.append({
+                    'nombre': row[0],
+                    'codigo': row[1],
+                    'cantidad': float(row[2]) if row[2] else 0
+                })
+        
+        # Verificar si hay caja abierta
+        caja_abierta = None
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("""
+                    SELECT cc.id, c.nombre, cc.montoInicial, cc.fechaApertura
+                    FROM cierres_caja cc
+                    JOIN cajas c ON cc.idCaja = c.id
+                    WHERE cc.estado = 'ABIERTA'
+                    AND cc.idUsuario = %s
+                    ORDER BY cc.fechaApertura DESC
+                    LIMIT 1
+                """, [request.user.id])
+                row = cursor.fetchone()
+                if row:
+                    caja_abierta = {
+                        'id': row[0],
+                        'nombre': row[1],
+                        'monto_inicial': float(row[2]) if row[2] else 0,
+                        'fecha_apertura': row[3]
+                    }
+        except:
+            pass
             
         context = {
             'usuario_info': usuario_info,
             'total_productos': total_productos,
+            'productos_bajo_stock': productos_bajo_stock,
             'total_clientes': total_clientes,
             'total_proveedores': total_proveedores,
-            'ventas_hoy': ventas_hoy,
+            'ventas_hoy_cantidad': ventas_hoy_cantidad,
+            'ventas_hoy_monto': float(ventas_hoy_monto),
+            'ultimas_ventas': ultimas_ventas,
+            'productos_top': productos_top,
+            'caja_abierta': caja_abierta,
         }
+        
+        # DEBUG
+        print("=" * 50)
+        print("DASHBOARD CONTEXT:")
+        print(f"total_productos: {total_productos}")
+        print(f"productos_bajo_stock: {productos_bajo_stock}")
+        print(f"ventas_hoy_cantidad: {ventas_hoy_cantidad}")
+        print(f"ventas_hoy_monto: {ventas_hoy_monto}")
+        print(f"ultimas_ventas: {len(ultimas_ventas)}")
+        print(f"productos_top: {len(productos_top)}")
+        print("=" * 50)
+        
     except Exception as e:
+        print("=" * 50)
+        print(f"ERROR EN DASHBOARD: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        print("=" * 50)
         context = {
             'usuario_info': {},
             'total_productos': 0,
+            'productos_bajo_stock': 0,
             'total_clientes': 0,
             'total_proveedores': 0,
-            'ventas_hoy': 0,
+            'ventas_hoy_cantidad': 0,
+            'ventas_hoy_monto': 0,
             'error': f'Error al cargar datos: {str(e)}'
         }
     

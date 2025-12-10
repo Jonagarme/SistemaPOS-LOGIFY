@@ -13,7 +13,7 @@
                 <div class="row">
                     <div class="col">
                         <div class="text-xs font-weight-bold text-uppercase mb-1">Ventas Hoy</div>
-                        <div class="h5 mb-0">{{ ventas_hoy }}</div>
+                        <div class="h5 mb-0">{{ ventas_hoy_cantidad }}</div>
                     </div>
                     <div class="col-auto">
                         <i class="fas fa-shopping-cart fa-2x"></i>
@@ -29,7 +29,7 @@
                 <div class="row">
                     <div class="col">
                         <div class="text-xs font-weight-bold text-uppercase mb-1">Total Ventas Hoy</div>
-                        <div class="h5 mb-0">$ {{ total_ventas_hoy|floatformat:2 }}</div>
+                        <div class="h5 mb-0">$ {{ ventas_hoy_monto|floatformat:2 }}</div>
                     </div>
                     <div class="col-auto">
                         <i class="fas fa-dollar-sign fa-2x"></i>
@@ -84,7 +84,7 @@
             <div class="card-body">
                 {% if caja_abierta %}
                     <div class="alert alert-success">
-                        <strong>Caja Abierta:</strong> {{ caja_abierta.caja.nombre }}<br>
+                        <strong>Caja Abierta:</strong> {{ caja_abierta.nombre }}<br>
                         <small>Abierta: {{ caja_abierta.fecha_apertura|date:"d/m/Y H:i" }}</small><br>
                         <strong>Monto Inicial:</strong> $ {{ caja_abierta.monto_inicial|floatformat:2 }}
                     </div>
