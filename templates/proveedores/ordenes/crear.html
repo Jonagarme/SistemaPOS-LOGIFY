@@ -30,26 +30,58 @@
         background: #1fb855;
         color: white;
     }
+    
+    /* Estilos del modal mejorados */
+    .modal-xl {
+        max-width: 90%;
+    }
+    
     .modal-producto-item {
         cursor: pointer;
-        transition: background 0.2s;
+        transition: all 0.2s;
     }
+    
     .modal-producto-item:hover {
-        background: #e9ecef;
+        background: #e3f2fd !important;
+        transform: scale(1.01);
     }
+    
     .producto-codigo {
-        font-family: monospace;
+        font-family: 'Courier New', monospace;
         font-weight: bold;
-        color: #0066cc;
+        color: #1976d2;
+        background: #e3f2fd;
+        padding: 2px 6px;
+        border-radius: 4px;
     }
+    
     .producto-stock {
-        font-size: 0.85em;
+        font-size: 0.9em;
+        font-weight: 600;
     }
+    
     .producto-stock.bajo {
-        color: #dc3545;
+        color: #d32f2f;
     }
+    
     .producto-stock.normal {
-        color: #28a745;
+        color: #388e3c;
+    }
+    
+    #tabla_resultados {
+        font-size: 0.95em;
+    }
+    
+    #tabla_resultados thead th {
+        position: sticky;
+        top: 0;
+        background: #f8f9fa;
+        z-index: 10;
+    }
+    
+    .table-responsive {
+        max-height: 500px;
+        overflow-y: auto;
     }
 </style>
 {% endblock %}
@@ -72,13 +104,17 @@
                             <i class="fas fa-truck"></i> Proveedor *
                         </label>
                         <select class="form-select" id="proveedor_id" name="proveedor_id" required>
-                            <option value="">-- Seleccione un proveedor --</option>
+                            <option value="">Seleccionar proveedor...</option>
                             {% for proveedor in proveedores %}
                             <option value="{{ proveedor.id }}" 
-                                    data-whatsapp="{{ proveedor.whatsapp_formateado }}"
-                                    data-telefono="{{ proveedor.telefono }}">
-                                {{ proveedor.ruc }} - {{ proveedor.razon_social }}
+                                    data-ruc="{{ proveedor.ruc }}"
+                                    data-telefono="{{ proveedor.telefono|default:'' }}"
+                                    data-email="{{ proveedor.email|default:'' }}"
+                                    data-direccion="{{ proveedor.direccion|default:'' }}">
+                                {{ proveedor.ruc }} - {% if proveedor.nombre_comercial %}{{ proveedor.nombre_comercial }}{% else %}{{ proveedor.razon_social }}{% endif %}
                             </option>
+                            {% empty %}
+                            <option value="" disabled>No hay proveedores disponibles</option>
                             {% endfor %}
                         </select>
                         <div id="info_proveedor" class="mt-2 text-muted small" style="display: none;">
@@ -478,16 +514,17 @@ function calcularTotales() {
 }
 
 function cargarInfoProveedor(proveedorId) {
-    $.ajax({
-        url: `/proveedores/api/proveedor/${proveedorId}/`,
-        method: 'GET',
-        success: function(proveedor) {
-            $('#prov_ruc').text(proveedor.ruc);
-            $('#prov_telefono').text(proveedor.telefono || 'No registrado');
-            $('#prov_email').text(proveedor.email || 'No registrado');
-            $('#info_proveedor').show();
-        }
-    });
+    const select = $('#proveedor_id');
+    const option = select.find('option:selected');
+    
+    if (option.val()) {
+        $('#prov_ruc').text(option.data('ruc') || 'No registrado');
+        $('#prov_telefono').text(option.data('telefono') || 'No registrado');
+        $('#prov_email').text(option.data('email') || 'No registrado');
+        $('#info_proveedor').show();
+    } else {
+        $('#info_proveedor').hide();
+    }
 }
 
 function guardarOrden() {

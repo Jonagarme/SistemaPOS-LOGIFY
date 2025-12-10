@@ -57,6 +57,69 @@
     border-radius: 10px;
     padding: 20px;
 }
+
+/* Mejoras para modal de productos */
+.modal-xl {
+    max-width: 90%;
+}
+
+.producto-option {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 6px;
+    margin: 4px 0;
+}
+
+.producto-option:hover {
+    background-color: #f0f7ff !important;
+    border-color: #007bff !important;
+    transform: translateX(5px);
+}
+
+.producto-option .row {
+    padding: 10px;
+}
+
+.producto-option strong {
+    color: #495057;
+    font-size: 0.9rem;
+}
+
+#listaProductos {
+    max-height: 500px;
+    overflow-y: auto;
+    position: relative;
+}
+
+/* Sticky table header effect */
+#listaProductos::before {
+    content: '';
+    position: sticky;
+    top: 0;
+    height: 2px;
+    background: linear-gradient(to right, #007bff, #0056b3);
+    display: block;
+    z-index: 10;
+}
+
+/* Scrollbar styling */
+#listaProductos::-webkit-scrollbar {
+    width: 8px;
+}
+
+#listaProductos::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+#listaProductos::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+#listaProductos::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
 </style>
 {% endblock %}
 
@@ -97,10 +160,13 @@
                                 <option value="">Seleccionar proveedor...</option>
                                 {% for proveedor in proveedores %}
                                     <option value="{{ proveedor.id }}" 
-                                            data-telefono="{{ proveedor.telefono }}"
-                                            data-email="{{ proveedor.email }}">
-                                        {{ proveedor.nombre_comercial }}
+                                            data-ruc="{{ proveedor.ruc }}"
+                                            data-telefono="{{ proveedor.telefono|default:'' }}"
+                                            data-email="{{ proveedor.email|default:'' }}">
+                                        {{ proveedor.ruc }} - {% if proveedor.nombre_comercial %}{{ proveedor.nombre_comercial }}{% else %}{{ proveedor.razon_social }}{% endif %}
                                     </option>
+                                {% empty %}
+                                    <option value="" disabled>No hay proveedores disponibles</option>
                                 {% endfor %}
                             </select>
                         </div>
@@ -207,7 +273,7 @@
 
 <!-- Modal para Seleccionar Producto -->
 <div class="modal fade" id="modalSeleccionarProducto" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Seleccionar Producto</h5>
@@ -221,22 +287,27 @@
                 <div id="listaProductos" style="max-height: 400px; overflow-y: auto;">
                     {% for producto in productos %}
                         <div class="producto-option" data-id="{{ producto.id }}" data-nombre="{{ producto.nombre }}"
-                             data-codigo="{{ producto.codigo }}" data-precio="{{ producto.precio_compra|default:0 }}"
-                             data-stock="{{ producto.stock_actual }}">
+                             data-codigo="{{ producto.codigo_principal }}" data-precio="{{ producto.costo_unidad|default:0 }}"
+                             data-stock="{{ producto.stock }}">
                             <div class="row align-items-center p-2 border-bottom">
                                 <div class="col-md-2">
-                                    <strong>{{ producto.codigo }}</strong>
+                                    <strong>{{ producto.codigo_principal }}</strong>
                                 </div>
                                 <div class="col-md-6">
                                     {{ producto.nombre }}
                                 </div>
                                 <div class="col-md-2 text-center">
-                                    Stock: {{ producto.stock_actual }}
+                                    Stock: {{ producto.stock }}
                                 </div>
                                 <div class="col-md-2 text-end">
-                                    $ {{ producto.precio_compra|default:0|floatformat:2 }}
+                                    $ {{ producto.costo_unidad|default:0|floatformat:2 }}
                                 </div>
                             </div>
+                        </div>
+                    {% empty %}
+                        <div class="text-center text-muted p-3">
+                            <i class="fas fa-box-open fa-3x mb-3"></i>
+                            <p>No hay productos disponibles</p>
                         </div>
                     {% endfor %}
                 </div>

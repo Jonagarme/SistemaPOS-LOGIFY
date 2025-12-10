@@ -568,12 +568,12 @@ def crear_orden_compra(request):
                             orden=orden,
                             producto=producto,
                             cantidad_solicitada=cantidad,
-                            precio_unitario=producto.precio_compra or 0,
+                            precio_unitario=producto.costo_unidad or 0,
                             stock_actual=producto.stock,
                             stock_minimo=getattr(producto, 'stock_minimo', 0)
                         )
                         
-                        total += cantidad * (producto.precio_compra or 0)
+                        total += cantidad * (producto.costo_unidad or 0)
                 
                 orden.subtotal = total
                 orden.total = total
