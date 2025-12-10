@@ -4,6 +4,8 @@
 {% block title %}Configuración de Stock{% endblock %}
 
 {% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css" rel="stylesheet" />
 <style>
     .card-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -116,7 +118,7 @@
                                 <tr>
                                     <td>
                                         <strong>{{ config.producto.nombre }}</strong><br>
-                                        <small class="text-muted">{{ config.producto.codigo }}</small>
+                                        <small class="text-muted">{{ config.producto.codigo_principal }}</small>
                                     </td>
                                     <td>
                                         <span class="badge {% if config.producto.stock <= config.stock_minimo %}bg-danger{% elif config.producto.stock <= config.stock_minimo|add:10 %}bg-warning{% else %}bg-success{% endif %}">
@@ -227,8 +229,8 @@
                             <select class="form-select" id="producto" name="producto" required>
                                 <option value="">Seleccione un producto...</option>
                                 {% for producto in productos %}
-                                    <option value="{{ producto.id }}" data-stock="{{ producto.stock }}">
-                                        {{ producto.nombre }} ({{ producto.codigo }}) - Stock: {{ producto.stock }}
+                                    <option value="{{ producto.id }}" data-stock="{{ producto.stock|stringformat:'.2f' }}">
+                                        {{ producto.nombre }} ({{ producto.codigo_principal }}) - Stock: {{ producto.stock }}
                                     </option>
                                 {% endfor %}
                             </select>
@@ -289,12 +291,30 @@
 {% endblock %}
 
 {% block extra_js %}
+<!-- Select2 JS -->
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 <script>
-// Actualizar stock actual cuando se selecciona un producto
-document.getElementById('producto').addEventListener('change', function() {
-    const selectedOption = this.options[this.selectedIndex];
-    const stockActual = selectedOption.getAttribute('data-stock') || '0';
-    document.getElementById('stock-actual').value = stockActual;
+$(document).ready(function() {
+    // Inicializar Select2
+    $('#producto').select2({
+        theme: 'bootstrap-5',
+        dropdownParent: $('#modalConfigurarStock'),
+        placeholder: 'Seleccione un producto...',
+        allowClear: true,
+        width: '100%',
+        language: {
+            noResults: function() { return "No se encontraron productos"; },
+            searching: function() { return "Buscando..."; }
+        }
+    });
+
+    // Actualizar stock actual cuando se selecciona un producto
+    $('#producto').on('change', function() {
+        const selectedOption = $(this).find(':selected');
+        const stockActual = selectedOption.attr('data-stock') || '0';
+        $('#stock-actual').val(stockActual);
+    });
 });
 
 // Función para editar configuración
@@ -303,17 +323,14 @@ function editarConfiguracion(id) {
         .then(response => response.json())
         .then(data => {
             document.getElementById('configuracion-id').value = data.id;
-            document.getElementById('producto').value = data.producto;
+            
+            // Actualizar Select2
+            $('#producto').val(data.producto).trigger('change');
+            
             document.getElementById('stock-minimo').value = data.stock_minimo;
             document.getElementById('cantidad-pedido').value = data.cantidad_pedido;
             document.getElementById('proveedor').value = data.proveedor_preferido || '';
             document.getElementById('activo').value = data.activo ? 'True' : 'False';
-            
-            // Actualizar stock actual
-            const productoOption = document.querySelector(`#producto option[value="${data.producto}"]`);
-            if (productoOption) {
-                document.getElementById('stock-actual').value = productoOption.getAttribute('data-stock');
-            }
             
             document.getElementById('modal-title').textContent = 'Editar Configuración de Stock';
             
@@ -357,6 +374,7 @@ function toggleEstado(id, nuevoEstado) {
 // Limpiar modal al cerrarlo
 document.getElementById('modalConfigurarStock').addEventListener('hidden.bs.modal', function () {
     document.getElementById('form-configuracion').reset();
+    $('#producto').val('').trigger('change'); // Reset Select2
     document.getElementById('configuracion-id').value = '';
     document.getElementById('modal-title').textContent = 'Nueva Configuración de Stock';
     document.getElementById('stock-actual').value = '';

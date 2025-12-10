@@ -861,14 +861,41 @@ def recibir_transferencia(request, pk):
 @login_required
 def configuracion_stock(request):
     """Configurar niveles de stock por producto"""
-    configuraciones = ConfiguracionStock.objects.all().select_related('producto', 'ubicacion', 'proveedor_preferido')
+    configuraciones_list = ConfiguracionStock.objects.all().select_related('producto', 'ubicacion', 'proveedor_preferido')
     
-    paginator = Paginator(configuraciones, 20)
+    # Filtros
+    buscar = request.GET.get('buscar')
+    activo = request.GET.get('activo')
+    proveedor_id = request.GET.get('proveedor')
+    
+    if buscar:
+        configuraciones_list = configuraciones_list.filter(
+            Q(producto__nombre__icontains=buscar) | 
+            Q(producto__codigo__icontains=buscar)
+        )
+    
+    if activo:
+        if activo == 'True':
+            configuraciones_list = configuraciones_list.filter(activo=True)
+        elif activo == 'False':
+            configuraciones_list = configuraciones_list.filter(activo=False)
+            
+    if proveedor_id:
+        configuraciones_list = configuraciones_list.filter(proveedor_preferido_id=proveedor_id)
+    
+    paginator = Paginator(configuraciones_list, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
+    # Obtener productos y proveedores para el modal y filtros
+    productos = Producto.objects.filter(activo=True).order_by('nombre')
+    proveedores = Proveedor.objects.filter(estado=True).order_by('nombre_comercial')
+    
     context = {
+        'configuraciones': page_obj,
         'page_obj': page_obj,
+        'productos': productos,
+        'proveedores': proveedores,
         'titulo': 'Configuración de Stock'
     }
     return render(request, 'inventario/configuracion_stock.html', context)
