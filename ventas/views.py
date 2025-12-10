@@ -2470,14 +2470,14 @@ def reporte_consolidado(request):
             cursor.execute("""
                 SELECT 
                     CONCAT(c.nombres, ' ', c.apellidos) as cliente,
-                    c.identificacion,
+                    c.cedula_ruc,
                     COUNT(*) as num_compras,
                     COALESCE(SUM(fv.total), 0) as total_comprado
                 FROM facturas_venta fv
                 LEFT JOIN clientes c ON fv.idCliente = c.id
                 WHERE DATE(fv.fechaEmision) BETWEEN %s AND %s
                 AND fv.estado != 'ANULADA'
-                GROUP BY c.id, cliente, c.identificacion
+                GROUP BY c.id, cliente, c.cedula_ruc
                 ORDER BY total_comprado DESC
                 LIMIT 10
             """, [fecha_inicio, fecha_fin])
@@ -2485,7 +2485,7 @@ def reporte_consolidado(request):
             for row in cursor.fetchall():
                 clientes_top.append({
                     'nombre': row[0] or 'Cliente General',
-                    'identificacion': row[1] or 'N/A',
+                    'cedula_ruc': row[1] or 'N/A',
                     'num_compras': row[2],
                     'total': float(row[3]) if row[3] else 0
                 })

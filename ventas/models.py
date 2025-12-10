@@ -26,6 +26,7 @@ class FacturaVenta(models.Model):
     descuento = models.DecimalField(max_digits=12, decimal_places=4, default=0, db_column='descuento')
     iva = models.DecimalField(max_digits=12, decimal_places=4, default=0, db_column='iva')
     total = models.DecimalField(max_digits=12, decimal_places=4, db_column='total')
+    formaPago = models.CharField(max_length=20, null=True, blank=True, db_column='formaPago')
     estado = models.CharField(max_length=10, choices=ESTADO_CHOICES, default='EMITIDA', db_column='estado')
     creadoPor = models.IntegerField(db_column='creadoPor')
     creadoDate = models.DateTimeField(db_column='creadoDate')

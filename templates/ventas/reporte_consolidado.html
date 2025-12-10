@@ -245,7 +245,7 @@
                                 <tr>
                                     <td>{{ forloop.counter }}</td>
                                     <td>{{ cliente.nombre|truncatechars:25 }}</td>
-                                    <td>{{ cliente.identificacion }}</td>
+                                    <td>{{ cliente.cedula_ruc }}</td>
                                     <td class="text-end">{{ cliente.num_compras }}</td>
                                     <td class="text-end">$ {{ cliente.total|floatformat:2 }}</td>
                                 </tr>
