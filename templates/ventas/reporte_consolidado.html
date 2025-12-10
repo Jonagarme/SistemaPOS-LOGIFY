@@ -1,0 +1,401 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Reporte Consolidado de Ventas{% endblock %}
+
+{% block extra_css %}
+<style>
+    .stat-card {
+        border-left: 4px solid;
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .stat-card.blue { border-color: #007bff; }
+    .stat-card.green { border-color: #28a745; }
+    .stat-card.orange { border-color: #fd7e14; }
+    .stat-card.purple { border-color: #6f42c1; }
+    .stat-card.teal { border-color: #20c997; }
+    .stat-card.info { border-color: #17a2b8; }
+    
+    .chart-container {
+        position: relative;
+        height: 350px;
+        margin-bottom: 20px;
+    }
+    
+    @media print {
+        .no-print { display: none; }
+        .stat-card { page-break-inside: avoid; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4 no-print">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <h2><i class="fas fa-chart-line"></i> Reporte Consolidado de Ventas</h2>
+                <button onclick="window.print()" class="btn btn-primary">
+                    <i class="fas fa-print"></i> Imprimir
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filtros de Fecha -->
+    <div class="card mb-4 no-print">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Fecha Inicio</label>
+                    <input type="date" name="fecha_inicio" class="form-control" 
+                           value="{{ fecha_inicio }}" required>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Fecha Fin</label>
+                    <input type="date" name="fecha_fin" class="form-control" 
+                           value="{{ fecha_fin }}" required>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="fas fa-search"></i> Generar Reporte
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Estadísticas Generales -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h4 class="mb-3">Período: {{ fecha_inicio|date:"d/m/Y" }} - {{ fecha_fin|date:"d/m/Y" }}</h4>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card stat-card blue">
+                <div class="card-body">
+                    <h6 class="text-muted">Total Ventas</h6>
+                    <h2 class="mb-0">{{ estadisticas.total_ventas }}</h2>
+                    <small class="text-muted">Facturas emitidas</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card stat-card green">
+                <div class="card-body">
+                    <h6 class="text-muted">Total Ingresos</h6>
+                    <h2 class="mb-0">$ {{ estadisticas.total_monto|floatformat:2 }}</h2>
+                    <small class="text-muted">Monto vendido</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card stat-card orange">
+                <div class="card-body">
+                    <h6 class="text-muted">Promedio por Venta</h6>
+                    <h2 class="mb-0">$ {{ estadisticas.promedio_venta|floatformat:2 }}</h2>
+                    <small class="text-muted">Ticket promedio</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card stat-card purple">
+                <div class="card-body">
+                    <h6 class="text-muted">Clientes Únicos</h6>
+                    <h2 class="mb-0">{{ estadisticas.total_clientes }}</h2>
+                    <small class="text-muted">Clientes atendidos</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card stat-card teal">
+                <div class="card-body">
+                    <h6 class="text-muted">Productos Vendidos</h6>
+                    <h2 class="mb-0">{{ estadisticas.total_productos_vendidos|floatformat:0 }}</h2>
+                    <small class="text-muted">Unidades vendidas</small>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-3">
+            <div class="card stat-card info">
+                <div class="card-body">
+                    <h6 class="text-muted">Promedio Diario</h6>
+                    <h2 class="mb-0">{{ estadisticas.promedio_diario|floatformat:1 }}</h2>
+                    <small class="text-muted">Ventas por día ({{ estadisticas.dias_periodo}} días)</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Gráficos -->
+    <div class="row mb-4">
+        <!-- Ventas por Día -->
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-area"></i> Ventas por Día</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="ventasPorDiaChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Formas de Pago -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Formas de Pago</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="formasPagoChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Top Productos -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar"></i> Top 10 Productos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="chart-container">
+                        <canvas id="productosTopChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tablas Detalladas -->
+    <div class="row">
+        <!-- Top Productos -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-box"></i> Top 10 Productos Más Vendidos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Producto</th>
+                                    <th>Código</th>
+                                    <th class="text-end">Cantidad</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for producto in productos_top %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ producto.nombre|truncatechars:30 }}</td>
+                                    <td>{{ producto.codigo }}</td>
+                                    <td class="text-end">{{ producto.cantidad|floatformat:0 }}</td>
+                                    <td class="text-end">$ {{ producto.total|floatformat:2 }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">No hay datos</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Top Clientes -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0"><i class="fas fa-users"></i> Top 10 Mejores Clientes</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Cliente</th>
+                                    <th>Identificación</th>
+                                    <th class="text-end">Compras</th>
+                                    <th class="text-end">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cliente in clientes_top %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ cliente.nombre|truncatechars:25 }}</td>
+                                    <td>{{ cliente.identificacion }}</td>
+                                    <td class="text-end">{{ cliente.num_compras }}</td>
+                                    <td class="text-end">$ {{ cliente.total|floatformat:2 }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted">No hay datos</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+    // Datos para gráficos
+    const ventasPorDia = {{ ventas_por_dia_json|safe }};
+    const formasPago = {{ formas_pago_json|safe }};
+    const productosTop = {{ productos_top_json|safe }};
+    
+    // Gráfico de Ventas por Día
+    const ctxVentas = document.getElementById('ventasPorDiaChart').getContext('2d');
+    new Chart(ctxVentas, {
+        type: 'line',
+        data: {
+            labels: ventasPorDia.map(v => {
+                const fecha = new Date(v.fecha);
+                return fecha.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' });
+            }),
+            datasets: [{
+                label: 'Cantidad de Ventas',
+                data: ventasPorDia.map(v => v.cantidad),
+                borderColor: 'rgb(75, 192, 192)',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                tension: 0.3,
+                yAxisID: 'y',
+            }, {
+                label: 'Monto ($)',
+                data: ventasPorDia.map(v => v.monto),
+                borderColor: 'rgb(255, 99, 132)',
+                backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                tension: 0.3,
+                yAxisID: 'y1',
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Cantidad'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Monto ($)'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    },
+                },
+            }
+        }
+    });
+    
+    // Gráfico de Formas de Pago
+    if (formasPago.length > 0) {
+        const ctxFormas = document.getElementById('formasPagoChart').getContext('2d');
+        new Chart(ctxFormas, {
+            type: 'doughnut',
+            data: {
+                labels: formasPago.map(f => f.forma_pago),
+                datasets: [{
+                    data: formasPago.map(f => f.total),
+                    backgroundColor: [
+                        'rgba(255, 99, 132, 0.8)',
+                        'rgba(54, 162, 235, 0.8)',
+                        'rgba(255, 206, 86, 0.8)',
+                        'rgba(75, 192, 192, 0.8)',
+                        'rgba(153, 102, 255, 0.8)',
+                    ],
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.label + ': $' + context.parsed.toFixed(2);
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Gráfico de Top Productos
+    if (productosTop.length > 0) {
+        const ctxProductos = document.getElementById('productosTopChart').getContext('2d');
+        new Chart(ctxProductos, {
+            type: 'bar',
+            data: {
+                labels: productosTop.map(p => p.nombre.substring(0, 20)),
+                datasets: [{
+                    label: 'Cantidad Vendida',
+                    data: productosTop.map(p => p.cantidad),
+                    backgroundColor: 'rgba(54, 162, 235, 0.8)',
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+</script>
+{% endblock %}

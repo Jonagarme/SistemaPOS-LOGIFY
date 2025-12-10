@@ -15,6 +15,9 @@ urlpatterns = [
     path('<int:venta_id>/ticket-termico/', views.ticket_termico, name='ticket_termico'),
     path('<int:venta_id>/json-facturacion/', views.json_facturacion, name='json_facturacion'),
     
+    # Reportes
+    path('reporte-consolidado/', views.reporte_consolidado, name='reporte_consolidado'),
+    
     # Búsquedas de Ventas
     path('debug-ventas/', views.debug_ventas, name='debug_ventas'),  # Temporal para debug
     path('buscar-numero/', views.buscar_ventas_por_numero, name='buscar_ventas_numero'),

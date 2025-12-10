@@ -2342,3 +2342,191 @@ def desvincular_codigo_alternativo(request):
     except Exception as e:
         return JsonResponse({'success': False, 'error': str(e)})
 
+
+@login_required
+def reporte_consolidado(request):
+    """Reporte consolidado de ventas por rango de fechas"""
+    from datetime import datetime, timedelta
+    
+    # Obtener parámetros de fecha
+    fecha_inicio = request.GET.get('fecha_inicio')
+    fecha_fin = request.GET.get('fecha_fin')
+    
+    # Si no hay fechas, usar el mes actual
+    if not fecha_inicio or not fecha_fin:
+        hoy = datetime.now()
+        fecha_inicio = hoy.replace(day=1).strftime('%Y-%m-%d')
+        fecha_fin = hoy.strftime('%Y-%m-%d')
+    
+    # Calcular días del período
+    from datetime import datetime as dt
+    fecha_inicio_dt = dt.strptime(fecha_inicio, '%Y-%m-%d')
+    fecha_fin_dt = dt.strptime(fecha_fin, '%Y-%m-%d')
+    dias_periodo = (fecha_fin_dt - fecha_inicio_dt).days + 1
+    
+    # Inicializar variables
+    estadisticas = {
+        'total_ventas': 0,
+        'total_facturas': 0,
+        'total_monto': 0,
+        'total_clientes': 0,
+        'total_productos_vendidos': 0,
+        'promedio_venta': 0,
+        'promedio_diario': 0,
+        'dias_periodo': dias_periodo,
+    }
+    
+    ventas_por_dia = []
+    productos_top = []
+    clientes_top = []
+    formas_pago = []
+    
+    try:
+        with connection.cursor() as cursor:
+            # Total de ventas y monto
+            cursor.execute("""
+                SELECT 
+                    COUNT(*) as total_ventas,
+                    COALESCE(SUM(total), 0) as total_monto,
+                    COUNT(DISTINCT idCliente) as total_clientes
+                FROM facturas_venta
+                WHERE DATE(fechaEmision) BETWEEN %s AND %s
+                AND estado != 'ANULADA'
+            """, [fecha_inicio, fecha_fin])
+            
+            row = cursor.fetchone()
+            if row:
+                estadisticas['total_ventas'] = row[0] or 0
+                estadisticas['total_monto'] = float(row[1]) if row[1] else 0
+                estadisticas['total_clientes'] = row[2] or 0
+                estadisticas['promedio_venta'] = (
+                    estadisticas['total_monto'] / estadisticas['total_ventas'] 
+                    if estadisticas['total_ventas'] > 0 else 0
+                )
+                estadisticas['promedio_diario'] = (
+                    estadisticas['total_ventas'] / dias_periodo
+                    if dias_periodo > 0 else 0
+                )
+            
+            # Total de productos vendidos
+            cursor.execute("""
+                SELECT COALESCE(SUM(fvd.cantidad), 0) as total_productos
+                FROM facturas_venta_detalle fvd
+                JOIN facturas_venta fv ON fvd.idFacturaVenta = fv.id
+                WHERE DATE(fv.fechaEmision) BETWEEN %s AND %s
+                AND fv.estado != 'ANULADA'
+            """, [fecha_inicio, fecha_fin])
+            
+            row = cursor.fetchone()
+            if row:
+                estadisticas['total_productos_vendidos'] = float(row[0]) if row[0] else 0
+            
+            # Ventas por día para gráfico
+            cursor.execute("""
+                SELECT 
+                    DATE(fechaEmision) as fecha,
+                    COUNT(*) as cantidad,
+                    COALESCE(SUM(total), 0) as monto
+                FROM facturas_venta
+                WHERE DATE(fechaEmision) BETWEEN %s AND %s
+                AND estado != 'ANULADA'
+                GROUP BY DATE(fechaEmision)
+                ORDER BY fecha
+            """, [fecha_inicio, fecha_fin])
+            
+            for row in cursor.fetchall():
+                ventas_por_dia.append({
+                    'fecha': row[0].strftime('%Y-%m-%d'),
+                    'cantidad': row[1],
+                    'monto': float(row[2]) if row[2] else 0
+                })
+            
+            # Top 10 productos más vendidos
+            cursor.execute("""
+                SELECT 
+                    p.nombre,
+                    p.codigoPrincipal,
+                    SUM(fvd.cantidad) as cantidad,
+                    COALESCE(SUM(fvd.total), 0) as total
+                FROM facturas_venta_detalle fvd
+                JOIN facturas_venta fv ON fvd.idFacturaVenta = fv.id
+                JOIN productos p ON fvd.idProducto = p.id
+                WHERE DATE(fv.fechaEmision) BETWEEN %s AND %s
+                AND fv.estado != 'ANULADA'
+                GROUP BY p.id, p.nombre, p.codigoPrincipal
+                ORDER BY cantidad DESC
+                LIMIT 10
+            """, [fecha_inicio, fecha_fin])
+            
+            for row in cursor.fetchall():
+                productos_top.append({
+                    'nombre': row[0],
+                    'codigo': row[1],
+                    'cantidad': float(row[2]) if row[2] else 0,
+                    'total': float(row[3]) if row[3] else 0
+                })
+            
+            # Top 10 clientes
+            cursor.execute("""
+                SELECT 
+                    CONCAT(c.nombres, ' ', c.apellidos) as cliente,
+                    c.identificacion,
+                    COUNT(*) as num_compras,
+                    COALESCE(SUM(fv.total), 0) as total_comprado
+                FROM facturas_venta fv
+                LEFT JOIN clientes c ON fv.idCliente = c.id
+                WHERE DATE(fv.fechaEmision) BETWEEN %s AND %s
+                AND fv.estado != 'ANULADA'
+                GROUP BY c.id, cliente, c.identificacion
+                ORDER BY total_comprado DESC
+                LIMIT 10
+            """, [fecha_inicio, fecha_fin])
+            
+            for row in cursor.fetchall():
+                clientes_top.append({
+                    'nombre': row[0] or 'Cliente General',
+                    'identificacion': row[1] or 'N/A',
+                    'num_compras': row[2],
+                    'total': float(row[3]) if row[3] else 0
+                })
+            
+            # Formas de pago
+            cursor.execute("""
+                SELECT 
+                    formaPago,
+                    COUNT(*) as cantidad,
+                    COALESCE(SUM(total), 0) as total
+                FROM facturas_venta
+                WHERE DATE(fechaEmision) BETWEEN %s AND %s
+                AND estado != 'ANULADA'
+                GROUP BY formaPago
+                ORDER BY total DESC
+            """, [fecha_inicio, fecha_fin])
+            
+            for row in cursor.fetchall():
+                formas_pago.append({
+                    'forma_pago': row[0] or 'No especificado',
+                    'cantidad': row[1],
+                    'total': float(row[2]) if row[2] else 0
+                })
+    
+    except Exception as e:
+        messages.error(request, f'Error al generar el reporte: {str(e)}')
+    
+    # Serializar datos para JavaScript
+    import json
+    
+    context = {
+        'fecha_inicio': fecha_inicio,
+        'fecha_fin': fecha_fin,
+        'estadisticas': estadisticas,
+        'ventas_por_dia': ventas_por_dia,
+        'ventas_por_dia_json': json.dumps(ventas_por_dia),
+        'productos_top': productos_top,
+        'productos_top_json': json.dumps(productos_top),
+        'clientes_top': clientes_top,
+        'formas_pago': formas_pago,
+        'formas_pago_json': json.dumps(formas_pago),
+    }
+    
+    return render(request, 'ventas/reporte_consolidado.html', context)
