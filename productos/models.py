@@ -35,6 +35,10 @@ class ClaseProducto(models.Model):
 class Categoria(models.Model):
     """Categorías de productos"""
     nombre = models.CharField(max_length=100)
+    descripcion = models.TextField(null=True, blank=True)
+    activa = models.BooleanField(default=True)
+    creado_por = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, db_column='creadoPor', related_name='categorias_creadas')
+    fecha_creacion = models.DateTimeField(auto_now_add=True, db_column='creadoDate')
     
     class Meta:
         db_table = 'categorias'

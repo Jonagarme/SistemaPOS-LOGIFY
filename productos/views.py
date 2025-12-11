@@ -532,10 +532,25 @@ def editar_producto(request, producto_id):
             except Exception as e:
                 messages.error(request, f'Error al actualizar el producto: {str(e)}')
     
-    # Cargar datos para formulario
+    # Cargar datos para formulario con SQL para asegurar valores correctos
+    from django.db import connection
+    
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT nombre, descripcion, activa 
+            FROM categorias 
+            ORDER BY nombre
+        """)
+        categorias_list = [{'id': None, 'nombre': row[0], 'descripcion': row[1], 'activa': row[2]} 
+                          for row in cursor.fetchall()]
+        
+        # Obtener el ID real de cada categoría
+        cursor.execute("SELECT id, nombre FROM categorias ORDER BY nombre")
+        categorias_list = [{'id': row[0], 'nombre': row[1]} for row in cursor.fetchall()]
+    
     context = {
         'producto': producto,
-        'categorias': Categoria.objects.all().order_by('nombre'),
+        'categorias': categorias_list,
         'marcas': Marca.objects.all().order_by('nombre'),
         'laboratorios': Laboratorio.objects.all().order_by('nombre'),
         'tipos_producto': TipoProducto.objects.all().order_by('nombre'),
@@ -567,7 +582,27 @@ def eliminar_producto(request, pk):
 @login_required
 def lista_categorias(request):
     """Lista todas las categorías"""
-    categorias = Categoria.objects.filter(activo=True)
+    from django.db import connection
+    
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT c.id, c.nombre, c.descripcion, c.activa,
+                   COUNT(p.id) as total_productos
+            FROM categorias c
+            LEFT JOIN productos p ON p.idCategoria = c.id AND p.activo = 1
+            GROUP BY c.id, c.nombre, c.descripcion, c.activa
+            ORDER BY c.nombre
+        """)
+        
+        categorias = []
+        for row in cursor.fetchall():
+            categorias.append({
+                'id': row[0],
+                'nombre': row[1],
+                'descripcion': row[2] or '',
+                'activa': bool(row[3]),
+                'total_productos': row[4]
+            })
     
     context = {
         'categorias': categorias,
@@ -579,10 +614,28 @@ def lista_categorias(request):
 @login_required
 def crear_categoria(request):
     """Crear nueva categoría"""
+    from django.db import connection
+    
     if request.method == 'POST':
-        # Lógica para crear categoría
-        messages.success(request, 'Categoría creada exitosamente')
-        return redirect('productos:categorias')
+        nombre = request.POST.get('nombre', '').strip()
+        descripcion = request.POST.get('descripcion', '').strip()
+        activa_value = request.POST.get('activa')
+        activa = 1 if activa_value == 'on' else 0
+        
+        if not nombre:
+            messages.error(request, 'El nombre de la categoría es obligatorio')
+        else:
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        INSERT INTO categorias (nombre, descripcion, activa, creadoPor, creadoDate)
+                        VALUES (%s, %s, %s, %s, NOW())
+                    """, [nombre, descripcion, activa, request.user.id])
+                
+                messages.success(request, f'Categoría "{nombre}" creada exitosamente')
+                return redirect('productos:categorias')
+            except Exception as e:
+                messages.error(request, f'Error al crear la categoría: {str(e)}')
     
     context = {
         'titulo': 'Crear Categoría'
@@ -593,28 +646,57 @@ def crear_categoria(request):
 @login_required
 def editar_categoria(request, pk):
     """Editar categoría existente"""
-    categoria = get_object_or_404(Categoria, pk=pk)
+    from django.db import connection
     
     if request.method == 'POST':
         nombre = request.POST.get('nombre', '').strip()
         descripcion = request.POST.get('descripcion', '').strip()
-        activa = request.POST.get('activa') == 'on'
+        activa = 1 if request.POST.get('activa') == 'on' else 0
         
         if not nombre:
             messages.error(request, 'El nombre de la categoría es obligatorio')
         else:
             try:
-                categoria.nombre = nombre
-                if hasattr(categoria, 'descripcion'):
-                    categoria.descripcion = descripcion
-                if hasattr(categoria, 'activa'):
-                    categoria.activa = activa
-                categoria.save()
+                with connection.cursor() as cursor:
+                    cursor.execute("""
+                        UPDATE categorias 
+                        SET nombre = %s, descripcion = %s, activa = %s
+                        WHERE id = %s
+                    """, [nombre, descripcion, activa, pk])
                 
                 messages.success(request, f'Categoría "{nombre}" actualizada exitosamente')
                 return redirect('productos:categorias')
             except Exception as e:
                 messages.error(request, f'Error al actualizar la categoría: {str(e)}')
+    
+    # Obtener categoría con SQL directo
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT id, nombre, descripcion, activa 
+            FROM categorias 
+            WHERE id = %s
+        """, [pk])
+        row = cursor.fetchone()
+        
+        if not row:
+            messages.error(request, 'Categoría no encontrada')
+            return redirect('productos:categorias')
+        
+        categoria = {
+            'id': row[0],
+            'nombre': row[1],
+            'descripcion': row[2] or '',
+            'activa': bool(row[3])
+        }
+        
+        # Contar productos asociados
+        cursor.execute("""
+            SELECT COUNT(*) 
+            FROM productos 
+            WHERE idCategoria = %s
+        """, [pk])
+        productos_count = cursor.fetchone()[0]
+        categoria['productos'] = {'count': productos_count}
     
     context = {
         'categoria': categoria,
@@ -798,19 +880,6 @@ def lista_categorias(request):
         'titulo': 'Categorías de Productos'
     }
     return render(request, 'productos/categorias.html', context)
-
-
-@login_required
-def crear_categoria(request):
-    """Crear nueva categoría"""
-    if request.method == 'POST':
-        messages.info(request, 'Funcionalidad en desarrollo')
-        return redirect('productos:categorias')
-    
-    context = {
-        'titulo': 'Nueva Categoría'
-    }
-    return render(request, 'productos/crear_categoria.html', context)
 
 
 @login_required

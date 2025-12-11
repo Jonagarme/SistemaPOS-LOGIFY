@@ -39,7 +39,7 @@
                                     <td>{{ categoria.descripcion|default:"—" }}</td>
                                     <td>
                                         <span class="badge bg-info">
-                                            {{ categoria.productos.count }} productos
+                                            {{ categoria.total_productos }} producto{{ categoria.total_productos|pluralize }}
                                         </span>
                                     </td>
                                     <td>

@@ -9,7 +9,7 @@
             <!-- Header -->
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2>
-                    <i class="fas fa-edit text-primary"></i> {{ titulo }}
+                    <i class="fas fa-plus-circle text-primary"></i> {{ titulo }}
                 </h2>
                 <div>
                     <a href="{% url 'productos:categorias' %}" class="btn btn-secondary">
@@ -32,9 +32,9 @@
             <div class="row justify-content-center">
                 <div class="col-md-8">
                     <div class="card">
-                        <div class="card-header bg-primary text-white">
+                        <div class="card-header bg-success text-white">
                             <h5 class="mb-0">
-                                <i class="fas fa-tags"></i> Datos de la Categoría
+                                <i class="fas fa-tags"></i> Nueva Categoría
                             </h5>
                         </div>
                         <div class="card-body">
@@ -49,8 +49,8 @@
                                            class="form-control" 
                                            id="nombre" 
                                            name="nombre" 
-                                           value="{{ categoria.nombre }}" 
                                            required
+                                           autofocus
                                            placeholder="Ej: Medicamentos, Cosméticos, Vitaminas">
                                     <small class="text-muted">
                                         Ingrese un nombre descriptivo para la categoría
@@ -65,7 +65,7 @@
                                               id="descripcion" 
                                               name="descripcion" 
                                               rows="3"
-                                              placeholder="Descripción opcional de la categoría">{{ categoria.descripcion|default:'' }}</textarea>
+                                              placeholder="Descripción opcional de la categoría"></textarea>
                                     <small class="text-muted">
                                         Descripción adicional de la categoría (opcional)
                                     </small>
@@ -77,7 +77,7 @@
                                                type="checkbox" 
                                                id="activa" 
                                                name="activa"
-                                               {% if categoria.activa %}checked{% endif %}>
+                                               checked>
                                         <label class="form-check-label" for="activa">
                                             <i class="fas fa-check-circle text-success"></i> Categoría Activa
                                         </label>
@@ -93,45 +93,30 @@
                                     <a href="{% url 'productos:categorias' %}" class="btn btn-secondary">
                                         <i class="fas fa-times"></i> Cancelar
                                     </a>
-                                    <button type="submit" class="btn btn-primary">
-                                        <i class="fas fa-save"></i> Guardar Cambios
+                                    <button type="submit" class="btn btn-success">
+                                        <i class="fas fa-save"></i> Crear Categoría
                                     </button>
                                 </div>
                             </form>
                         </div>
                     </div>
 
-                    <!-- Información adicional -->
+                    <!-- Información de ayuda -->
                     <div class="card mt-3">
                         <div class="card-header bg-info text-white">
                             <h5 class="mb-0">
-                                <i class="fas fa-info-circle"></i> Información Adicional
+                                <i class="fas fa-info-circle"></i> Información
                             </h5>
                         </div>
                         <div class="card-body">
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <p class="mb-2">
-                                        <strong>ID de Categoría:</strong> {{ categoria.id }}
-                                    </p>
-                                </div>
-                                <div class="col-md-6">
-                                    <p class="mb-2">
-                                        <strong>Productos asociados:</strong> 
-                                        <span class="badge bg-info">
-                                            {% if categoria.productos %}{{ categoria.productos.count }}{% else %}0{% endif %} productos
-                                        </span>
-                                    </p>
-                                </div>
-                            </div>
-                            
-                            {% if categoria.productos and categoria.productos.count > 0 %}
-                            <div class="alert alert-warning mt-3">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                Esta categoría tiene <strong>{{ categoria.productos.count }} producto(s)</strong> asociado(s). 
-                                Los cambios afectarán a todos estos productos.
-                            </div>
-                            {% endif %}
+                            <p class="mb-2">
+                                <i class="fas fa-lightbulb text-warning"></i>
+                                <strong>Consejo:</strong> Las categorías te permiten organizar tus productos de forma eficiente.
+                            </p>
+                            <p class="mb-0">
+                                <i class="fas fa-check text-success"></i>
+                                Puedes activar o desactivar categorías sin eliminarlas.
+                            </p>
                         </div>
                     </div>
                 </div>

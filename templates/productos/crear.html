@@ -1,5 +1,6 @@
 {% extends 'base.html' %}
 {% load static %}
+{% load l10n %}
 
 {% block title %}{{ titulo }}{% endblock %}
 
@@ -299,7 +300,7 @@
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
                                     <input type="number" class="form-control" id="costo_unidad" name="costo_unidad" 
-                                           value="{{ producto.costo_unidad|default:'0.00' }}" 
+                                           value="{{ producto.costo_unidad|unlocalize }}" 
                                            step="0.01" min="0" required>
                                 </div>
                             </div>
@@ -310,7 +311,7 @@
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
                                     <input type="number" class="form-control" id="costo_caja" name="costo_caja" 
-                                           value="{{ producto.costo_caja|default:'0.00' }}" 
+                                           value="{{ producto.costo_caja|unlocalize }}" 
                                            step="0.01" min="0">
                                 </div>
                             </div>
@@ -321,7 +322,7 @@
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
                                     <input type="number" class="form-control" id="pvp_unidad" name="pvp_unidad" 
-                                           value="{{ producto.pvp_unidad|default:'0.00' }}" 
+                                           value="{{ producto.pvp_unidad|unlocalize }}" 
                                            step="0.01" min="0">
                                 </div>
                             </div>
@@ -334,7 +335,7 @@
                                 <div class="input-group">
                                     <span class="input-group-text">$</span>
                                     <input type="number" class="form-control" id="precio_venta" name="precio_venta" 
-                                           value="{{ producto.precio_venta|default:'0.00' }}" 
+                                           value="{{ producto.precio_venta|unlocalize }}" 
                                            step="0.01" min="0" required>
                                 </div>
                             </div>
@@ -354,7 +355,7 @@
                                     Stock Actual <span class="required">*</span>
                                 </label>
                                 <input type="number" class="form-control" id="stock" name="stock" 
-                                       value="{{ producto.stock|default:'0' }}" 
+                                       value="{{ producto.stock|unlocalize }}" 
                                        step="0.01" min="0" required>
                             </div>
                         </div>
@@ -362,7 +363,7 @@
                             <div class="mb-3">
                                 <label for="stock_minimo" class="form-label">Stock Mínimo</label>
                                 <input type="number" class="form-control" id="stock_minimo" name="stock_minimo" 
-                                       value="{{ producto.stock_minimo|default:'5' }}" 
+                                       value="{{ producto.stock_minimo|unlocalize }}" 
                                        step="0.01" min="0">
                                 <small class="text-muted">Alerta cuando el stock esté por debajo</small>
                             </div>
@@ -371,7 +372,7 @@
                             <div class="mb-3">
                                 <label for="stock_maximo" class="form-label">Stock Máximo</label>
                                 <input type="number" class="form-control" id="stock_maximo" name="stock_maximo" 
-                                       value="{{ producto.stock_maximo|default:'100' }}" 
+                                       value="{{ producto.stock_maximo|unlocalize }}" 
                                        step="0.01" min="0">
                                 <small class="text-muted">Límite máximo de almacenamiento</small>
                             </div>
