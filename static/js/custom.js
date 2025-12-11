@@ -100,7 +100,6 @@ function hideSearchResults() {
 // Select search item
 function selectSearchItem(item) {
     // Implementation depends on context
-    console.log('Selected item:', item);
     hideSearchResults();
 }
 

@@ -1,5 +1,5 @@
 /**
- * Sistema POS Offline Manager
+ * Sistema POS Offline Manager usando Dexie.js
  * Maneja conectividad, cache, y sincronización de datos
  */
 
@@ -8,73 +8,82 @@ class OfflineManager {
         this.isOnline = navigator.onLine;
         this.offlineSales = [];
         this.cachedProducts = [];
+        this.cachedClients = [];
         this.syncInProgress = false;
-        this.productsCacheVersion = '1.0';
+        this.productsCacheVersion = '2.0'; // Updated version for Dexie
         this.lastProductsCacheUpdate = null;
-        this.dbName = 'SistemaPOSOffline';
-        this.dbVersion = 1;
-        this.db = null;
+        this.dbName = 'SistemaPOSOfflineDB';
+        
+        // Inicializar Dexie
+        this.db = new Dexie(this.dbName);
+        this.initDB();
         
         this.init();
     }
     
-    async init() {
-        console.log('🚀 Iniciando Sistema Offline POS');
+    initDB() {
+        // Definir esquema de la base de datos
+        this.db.version(1).stores({
+            offlineSales: 'id, timestamp, status, synced_at',
+            cachedProducts: 'id, codigo_principal, codigo_auxiliar, nombre, [categoria.id], [marca.id], searchable_text',
+            cachedClients: 'id, cedula, nombre, searchable_text',
+            appState: 'key' // Para guardar metadatos como lastProductsCacheUpdate
+        });
         
-        // Verificar disponibilidad de APIs
-        if (!this.checkBrowserSupport()) {
-            console.warn('⚠️ Algunas funciones offline no están disponibles en este navegador');
-        }
+    }
+    
+    async init() {
         
         // Configurar Service Worker
         await this.registerServiceWorker();
         
-        // Configurar IndexedDB
-        await this.initIndexedDB();
-        
         // Configurar event listeners
         this.setupEventListeners();
+        
+        // Cargar datos iniciales
+        await this.loadAppState();
+        await this.loadOfflineSales();
+        await this.loadProductsCache();
+        await this.loadClientsCache();
+
+        // Sincronización inicial (Inicio de Turno)
+        if (this.isOnline) {
+            try {
+                await this.syncOfflineData();
+                await this.updateProductsCache();
+                await this.updateClientsCache();
+            } catch (error) {
+                console.warn('Error en sincronización inicial:', error);
+                console.error('Detalles del error:', error.message, error.stack);
+            }
+        } else {
+        }
         
         // Actualizar UI inicial
         this.updateOnlineStatus();
         
-        // Cargar ventas offline pendientes
-        await this.loadOfflineSales();
-        
-        // Cargar y actualizar cache de productos
-        await this.loadProductsCache();
-        
-        // Solo actualizar cache si estamos online
-        if (this.isOnline) {
-            try {
-                await this.updateProductsCache();
-            } catch (error) {
-                console.warn('Error inicial cargando cache de productos:', error);
-                // No es crítico, continuar sin cache de productos
-            }
-        } else {
-            console.log('📡 Iniciando en modo offline - usando cache existente');
-        }
-        
-        // Auto-sync cada 30 segundos si hay conexión
+        // Auto-sync cada 60 segundos
         this.startAutoSync();
         
-        console.log('✅ Sistema Offline POS iniciado correctamente');
     }
     
-    // Verificar soporte del navegador
-    checkBrowserSupport() {
-        const features = {
-            serviceWorker: 'serviceWorker' in navigator,
-            indexedDB: 'indexedDB' in window,
-            fetch: 'fetch' in window,
-            localStorage: 'localStorage' in window
-        };
-        
-        console.log('🔍 Soporte del navegador:', features);
-        
-        // Retornar true si tiene las características mínimas
-        return features.indexedDB && features.fetch && features.localStorage;
+    async loadAppState() {
+        try {
+            const lastUpdateState = await this.db.appState.get('lastProductsCacheUpdate');
+            if (lastUpdateState) {
+                this.lastProductsCacheUpdate = lastUpdateState.value;
+            }
+        } catch (error) {
+            console.error('Error cargando estado de la app:', error);
+        }
+    }
+    
+    async saveAppState(key, value) {
+        try {
+            await this.db.appState.put({ key, value });
+        } catch (error) {
+            console.error('Error guardando estado de la app:', error);
+        }
     }
     
     // Registrar Service Worker
@@ -82,9 +91,7 @@ class OfflineManager {
         if ('serviceWorker' in navigator) {
             try {
                 const registration = await navigator.serviceWorker.register('/static/js/sw.js');
-                console.log('Service Worker registrado:', registration.scope);
                 
-                // Manejar actualizaciones del SW
                 registration.addEventListener('updatefound', () => {
                     const newWorker = registration.installing;
                     newWorker.addEventListener('statechange', () => {
@@ -94,87 +101,30 @@ class OfflineManager {
                     });
                 });
                 
-                // Recibir mensajes del Service Worker
-                navigator.serviceWorker.addEventListener('message', event => {
-                    this.handleServiceWorkerMessage(event.data);
-                });
-                
             } catch (error) {
                 console.error('Error registrando Service Worker:', error);
             }
         }
     }
     
-    // Configurar IndexedDB
-    async initIndexedDB() {
-        return new Promise((resolve, reject) => {
-            const request = indexedDB.open(this.dbName, this.dbVersion);
-            
-            request.onerror = () => {
-                console.error('Error abriendo IndexedDB');
-                reject(request.error);
-            };
-            
-            request.onsuccess = () => {
-                this.db = request.result;
-                console.log('IndexedDB configurado correctamente');
-                resolve();
-            };
-            
-            request.onupgradeneeded = (event) => {
-                const db = event.target.result;
-                
-                // Store para ventas offline
-                if (!db.objectStoreNames.contains('offlineSales')) {
-                    const salesStore = db.createObjectStore('offlineSales', { keyPath: 'id' });
-                    salesStore.createIndex('timestamp', 'timestamp', { unique: false });
-                    salesStore.createIndex('status', 'status', { unique: false });
-                }
-                
-                // Store para productos en cache
-                if (!db.objectStoreNames.contains('cachedProducts')) {
-                    const productsStore = db.createObjectStore('cachedProducts', { keyPath: 'id' });
-                    productsStore.createIndex('codigo', 'codigo', { unique: false });
-                    productsStore.createIndex('nombre', 'nombre', { unique: false });
-                }
-                
-                // Store para clientes en cache
-                if (!db.objectStoreNames.contains('cachedClients')) {
-                    const clientsStore = db.createObjectStore('cachedClients', { keyPath: 'id' });
-                    clientsStore.createIndex('cedula', 'cedula', { unique: false });
-                }
-                
-                console.log('IndexedDB estructura creada');
-            };
-        });
-    }
-    
     // Configurar event listeners
     setupEventListeners() {
-        // Detectar cambios de conectividad
         window.addEventListener('online', () => {
-            console.log('🌐 Conexión restaurada');
             this.isOnline = true;
             this.updateOnlineStatus();
             this.syncOfflineData();
         });
         
         window.addEventListener('offline', () => {
-            console.log('📡 Sin conexión a internet');
             this.isOnline = false;
             this.updateOnlineStatus();
         });
         
-        // Interceptar formularios de venta
         this.interceptSaleForms();
-        
-        // Botón de sincronización manual
         this.setupManualSyncButton();
     }
     
-    // Actualizar indicador visual de conectividad
     updateOnlineStatus() {
-        // Crear o actualizar indicador de conexión
         let indicator = document.getElementById('connection-indicator');
         
         if (!indicator) {
@@ -207,13 +157,10 @@ class OfflineManager {
             indicator.style.color = 'white';
         }
         
-        // Mostrar contador de ventas pendientes
         this.updatePendingSalesCounter();
     }
     
-    // Interceptar formularios de venta para modo offline
     interceptSaleForms() {
-        // Buscar formularios de venta
         const saleForm = document.querySelector('form[action*="procesar-venta"]');
         if (saleForm) {
             saleForm.addEventListener('submit', (event) => {
@@ -225,10 +172,8 @@ class OfflineManager {
         }
     }
     
-    // Manejar venta offline
     async handleOfflineSale(form) {
         try {
-            // Extraer datos del formulario
             const formData = new FormData(form);
             const saleData = {};
             
@@ -236,7 +181,6 @@ class OfflineManager {
                 saleData[key] = value;
             }
             
-            // Generar ID único para venta offline
             const offlineId = 'offline_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
             
             const offlineSale = {
@@ -250,13 +194,14 @@ class OfflineManager {
                 total: parseFloat(saleData.total) || 0
             };
             
-            // Guardar en IndexedDB
-            await this.saveOfflineSale(offlineSale);
+            // Guardar en Dexie
+            await this.db.offlineSales.add(offlineSale);
             
-            // Mostrar confirmación
+            // Actualizar lista local y UI
+            this.offlineSales.push(offlineSale);
+            this.updatePendingSalesCounter();
+            
             this.showOfflineSaleConfirmation(offlineSale);
-            
-            // Limpiar formulario
             form.reset();
             
         } catch (error) {
@@ -265,52 +210,19 @@ class OfflineManager {
         }
     }
     
-    // Guardar venta offline en IndexedDB
-    async saveOfflineSale(saleData) {
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction(['offlineSales'], 'readwrite');
-            const store = transaction.objectStore('offlineSales');
-            
-            const request = store.add(saleData);
-            
-            request.onsuccess = () => {
-                this.offlineSales.push(saleData);
-                this.updatePendingSalesCounter();
-                console.log('Venta offline guardada:', saleData.id);
-                resolve();
-            };
-            
-            request.onerror = () => {
-                console.error('Error guardando venta offline');
-                reject(request.error);
-            };
-        });
-    }
-    
-    // Cargar ventas offline pendientes
     async loadOfflineSales() {
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction(['offlineSales'], 'readonly');
-            const store = transaction.objectStore('offlineSales');
-            const index = store.index('status');
-            
-            const request = index.getAll('pending_sync');
-            
-            request.onsuccess = () => {
-                this.offlineSales = request.result;
-                this.updatePendingSalesCounter();
-                console.log(`Cargadas ${this.offlineSales.length} ventas offline pendientes`);
-                resolve();
-            };
-            
-            request.onerror = () => {
-                console.error('Error cargando ventas offline');
-                reject(request.error);
-            };
-        });
+        try {
+            this.offlineSales = await this.db.offlineSales
+                .where('status')
+                .equals('pending_sync')
+                .toArray();
+                
+            this.updatePendingSalesCounter();
+        } catch (error) {
+            console.error('Error cargando ventas offline:', error);
+        }
     }
     
-    // Sincronizar datos offline
     async syncOfflineData() {
         if (this.syncInProgress || !this.isOnline || this.offlineSales.length === 0) {
             return;
@@ -323,21 +235,21 @@ class OfflineManager {
         let errorCount = 0;
         
         try {
+            // Recargar para asegurar que tenemos lo último
+            await this.loadOfflineSales();
+            
             for (const sale of this.offlineSales) {
-                if (sale.status === 'pending_sync') {
-                    try {
-                        await this.syncSingleSale(sale);
-                        syncedCount++;
-                    } catch (error) {
-                        errorCount++;
-                        console.error('Error sincronizando venta:', sale.id, error);
-                    }
+                try {
+                    await this.syncSingleSale(sale);
+                    syncedCount++;
+                } catch (error) {
+                    errorCount++;
+                    console.error('Error sincronizando venta:', sale.id, error);
                 }
             }
             
-            // Recargar ventas pendientes
+            // Recargar después de sincronizar
             await this.loadOfflineSales();
-            
             this.showSyncResult(syncedCount, errorCount);
             
         } catch (error) {
@@ -349,10 +261,8 @@ class OfflineManager {
         }
     }
     
-    // Sincronizar una venta individual
     async syncSingleSale(sale) {
         try {
-            // Obtener CSRF token
             const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]')?.value || '';
             
             const response = await fetch('/ventas/procesar-venta/', {
@@ -365,140 +275,113 @@ class OfflineManager {
             });
             
             if (response.ok) {
-                // Marcar como sincronizada en IndexedDB
-                await this.updateSaleStatus(sale.id, 'synced');
-                console.log('Venta sincronizada exitosamente:', sale.id);
+                // Actualizar en Dexie
+                await this.db.offlineSales.update(sale.id, {
+                    status: 'synced',
+                    synced_at: Date.now()
+                });
             } else {
                 // Incrementar intentos
-                await this.incrementSaleAttempts(sale.id);
+                await this.db.offlineSales.update(sale.id, {
+                    attempts: (sale.attempts || 0) + 1,
+                    last_attempt: Date.now()
+                });
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
             
         } catch (error) {
-            await this.incrementSaleAttempts(sale.id);
+            // Incrementar intentos en caso de error de red
+            await this.db.offlineSales.update(sale.id, {
+                attempts: (sale.attempts || 0) + 1,
+                last_attempt: Date.now()
+            });
             throw error;
         }
     }
-    
-    // Actualizar estado de venta en IndexedDB
-    async updateSaleStatus(saleId, newStatus) {
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction(['offlineSales'], 'readwrite');
-            const store = transaction.objectStore('offlineSales');
-            
-            const getRequest = store.get(saleId);
-            
-            getRequest.onsuccess = () => {
-                const sale = getRequest.result;
-                if (sale) {
-                    sale.status = newStatus;
-                    sale.synced_at = Date.now();
-                    
-                    const putRequest = store.put(sale);
-                    putRequest.onsuccess = () => resolve();
-                    putRequest.onerror = () => reject(putRequest.error);
-                } else {
-                    reject(new Error('Venta no encontrada'));
-                }
-            };
-            
-            getRequest.onerror = () => reject(getRequest.error);
-        });
-    }
-    
-    // Incrementar intentos de sincronización
-    async incrementSaleAttempts(saleId) {
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction(['offlineSales'], 'readwrite');
-            const store = transaction.objectStore('offlineSales');
-            
-            const getRequest = store.get(saleId);
-            
-            getRequest.onsuccess = () => {
-                const sale = getRequest.result;
-                if (sale) {
-                    sale.attempts = (sale.attempts || 0) + 1;
-                    sale.last_attempt = Date.now();
-                    
-                    const putRequest = store.put(sale);
-                    putRequest.onsuccess = () => resolve();
-                    putRequest.onerror = () => reject(putRequest.error);
-                } else {
-                    reject(new Error('Venta no encontrada'));
-                }
-            };
-            
-            getRequest.onerror = () => reject(getRequest.error);
-        });
-    }
-    
-    // Auto-sincronización
+
     startAutoSync() {
         setInterval(() => {
             if (this.isOnline && this.offlineSales.length > 0 && !this.syncInProgress) {
-                console.log('Auto-sync: Iniciando sincronización automática');
                 this.syncOfflineData();
             }
             
-            // Actualizar cache de productos cada 30 minutos si hay conexión
+            // Actualizar cache de productos y clientes cada 30 minutos si hay conexión
             if (this.isOnline && !this.syncInProgress) {
-                const lastUpdate = this.lastProductsCacheUpdate;
                 const now = Date.now();
-                if (!lastUpdate || (now - lastUpdate) > 1800000) { // 30 minutos
-                    console.log('Auto-sync: Actualizando cache de productos');
+                if (!this.lastProductsCacheUpdate || (now - this.lastProductsCacheUpdate) > 1800000) {
                     this.updateProductsCache();
+                    this.updateClientsCache();
                 }
             }
-        }, 60000); // Cada 60 segundos
+        }, 60000);
     }
-    
-    // =====================================
-    // GESTIÓN DE CACHE DE PRODUCTOS
-    // =====================================
-    
-    // Cargar productos desde IndexedDB
+
     async loadProductsCache() {
         try {
-            const transaction = this.db.transaction(['cachedProducts'], 'readonly');
-            const store = transaction.objectStore('cachedProducts');
-            const request = store.getAll();
-            
-            return new Promise((resolve, reject) => {
-                request.onsuccess = () => {
-                    this.cachedProducts = request.result;
-                    console.log(`Cargados ${this.cachedProducts.length} productos desde cache`);
-                    
-                    // Actualizar timestamp del último cache
-                    if (this.cachedProducts.length > 0) {
-                        this.lastProductsCacheUpdate = this.cachedProducts[0].cache_timestamp || Date.now();
-                    }
-                    
-                    resolve();
-                };
-                
-                request.onerror = () => {
-                    console.error('Error cargando productos desde cache');
-                    reject(request.error);
-                };
-            });
-            
+            this.cachedProducts = await this.db.cachedProducts.toArray();
         } catch (error) {
-            console.error('Error en loadProductsCache:', error);
+            console.error('Error cargando productos desde cache:', error);
+        }
+    }
+
+    async loadClientsCache() {
+        try {
+            this.cachedClients = await this.db.cachedClients.toArray();
+        } catch (error) {
+            console.error('❌ Error cargando clientes desde cache:', error);
+            console.error('Detalles:', error.message, error.stack);
         }
     }
     
-    // Actualizar cache de productos desde el servidor
     async updateProductsCache() {
+        if (!this.isOnline) return;
+        
+        try {
+            const timestamp = Date.now();
+            const response = await fetch(`/productos/api/cache/?timestamp=${timestamp}`);
+            
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            
+            const data = await response.json();
+            
+            if (data.success && data.productos) {
+                await this.db.transaction('rw', this.db.cachedProducts, this.db.appState, async () => {
+                    await this.db.cachedProducts.clear();
+                    
+                    const productosConTimestamp = data.productos.map(producto => ({
+                        ...producto,
+                        cache_timestamp: Date.now(),
+                        cache_metadata: data.metadata
+                    }));
+                    
+                    await this.db.cachedProducts.bulkAdd(productosConTimestamp);
+                    await this.db.appState.put({ key: 'lastProductsCacheUpdate', value: timestamp });
+                });
+                
+                this.cachedProducts = data.productos;
+                this.lastProductsCacheUpdate = timestamp;
+                
+                this.showToast(`Productos sincronizados: ${data.productos.length}`, 'info');
+                
+                window.dispatchEvent(new CustomEvent('productsCache:updated', {
+                    detail: { products: this.cachedProducts, metadata: data.metadata }
+                }));
+            }
+            
+        } catch (error) {
+            console.error('Error actualizando cache de productos:', error);
+        }
+    }
+
+    async updateClientsCache() {
+        
         if (!this.isOnline) {
-            console.log('Sin conexión: No se puede actualizar cache de productos');
+            console.log('⚠️ Sin conexión - no se pueden actualizar clientes');
             return;
         }
         
         try {
-            console.log('Actualizando cache de productos...');
-            
-            const timestamp = Date.now();
-            const response = await fetch(`/productos/api/cache/?timestamp=${timestamp}`);
+            const response = await fetch('/clientes/api/cache/');
             
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -506,206 +389,163 @@ class OfflineManager {
             
             const data = await response.json();
             
-            if (data.success && data.productos) {
-                await this.saveProductsToCache(data.productos, data.metadata);
-                this.cachedProducts = data.productos;
-                this.lastProductsCacheUpdate = timestamp;
+            if (data.success && data.clientes && data.clientes.length > 0) {
                 
-                console.log(`Cache de productos actualizado: ${data.productos.length} productos`);
+                await this.db.transaction('rw', this.db.cachedClients, async () => {
+                    await this.db.cachedClients.clear();
+                    await this.db.cachedClients.bulkAdd(data.clientes);
+                });
                 
-                // Mostrar notificación más discreta
-                const now = new Date();
-                const timeString = now.toLocaleTimeString();
-                this.showToast(`Cache actualizado (${timeString}): ${data.productos.length} productos`, 'info');
-                
-                // Disparar evento personalizado para notificar a otros componentes
-                window.dispatchEvent(new CustomEvent('productsCache:updated', {
-                    detail: { products: this.cachedProducts, metadata: data.metadata }
-                }));
+                this.cachedClients = data.clientes;
+                this.showToast(`Clientes sincronizados: ${data.clientes.length}`, 'success');
             } else {
-                console.warn('Respuesta de cache de productos sin datos válidos:', data);
-                this.showToast('Cache de productos actualizado pero sin datos', 'warning');
+                console.warn('⚠️ No hay clientes para guardar en cache');
             }
             
         } catch (error) {
-            console.error('Error actualizando cache de productos:', error);
-            
-            // Mostrar error específico según el tipo
-            let errorMessage = 'Error actualizando cache de productos';
-            if (error.message.includes('500')) {
-                errorMessage = 'Error del servidor al obtener productos';
-            } else if (error.message.includes('404')) {
-                errorMessage = 'Endpoint de productos no encontrado';
-            } else if (!navigator.onLine) {
-                errorMessage = 'Sin conexión a internet';
-            }
-            
-            this.showToast(errorMessage, 'error');
-            
-            // Si hay productos en cache, usar esos
-            if (this.cachedProducts.length > 0) {
-                console.log(`Usando ${this.cachedProducts.length} productos desde cache existente`);
-            }
+            console.error('❌ Error actualizando cache de clientes:', error);
+            console.error('Detalles del error:', error.message, error.stack);
         }
     }
-    
-    // Guardar productos en IndexedDB
-    async saveProductsToCache(productos, metadata) {
-        return new Promise((resolve, reject) => {
-            const transaction = this.db.transaction(['cachedProducts'], 'readwrite');
-            const store = transaction.objectStore('cachedProducts');
-            
-            // Limpiar cache anterior
-            const clearRequest = store.clear();
-            
-            clearRequest.onsuccess = () => {
-                // Agregar timestamp a cada producto
-                const productosConTimestamp = productos.map(producto => ({
-                    ...producto,
-                    cache_timestamp: Date.now(),
-                    cache_metadata: metadata
-                }));
-                
-                // Guardar nuevos productos
-                let savedCount = 0;
-                let hasError = false;
-                
-                productosConTimestamp.forEach(producto => {
-                    const addRequest = store.add(producto);
-                    
-                    addRequest.onsuccess = () => {
-                        savedCount++;
-                        if (savedCount === productosConTimestamp.length && !hasError) {
-                            console.log(`Guardados ${savedCount} productos en cache`);
-                            resolve();
-                        }
-                    };
-                    
-                    addRequest.onerror = () => {
-                        hasError = true;
-                        console.error('Error guardando producto en cache:', producto.id);
-                        if (!hasError) reject(addRequest.error);
-                    };
-                });
-            };
-            
-            clearRequest.onerror = () => {
-                reject(clearRequest.error);
-            };
-        });
-    }
-    
-    // Buscar productos en cache offline
+
     async searchProductsOffline(query, options = {}) {
-        const {
-            categoria = '',
-            marca = '',
-            limit = 20,
-            includeAgotados = true
-        } = options;
+        const { categoria, marca, limit = 20, includeAgotados = true } = options;
         
         try {
-            let resultados = [...this.cachedProducts];
+            if (this.cachedProducts.length > 0) {
+                let resultados = this.cachedProducts;
+                
+                if (query && query.trim()) {
+                    const queryLower = query.toLowerCase().trim();
+                    resultados = resultados.filter(producto => 
+                        (producto.searchable_text && producto.searchable_text.includes(queryLower)) ||
+                        (producto.nombre && producto.nombre.toLowerCase().includes(queryLower)) ||
+                        (producto.codigo_principal && producto.codigo_principal.toLowerCase().includes(queryLower)) ||
+                        (producto.codigo_auxiliar && producto.codigo_auxiliar.toLowerCase().includes(queryLower))
+                    );
+                }
+                
+                if (categoria) resultados = resultados.filter(p => p.categoria && p.categoria.id == categoria);
+                if (marca) resultados = resultados.filter(p => p.marca && p.marca.id == marca);
+                if (!includeAgotados) resultados = resultados.filter(p => !p.agotado);
+                
+                const total = resultados.length;
+                resultados = resultados.slice(0, limit);
+                
+                return {
+                    success: true,
+                    productos: resultados.map(p => ({ ...p, from_cache: true })),
+                    count: total,
+                    from_cache: true
+                };
+            } 
             
-            // Filtrar por texto de búsqueda
+            let collection = this.db.cachedProducts.toCollection();
+            
             if (query && query.trim()) {
                 const queryLower = query.toLowerCase().trim();
-                resultados = resultados.filter(producto => 
-                    producto.searchable_text.includes(queryLower) ||
-                    producto.codigo_principal.toLowerCase().includes(queryLower) ||
-                    producto.codigo_auxiliar.toLowerCase().includes(queryLower)
-                );
+                collection = this.db.cachedProducts
+                    .filter(p => 
+                        (p.nombre && p.nombre.toLowerCase().includes(queryLower)) ||
+                        (p.codigo_principal && p.codigo_principal.toLowerCase().includes(queryLower))
+                    );
             }
             
-            // Filtrar por categoría
-            if (categoria && categoria !== '') {
-                resultados = resultados.filter(producto => 
-                    producto.categoria.id == categoria
-                );
-            }
+            if (categoria) collection = collection.filter(p => p.categoria && p.categoria.id == categoria);
+            if (marca) collection = collection.filter(p => p.marca && p.marca.id == marca);
+            if (!includeAgotados) collection = collection.filter(p => !p.agotado);
             
-            // Filtrar por marca
-            if (marca && marca !== '') {
-                resultados = resultados.filter(producto => 
-                    producto.marca.id == marca
-                );
-            }
-            
-            // Filtrar productos agotados si no se incluyen
-            if (!includeAgotados) {
-                resultados = resultados.filter(producto => !producto.agotado);
-            }
-            
-            // Limitar resultados
-            if (limit > 0) {
-                resultados = resultados.slice(0, limit);
-            }
-            
-            // Agregar información de estado offline
-            resultados = resultados.map(producto => ({
-                ...producto,
-                from_cache: true,
-                cache_age: Date.now() - (producto.cache_timestamp || 0)
-            }));
+            const resultados = await collection.limit(limit).toArray();
             
             return {
                 success: true,
-                productos: resultados,
+                productos: resultados.map(p => ({ ...p, from_cache: true })),
                 count: resultados.length,
-                query: query,
-                from_cache: true,
-                cache_size: this.cachedProducts.length,
-                timestamp: Date.now()
+                from_cache: true
             };
             
         } catch (error) {
             console.error('Error en búsqueda offline:', error);
-            return {
-                success: false,
-                productos: [],
-                count: 0,
-                error: error.message,
-                from_cache: true
-            };
+            return { success: false, productos: [], error: error.message };
         }
     }
-    
-    // Obtener producto por ID desde cache
-    async getProductFromCache(productId) {
+
+    async searchClientsOffline(query) {
         try {
-            const producto = this.cachedProducts.find(p => p.id == productId);
+            if (!query || !query.trim()) return { success: true, clientes: [] };
             
-            if (producto) {
-                return {
-                    success: true,
-                    producto: {
-                        ...producto,
-                        from_cache: true,
-                        cache_age: Date.now() - (producto.cache_timestamp || 0)
-                    }
-                };
+            const queryLower = query.toLowerCase().trim();
+            let resultados = [];
+            
+            if (this.cachedClients && this.cachedClients.length > 0) {
+                resultados = this.cachedClients.filter(cliente => 
+                    (cliente.searchable_text && cliente.searchable_text.includes(queryLower)) ||
+                    (cliente.nombre && cliente.nombre.toLowerCase().includes(queryLower)) ||
+                    (cliente.cedula && cliente.cedula.includes(queryLower))
+                );
             } else {
-                return {
-                    success: false,
-                    error: 'Producto no encontrado en cache',
-                    producto: null
-                };
+                resultados = await this.db.cachedClients
+                    .filter(cliente => 
+                        (cliente.searchable_text && cliente.searchable_text.includes(queryLower)) ||
+                        (cliente.nombre && cliente.nombre.toLowerCase().includes(queryLower)) ||
+                        (cliente.cedula && cliente.cedula.includes(queryLower))
+                    )
+                    .limit(10)
+                    .toArray();
             }
             
-        } catch (error) {
-            console.error('Error obteniendo producto desde cache:', error);
             return {
-                success: false,
-                error: error.message,
-                producto: null
+                success: true,
+                clientes: resultados.slice(0, 10).map(c => ({
+                    id: c.id,
+                    cedula_ruc: c.cedula,
+                    nombre: c.nombre,
+                    documento: c.cedula,
+                    telefono: c.telefono,
+                    from_cache: true
+                }))
             };
+            
+        } catch (error) {
+            console.error('Error buscando clientes offline:', error);
+            return { success: false, clientes: [], error: error.message };
+        }
+    }
+
+    async searchClients(query) {
+        if (this.isOnline) {
+            try {
+                const response = await fetch(`/clientes/buscar/?search=${encodeURIComponent(query)}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    if (!data.modo_offline) {
+                        return { success: true, clientes: data.clientes, from_cache: false };
+                    }
+                }
+            } catch (error) {
+                console.log('Error buscando clientes online, intentando offline...');
+            }
+        }
+        
+        return await this.searchClientsOffline(query);
+    }
+
+    async getProductFromCache(productId) {
+        try {
+            const producto = await this.db.cachedProducts.get(parseInt(productId));
+            const finalProduct = producto || await this.db.cachedProducts.get(productId);
+            
+            if (finalProduct) {
+                return { success: true, producto: { ...finalProduct, from_cache: true } };
+            }
+            return { success: false, error: 'Producto no encontrado en cache' };
+        } catch (error) {
+            return { success: false, error: error.message };
         }
     }
     
-    // Buscar productos (online/offline automático)
     async searchProducts(query, options = {}) {
         if (this.isOnline) {
-            // Intentar búsqueda online primero
             try {
                 const params = new URLSearchParams({
                     q: query || '',
@@ -719,57 +559,102 @@ class OfflineManager {
                 
                 if (response.ok) {
                     const data = await response.json();
-                    return {
-                        ...data,
-                        from_cache: false
-                    };
+                    return { ...data, from_cache: false };
                 }
-                
             } catch (error) {
                 console.log('Error en búsqueda online, usando cache offline');
             }
         }
         
-        // Usar cache offline como fallback
-        console.log('Usando búsqueda offline desde cache');
+        console.log('Usando búsqueda offline desde cache (Dexie)');
         return await this.searchProductsOffline(query, options);
     }
-    
-    // Obtener estadísticas del cache de productos
-    getProductsCacheStats() {
-        const totalProductos = this.cachedProducts.length;
-        const productosAgotados = this.cachedProducts.filter(p => p.agotado).length;
-        const productosBajoStock = this.cachedProducts.filter(p => p.bajo_stock).length;
-        const cacheAge = this.lastProductsCacheUpdate ? Date.now() - this.lastProductsCacheUpdate : 0;
+
+    updatePendingSalesCounter() {
+        const counter = document.getElementById('offline-counter');
+        const count = this.offlineSales.length;
         
-        return {
-            total_productos: totalProductos,
-            productos_agotados: productosAgotados,
-            productos_bajo_stock: productosBajoStock,
-            cache_version: this.productsCacheVersion,
-            cache_age_minutes: Math.floor(cacheAge / 60000),
-            last_update: this.lastProductsCacheUpdate ? new Date(this.lastProductsCacheUpdate).toLocaleString() : 'Nunca'
-        };
+        if (count > 0) {
+            if (counter) {
+                counter.textContent = count;
+                counter.style.display = 'block';
+            } else {
+                // Crear badge si no existe en el navbar (esto depende de tu HTML)
+                // Aquí asumimos que hay un contenedor o lo agregamos al indicador
+                const indicator = document.getElementById('connection-indicator');
+                if (indicator) {
+                    let badge = indicator.querySelector('.badge');
+                    if (!badge) {
+                        badge = document.createElement('span');
+                        badge.className = 'badge bg-warning text-dark ms-2';
+                        badge.style.borderRadius = '50%';
+                        indicator.appendChild(badge);
+                    }
+                    badge.textContent = count;
+                    badge.title = `${count} ventas pendientes de sincronizar`;
+                }
+            }
+        } else {
+            if (counter) counter.style.display = 'none';
+            const indicator = document.getElementById('connection-indicator');
+            if (indicator) {
+                const badge = indicator.querySelector('.badge');
+                if (badge) badge.remove();
+            }
+        }
     }
     
-    // Forzar actualización del cache de productos
-    async forceUpdateProductsCache() {
-        if (!this.isOnline) {
-            this.showError('Sin conexión: No se puede actualizar cache');
-            return false;
+    showOfflineSaleConfirmation(sale) {
+        this.showToast(`Venta guardada offline. Se sincronizará cuando haya conexión.`, 'warning');
+    }
+    
+    showSyncProgress() {
+        this.showToast('Sincronizando ventas pendientes...', 'info');
+    }
+    
+    hideSyncProgress() {
+        // Opcional: ocultar toast
+    }
+    
+    showSyncResult(synced, errors) {
+        if (synced > 0) {
+            this.showToast(`${synced} ventas sincronizadas correctamente`, 'success');
         }
-        
-        try {
-            this.showToast('Actualizando cache de productos...', 'info');
-            await this.updateProductsCache();
-            return true;
-        } catch (error) {
-            this.showError('Error actualizando cache de productos');
-            return false;
+        if (errors > 0) {
+            this.showToast(`${errors} ventas no pudieron sincronizarse`, 'error');
         }
     }
     
-    // Configurar botón de sincronización manual
+    showToast(message, type = 'info') {
+        
+        // Si existe una función global de notificaciones, usarla
+        if (typeof showNotification === 'function') {
+            showNotification(message, type);
+            return;
+        }
+        
+        // Fallback: crear elemento flotante
+        const toast = document.createElement('div');
+        toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'} position-fixed`;
+        toast.style.cssText = 'bottom: 20px; right: 20px; z-index: 10000; min-width: 250px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); animation: slideIn 0.3s ease-out;';
+        toast.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center">
+                <span>${message}</span>
+                <button type="button" class="btn-close small" onclick="this.parentElement.parentElement.remove()"></button>
+            </div>
+        `;
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+    
+    showError(message) {
+        this.showToast(message, 'error');
+    }
+    
     setupManualSyncButton() {
         let syncButton = document.getElementById('manual-sync-btn');
         
@@ -797,238 +682,14 @@ class OfflineManager {
                     this.showError('Sin conexión a internet');
                 }
             });
-            
             document.body.appendChild(syncButton);
+        } else if (syncButton && this.offlineSales.length === 0) {
+            syncButton.remove();
         }
-    }
-    
-    // Actualizar contador de ventas pendientes
-    updatePendingSalesCounter() {
-        let counter = document.getElementById('pending-sales-counter');
-        
-        if (this.offlineSales.length > 0) {
-            if (!counter) {
-                counter = document.createElement('div');
-                counter.id = 'pending-sales-counter';
-                counter.style.cssText = `
-                    position: fixed;
-                    top: 150px;
-                    left: 20px;
-                    background: rgba(255, 193, 7, 0.9);
-                    color: #856404;
-                    padding: 4px 8px;
-                    border-radius: 12px;
-                    font-size: 10px;
-                    font-weight: bold;
-                    z-index: 9997;
-                    backdrop-filter: blur(5px);
-                    border: 1px solid rgba(255,193,7,0.3);
-                `;
-                document.body.appendChild(counter);
-            }
-            
-            counter.textContent = `📋 ${this.offlineSales.length} venta(s) pendiente(s)`;
-            
-            // Configurar botón de sincronización
-            this.setupManualSyncButton();
-            
-        } else if (counter) {
-            counter.remove();
-            const syncBtn = document.getElementById('manual-sync-btn');
-            if (syncBtn) syncBtn.remove();
-        }
-    }
-    
-    // Mostrar confirmación de venta offline
-    showOfflineSaleConfirmation(sale) {
-        const modal = this.createModal('Venta Guardada Offline', `
-            <div class="alert alert-warning">
-                <i class="fas fa-wifi" style="color: #dc3545;"></i>
-                <strong>Sin conexión a internet</strong>
-            </div>
-            <p><strong>Venta guardada exitosamente en modo offline:</strong></p>
-            <ul>
-                <li><strong>ID Temporal:</strong> ${sale.id}</li>
-                <li><strong>Cliente:</strong> ${sale.customer_name}</li>
-                <li><strong>Total:</strong> $${sale.total.toFixed(2)}</li>
-                <li><strong>Fecha:</strong> ${new Date(sale.timestamp).toLocaleString()}</li>
-            </ul>
-            <div class="alert alert-info">
-                <i class="fas fa-sync"></i>
-                La venta se sincronizará automáticamente cuando se restaure la conexión.
-            </div>
-        `);
-        
-        modal.show();
-    }
-    
-    // Utilidades de UI
-    showSyncProgress() {
-        let progress = document.getElementById('sync-progress');
-        if (!progress) {
-            progress = document.createElement('div');
-            progress.id = 'sync-progress';
-            progress.innerHTML = '<i class="fas fa-sync fa-spin"></i> Sincronizando...';
-            progress.style.cssText = `
-                position: fixed;
-                top: 130px;
-                right: 10px;
-                background: #17a2b8;
-                color: white;
-                padding: 8px 12px;
-                border-radius: 20px;
-                font-size: 12px;
-                z-index: 9996;
-            `;
-            document.body.appendChild(progress);
-        }
-    }
-    
-    hideSyncProgress() {
-        const progress = document.getElementById('sync-progress');
-        if (progress) progress.remove();
-    }
-    
-    showSyncResult(syncedCount, errorCount) {
-        const message = syncedCount > 0 
-            ? `✅ ${syncedCount} venta(s) sincronizada(s)` 
-            : '⚠️ No se pudo sincronizar ninguna venta';
-            
-        this.showToast(message, syncedCount > 0 ? 'success' : 'warning');
-    }
-    
-    showError(message) {
-        this.showToast(message, 'error');
-    }
-    
-    showToast(message, type = 'info') {
-        const toast = document.createElement('div');
-        toast.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'warning'}`;
-        toast.style.cssText = `
-            position: fixed;
-            top: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10000;
-            min-width: 300px;
-            text-align: center;
-        `;
-        toast.textContent = message;
-        
-        document.body.appendChild(toast);
-        
-        setTimeout(() => {
-            toast.remove();
-        }, 4000);
-    }
-    
-    createModal(title, content) {
-        const modalHtml = `
-            <div class="modal fade" id="offlineModal" tabindex="-1">
-                <div class="modal-dialog">
-                    <div class="modal-content">
-                        <div class="modal-header">
-                            <h5 class="modal-title">${title}</h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            ${content}
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Entendido</button>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        const existingModal = document.getElementById('offlineModal');
-        if (existingModal) existingModal.remove();
-        
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-        return new bootstrap.Modal(document.getElementById('offlineModal'));
-    }
-    
-    // Manejar mensajes del Service Worker
-    handleServiceWorkerMessage(data) {
-        if (data.type === 'SYNC_COMPLETE') {
-            console.log(`Sync completo: ${data.syncedCount} sincronizadas, ${data.pendingCount} pendientes`);
-            this.loadOfflineSales(); // Recargar estado
-        }
-        
-        if (data.type === 'PRODUCTS_CACHE_UPDATED') {
-            console.log(`Cache de productos actualizado: ${data.productsCount} productos`);
-            this.loadProductsCache(); // Recargar productos desde IndexedDB
-            this.showToast(`Cache actualizado: ${data.productsCount} productos`, 'success');
-        }
-        
-        if (data.type === 'PRODUCTS_CACHE_INVALIDATED') {
-            console.log('Cache de productos invalidado');
-            this.updateProductsCache(); // Actualizar inmediatamente
-        }
-    }
-    
-    // Solicitar actualización del cache de productos al Service Worker
-    requestProductsCacheUpdate() {
-        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({
-                type: 'UPDATE_PRODUCTS_CACHE'
-            });
-        }
-    }
-    
-    // Invalidar cache de productos
-    invalidateProductsCache() {
-        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
-            navigator.serviceWorker.controller.postMessage({
-                type: 'INVALIDATE_PRODUCTS_CACHE'
-            });
-        }
-    }
-    
-    // Mostrar notificación de actualización del SW
-    showUpdateNotification() {
-        const updateNotification = this.createModal('Actualización Disponible', `
-            <div class="alert alert-info">
-                <i class="fas fa-download"></i>
-                <strong>Nueva versión disponible</strong>
-            </div>
-            <p>Hay una actualización del sistema disponible. ¿Deseas instalarla ahora?</p>
-            <small class="text-muted">La página se recargará automáticamente.</small>
-        `);
-        
-        // Agregar botón de actualización
-        const updateButton = document.createElement('button');
-        updateButton.className = 'btn btn-success me-2';
-        updateButton.textContent = 'Actualizar Ahora';
-        updateButton.onclick = () => {
-            if (navigator.serviceWorker.controller) {
-                navigator.serviceWorker.controller.postMessage({ type: 'SKIP_WAITING' });
-            }
-            window.location.reload();
-        };
-        
-        const modalFooter = document.querySelector('#offlineModal .modal-footer');
-        modalFooter.insertBefore(updateButton, modalFooter.firstChild);
-        
-        updateNotification.show();
     }
 }
 
-// Inicializar el sistema offline cuando la página esté lista
+// Inicializar cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', () => {
-    // Solo inicializar si estamos en páginas relevantes
-    const relevantPages = ['/ventas/', '/productos/', '/dashboard/', '/'];
-    const currentPath = window.location.pathname;
-    
-    const isRelevantPage = relevantPages.some(page => 
-        currentPath === page || currentPath.startsWith(page)
-    );
-    
-    if (isRelevantPage) {
-        window.offlineManager = new OfflineManager();
-    }
+    window.offlineManager = new OfflineManager();
 });
-
-// Exportar para uso global
-window.OfflineManager = OfflineManager;
