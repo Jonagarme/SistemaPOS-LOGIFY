@@ -29,7 +29,6 @@ class ProductSearchComponent {
             this.loadFilters();
         }
         
-        console.log('ProductSearchComponent inicializado');
     }
     
     createSearchInterface() {
@@ -260,7 +259,6 @@ class ProductSearchComponent {
             item.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                console.log('Click en producto:', producto);
                 this.selectProduct(producto, index);
             });
             
@@ -272,13 +270,11 @@ class ProductSearchComponent {
     }
     
     selectProduct(producto, index) {
-        console.log('Seleccionando producto:', producto);
         this.selectedIndex = index;
         this.highlightSelectedItem();
         
         try {
             this.onProductSelect(producto);
-            console.log('onProductSelect ejecutado correctamente');
         } catch (error) {
             console.error('Error en onProductSelect:', error);
         }
@@ -444,7 +440,6 @@ class ProductSearchComponent {
     }
     
     defaultProductSelect(producto) {
-        console.log('Producto seleccionado:', producto);
         // Implementación por defecto - puede ser sobrescrita
     }
     

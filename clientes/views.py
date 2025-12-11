@@ -225,3 +225,60 @@ def buscar_clientes(request):
             })
     
     return JsonResponse({'error': 'Método no permitido'})
+
+
+def clientes_cache_api(request):
+    """
+    API para obtener todos los clientes para cache offline
+    Retorna información completa para IndexedDB
+    """
+    try:
+        print("=== INICIANDO API CACHE DE CLIENTES ===")
+        
+        # Obtener TODOS los clientes activos
+        clientes = Cliente.objects.filter(
+            estado=True, 
+            anulado=False
+        )
+        
+        total_clientes = clientes.count()
+        print(f"Total de clientes activos encontrados: {total_clientes}")
+        
+        # Preparar datos para cache
+        clientes_cache = []
+        for cliente in clientes:
+            try:
+                cliente_cache = {
+                    'id': cliente.id,
+                    'cedula': cliente.cedula_ruc,
+                    'nombre': cliente.nombre_completo,
+                    'email': cliente.email or '',
+                    'telefono': cliente.telefono_principal or '',
+                    'direccion': cliente.direccion or '',
+                    'searchable_text': f"{cliente.cedula_ruc} {cliente.nombre_completo}".lower(),
+                    'cache_timestamp': timezone.now().timestamp()
+                }
+                clientes_cache.append(cliente_cache)
+                
+            except Exception as e:
+                print(f"Error procesando cliente {cliente.id}: {str(e)}")
+                continue
+        
+        response_data = {
+            'success': True,
+            'clientes': clientes_cache,
+            'metadata': {
+                'total_clientes': len(clientes_cache),
+                'generated_at': timezone.now().isoformat()
+            }
+        }
+        
+        return JsonResponse(response_data)
+        
+    except Exception as e:
+        print(f"ERROR en clientes_cache_api: {str(e)}")
+        return JsonResponse({
+            'success': False,
+            'error': str(e),
+            'clientes': []
+        }, status=500)

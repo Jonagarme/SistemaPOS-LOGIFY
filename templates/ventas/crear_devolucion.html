@@ -279,7 +279,6 @@ let productosDisponibles = [];
 function buscarVenta() {
     const numeroFactura = document.getElementById('numeroFactura').value.trim();
     
-    console.log('DEBUG: Buscando factura:', numeroFactura);
     
     if (!numeroFactura) {
         mostrarMensaje('Por favor ingrese un número de factura', 'warning');
@@ -297,20 +296,16 @@ function buscarVenta() {
         }
     })
     .then(response => {
-        console.log('DEBUG: Response status:', response.status);
         return response.json();
     })
     .then(data => {
-        console.log('DEBUG: Data received:', data);
         document.getElementById('loadingOverlay').style.display = 'none';
         
         if (data.success) {
-            console.log('DEBUG: Venta encontrada, productos:', data.venta.detalles.length);
             ventaSeleccionada = data.venta;
             productosDisponibles = data.venta.detalles;
             mostrarVentaEncontrada();
         } else {
-            console.log('DEBUG: Error en búsqueda:', data.error);
             mostrarMensaje(data.error, 'danger');
             ocultarVentaInfo();
         }

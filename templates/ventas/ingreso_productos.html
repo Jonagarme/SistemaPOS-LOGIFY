@@ -814,16 +814,12 @@
 
             const data = await response.json();
             
-            console.log('📦 Respuesta del API de duplicados:', data);
-            console.log(`   Total procesados: ${data.total_procesados || 0}`);
-            
             if (data.success) {
                 // Actualizar progreso
                 actualizarProgress(80, 'Procesando resultados...', 0, productosData.length);
                 
                 // Contar productos con similares
                 const productosConSimilares = data.resultados.filter(r => r.tiene_similares).length;
-                console.log(`🔍 Productos con similares detectados: ${productosConSimilares}/${data.total_procesados}`);
                 
                 // Agregar información de similares a cada producto (sin procesar aún)
                 for (let i = 0; i < productosData.length; i++) {
@@ -833,7 +829,6 @@
                         // Marcar que tiene similares y guardar la información
                         productosData[i].tiene_similares = true;
                         productosData[i].similares = resultado.similares;
-                        console.log(`✅ Producto "${productosData[i].descripcion}" tiene ${resultado.similares.length} similares`);
                     } else {
                         // Marcar como nuevo
                         productosData[i].tiene_similares = false;
@@ -993,16 +988,12 @@
             mostrarAlerta('info', 'Este producto no tiene similares detectados');
             return;
         }
-        
-        console.log(`🔗 Intentando vincular producto: ${producto.descripcion}`);
-        console.log(`   Similares disponibles:`, producto.similares);
+    
         
         // Mostrar modal y esperar decisión
         const productoExistente = await mostrarModalYEsperarDecision(producto, producto.similares);
         
         if (productoExistente) {
-            // Usuario eligió vincular con un producto existente
-            console.log(`✅ Vinculado con: ${productoExistente.nombre}`);
             
             // Actualizar el producto en productosData
             productosData[index] = {
@@ -1019,8 +1010,6 @@
             mostrarProductos();
             mostrarAlerta('success', `Producto vinculado con "${productoExistente.nombre}"`);
         } else {
-            // Usuario canceló el modal - mantener el botón de vincular disponible
-            console.log(`❌ Usuario canceló la vinculación`);
             // NO actualizar productosData, mantener tiene_similares: true
             // para que el botón de vincular siga visible
             mostrarAlerta('info', 'Puedes vincular este producto más tarde usando el botón "Vincular"');
@@ -1665,7 +1654,6 @@
             .then(data => {
                 if (data.success) {
                     seccionesData = data.secciones;
-                    console.log('✓ Secciones cargadas:', seccionesData.length);
                 }
             })
             .catch(error => console.error('Error al cargar secciones:', error));

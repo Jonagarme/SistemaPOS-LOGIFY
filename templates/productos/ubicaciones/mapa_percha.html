@@ -415,15 +415,12 @@ let productoSeleccionado = null;
 
 // Función simple de inicialización
 function inicializarBusqueda() {
-    console.log('Inicializando búsqueda...');
     
     const searchInput = document.getElementById('buscar-producto');
     if (!searchInput) {
-        console.error('Input no encontrado');
         return;
     }
     
-    console.log('Input encontrado, configurando...');
     
     // Asegurar que el input está habilitado
     searchInput.disabled = false;
@@ -431,11 +428,9 @@ function inicializarBusqueda() {
     
     // Evento básico de input
     searchInput.oninput = function() {
-        console.log('Texto ingresado:', this.value);
         const termino = this.value.trim();
         
         if (termino.length >= 2) {
-            console.log('Buscando:', termino);
             buscarProductosSimple(termino);
         } else {
             const resultados = document.getElementById('resultados-productos');
@@ -447,14 +442,11 @@ function inicializarBusqueda() {
     
     // Test básico
     searchInput.onfocus = function() {
-        console.log('Input enfocado');
     };
     
-    console.log('Búsqueda configurada correctamente');
 }
 
 function buscarProductosSimple(termino) {
-    console.log('Ejecutando búsqueda para:', termino);
     
     // Mostrar spinner
     const spinner = document.getElementById('search-spinner');
@@ -465,14 +457,12 @@ function buscarProductosSimple(termino) {
     // CORREGIDO: usar 'termino' en lugar de 'search'
     fetch(`/productos/ubicaciones/buscar-productos/?termino=${encodeURIComponent(termino)}`)
     .then(response => {
-        console.log('Respuesta recibida, status:', response.status);
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}`);
         }
         return response.json();
     })
     .then(data => {
-        console.log('Datos recibidos:', data);
         
         // Ocultar spinner
         if (spinner) {
@@ -482,7 +472,6 @@ function buscarProductosSimple(termino) {
         mostrarResultadosSimple(data.productos || []);
     })
     .catch(error => {
-        console.error('Error en búsqueda:', error);
         
         // Ocultar spinner
         if (spinner) {
@@ -498,11 +487,9 @@ function buscarProductosSimple(termino) {
 }
 
 function mostrarResultadosSimple(productos) {
-    console.log('Mostrando resultados:', productos.length, 'productos');
     const resultados = document.getElementById('resultados-productos');
     
     if (!resultados) {
-        console.error('Contenedor de resultados no encontrado');
         return;
     }
     
@@ -533,15 +520,12 @@ function mostrarResultadosSimple(productos) {
         });
         html += '</div>';
         resultados.innerHTML = html;
-        console.log('Resultados mostrados correctamente');
     } else {
         resultados.innerHTML = '<div class="text-muted py-3 text-center">No se encontraron productos</div>';
-        console.log('No se encontraron productos');
     }
 }
 
 function seleccionarProductoSimple(id, codigo, nombre, yaUbicado = false) {
-    console.log('Producto seleccionado:', id, codigo, nombre, yaUbicado);
     productoSeleccionado = { id, codigo, nombre, yaUbicado };
     
     const infoElement = document.getElementById('info-producto');

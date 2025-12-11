@@ -458,7 +458,6 @@
     }
 
     function cargarPerchas(seccionId) {
-        console.log('cargarPerchas llamada con seccionId:', seccionId);
         
         const perchaSelect = document.getElementById('perchaSelect');
         const posicionesContainer = document.getElementById('posicionesContainer');
@@ -476,15 +475,12 @@
         perchaSelect.disabled = true;
         
         const url = `/productos/ubicaciones/secciones/${seccionId}/perchas/json/`;
-        console.log('Haciendo petición a:', url);
         
         fetch(url)
             .then(response => {
-                console.log('Respuesta recibida:', response.status);
                 return response.json();
             })
             .then(data => {
-                console.log('Datos recibidos:', data);
                 if (data.success) {
                     let opcionesPerchas = '<option value="">Seleccione una percha</option>';
                     data.perchas.forEach(percha => {
@@ -493,7 +489,6 @@
                     
                     perchaSelect.innerHTML = opcionesPerchas;
                     perchaSelect.disabled = false;
-                    console.log(`Se cargaron ${data.perchas.length} perchas`);
                 } else {
                     console.error('Error en respuesta:', data.error);
                     perchaSelect.innerHTML = '<option value="">Error cargando perchas</option>';

@@ -11,4 +11,5 @@ urlpatterns = [
     path('<int:pk>/eliminar/', views.eliminar_cliente, name='eliminar'),
     path('<int:pk>/historial/', views.historial_cliente, name='historial'),
     path('buscar/', views.buscar_clientes, name='buscar'),
+    path('api/cache/', views.clientes_cache_api, name='cache_api'),
 ]

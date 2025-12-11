@@ -2090,7 +2090,13 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{% static 'js/product-search.js' %}"></script>
+<!-- Dexie.js para IndexedDB -->
+<script src="https://unpkg.com/dexie@latest/dist/dexie.min.js"></script>
+<!-- Offline Manager -->
+<script src="{% static 'js/offline-manager.js' %}?v=20251211-002"></script>
+<!-- Product Search -->
+<script src="{% static 'js/product-search.js' %}?v=20251211-002"></script>
+
 <script>
     // ============================================
     // VARIABLES GLOBALES Y CONFIGURACIÓN
@@ -2222,7 +2228,6 @@
     function rebindProductCards(tabElement, tabId) {
     const productCards = tabElement.querySelectorAll('.product-card-enhanced');
     
-    console.log(`🔗 Vinculando ${productCards.length} productos al tab ${tabId}`);
     
     productCards.forEach(card => {
         // Remover el onclick anterior
@@ -2237,10 +2242,6 @@
             
             // Obtener el tab al que pertenece este producto
             const cardTabId = this.getAttribute('data-tab-id');
-            
-            console.log('🖱️ Click en producto');
-            console.log('   Tab actual:', currentTabId);
-            console.log('   Tab del producto:', cardTabId);
             
             // Guardar el tab actual
             const previousTabId = currentTabId;
@@ -2332,7 +2333,6 @@ function updateTotalsForTab(tabId) {
         btnProcesar.disabled = cart.items.length === 0;
     }
     
-    console.log(`💰 Totales actualizados para ${tabId}:`, { subtotal, total });
 }
 
     function updateTabElementIds(tabElement, tabId) {
@@ -2378,7 +2378,6 @@ function updateTotalsForTab(tabId) {
         updateTotals();
         updateClientDisplay();
 
-        console.log('Switched to tab:', tabId);
     }
 
     async function closeTab(tabId) {
@@ -2534,7 +2533,6 @@ function updateTotalsForTab(tabId) {
         updateTotals();
         showToast(`${productName} agregado al carrito`, 'success');
         
-        console.log('Producto agregado:', { productId, productName, price: validPrice, stock: validStock });
     }
 
     function updateQuantity(index, change) {
@@ -2736,7 +2734,6 @@ async function clearCart() {
         });
     });
     
-    console.log(`🛒 Carrito actualizado para ${currentTabId}: ${currentCart.items.length} items`);
 }
 
     function updateTotals() {
@@ -2795,7 +2792,6 @@ async function clearCart() {
         // Recalcular cambio
         calculateChange();
         
-        console.log('Totales actualizados:', { subtotal, discountAmount, baseImponible, tax, total });
     }
 
     function calculateChange() {
@@ -2925,7 +2921,6 @@ async function clearCart() {
         return response.json();
     })
     .then(data => {
-        console.log('Respuesta del servidor:', data);
         
         // Intentar diferentes formatos de respuesta
         let clientes = [];
@@ -3068,7 +3063,6 @@ async function procesarVenta() {
         total: parseFloat(currentCart.total)
     };
     
-    console.log('Datos de venta a enviar:', ventaData);
     
     // Obtener el token CSRF
     const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
@@ -3092,7 +3086,6 @@ async function procesarVenta() {
     .then(data => {
         hideLoading();
         
-        console.log('Respuesta del servidor:', data);
         
         if (data.success) {
             // Almacenar información de la venta
@@ -3627,14 +3620,12 @@ function setupProductSearch() {
             }
         });
         
-        console.log('✓ Input de búsqueda configurado');
     } else {
         console.warn('⚠ No se encontró el input de búsqueda');
     }
     
     if (categoryFilter) {
         categoryFilter.addEventListener('change', function() {
-            console.log('Categoría seleccionada:', this.value);
             filterProducts();
         });
     }
@@ -3652,11 +3643,9 @@ function filterProducts() {
     const searchTerm = searchInput ? searchInput.value.trim() : '';
     const categoryFilter = categorySelect ? categorySelect.value : '';
     
-    console.log('Búsqueda iniciada:', searchTerm);
     
     // Si no hay término de búsqueda, recargar productos iniciales
     if (searchTerm.length === 0) {
-        console.log('Campo vacío, recargando productos iniciales');
         if (loadingIndicator) loadingIndicator.style.display = 'none';
         
         // Recargar la página actual desde allProductos
@@ -3676,7 +3665,6 @@ function filterProducts() {
     
     // Búsqueda local primero (más rápida)
     if (searchTerm.length < 3) {
-        console.log('Búsqueda local para término corto');
         const searchLower = searchTerm.toLowerCase();
         const productCards = document.querySelectorAll('.product-card-enhanced');
         let visibleCount = 0;
@@ -3706,12 +3694,9 @@ function filterProducts() {
             }
         });
         
-        console.log(`Búsqueda local: ${visibleCount} productos encontrados`);
         return;
     }
     
-    // Búsqueda AJAX para términos más largos
-    console.log('Realizando búsqueda AJAX para:', searchTerm);
     
     if (loadingIndicator) loadingIndicator.style.display = 'block';
     
@@ -3724,14 +3709,12 @@ function filterProducts() {
         }
     })
     .then(response => {
-        console.log('Respuesta recibida:', response.status);
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
         return response.json();
     })
     .then(data => {
-        console.log('Datos recibidos:', data);
         if (loadingIndicator) loadingIndicator.style.display = 'none';
         
         if (data.productos) {
@@ -3743,7 +3726,6 @@ function filterProducts() {
         }
     })
     .catch(error => {
-        console.error('Error en búsqueda AJAX:', error);
         if (loadingIndicator) loadingIndicator.style.display = 'none';
         
         // Fallback a búsqueda local
@@ -3753,7 +3735,6 @@ function filterProducts() {
 
 // Función auxiliar para búsqueda local
 function performLocalSearch(searchTerm, categoryFilter) {
-    console.log('Realizando búsqueda local de respaldo');
     const searchLower = searchTerm.toLowerCase();
     const productCards = document.querySelectorAll('.product-card-enhanced');
     let visibleCount = 0;
@@ -3779,7 +3760,6 @@ function performLocalSearch(searchTerm, categoryFilter) {
         }
     });
     
-    console.log(`Búsqueda local: ${visibleCount} productos encontrados`);
 }
 
 // Función para actualizar el grid de productos con datos del servidor
@@ -3847,7 +3827,6 @@ function updateProductsGrid(productos, categoryFilter) {
     });
     
     productsGrid.innerHTML = html;
-    console.log(`Grid actualizado con ${productos.length} productos`);
 }
 
 // ============================================
@@ -3931,9 +3910,6 @@ document.addEventListener('keydown', function(e) {
 // ============================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('===========================================');
-    console.log('Inicializando POS Mejorado...');
-    console.log('===========================================');
     
     // Actualizar fecha actual
     updateCurrentDate();
@@ -3941,11 +3917,9 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Configurar búsqueda de clientes
     setupClientSearch();
-    console.log('✓ Búsqueda de clientes configurada');
     
     // Configurar búsqueda de productos
     setupProductSearch();
-    console.log('✓ Búsqueda de productos configurada');
     
     // Configurar botón limpiar cliente
     const clearClientBtn = document.getElementById('clear-client');
@@ -3957,7 +3931,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 clearClientInfo();
             }
         });
-        console.log('✓ Botón limpiar cliente configurado');
     }
     
     // Configurar listeners de opciones de precio
@@ -3967,24 +3940,20 @@ document.addEventListener('DOMContentLoaded', function() {
             this.classList.add('active');
         });
     });
-    console.log('✓ Opciones de precio configuradas');
     
     // Configurar el primer botón de descuento como activo
     const firstDiscountBtn = document.querySelector('.discount-btn[data-discount="0"]');
     if (firstDiscountBtn) {
         firstDiscountBtn.classList.add('active');
-        console.log('✓ Botón de descuento inicial configurado');
     }
     
     // Inicializar primer carrito
     updateCartDisplay();
     updateTotals();
     updateCloseButtonsVisibility();
-    console.log('✓ Carrito inicial configurado');
     
     // Verificar productos en el grid
     const productCards = document.querySelectorAll('.product-card-enhanced');
-    console.log(`✓ ${productCards.length} productos cargados en el grid`);
     
     // Verificar que todos los productos tengan los datos necesarios
     let productosConErrores = 0;
@@ -4010,7 +3979,6 @@ document.addEventListener('DOMContentLoaded', function() {
             localStorage.setItem('pos_carts', JSON.stringify(carts));
             localStorage.setItem('pos_currentTabId', currentTabId);
             localStorage.setItem('pos_tabCounter', tabCounter);
-            console.log('Estado guardado en localStorage');
         } catch (e) {
             console.error('Error guardando estado:', e);
         }
@@ -4045,7 +4013,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         updateTotals();
                         updateClientDisplay();
                         
-                        console.log('✓ Sesión anterior restaurada');
                         showToast('Sesión anterior restaurada correctamente', 'success');
                     } else {
                         localStorage.removeItem('pos_carts');
@@ -4060,10 +4027,6 @@ document.addEventListener('DOMContentLoaded', function() {
     } catch (e) {
         console.error('Error restaurando estado:', e);
     }
-    
-    console.log('===========================================');
-    console.log('✓ POS Mejorado inicializado correctamente');
-    console.log('===========================================');
     showToast('Sistema POS listo para usar', 'success');
 });
 
@@ -4205,4 +4168,8 @@ function seleccionarClienteCreado(cliente) {
 }
 
 </script>
+
+<!-- OfflineManager se inicializa automáticamente -->
+<!-- Los datos se cargan con updateProductsCache() y updateClientsCache() -->
+
 {% endblock %}

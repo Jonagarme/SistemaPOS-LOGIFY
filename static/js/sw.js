@@ -1,34 +1,15 @@
 // Service Worker para Sistema POS Offline
 const CACHE_NAME = 'sistema-pos-v1.0';
 const OFFLINE_URL = '/offline/';
-
-// Recursos críticos para cachear
-const CRITICAL_RESOURCES = [
-    '/',
-    '/static/css/bootstrap.min.css',
-    '/static/css/custom.css',
-    '/static/js/bootstrap.bundle.min.js',
-    '/static/js/offline-manager.js',
-    '/ventas/nueva/',
-    '/productos/api/buscar/',
-    OFFLINE_URL
-];
-
-// Recursos de productos y ventas para cache dinámico
-const DYNAMIC_CACHE = 'sistema-pos-dynamic-v1.0';
-
 // Instalación del Service Worker
 self.addEventListener('install', event => {
-    console.log('Service Worker: Instalando...');
     
     event.waitUntil(
         caches.open(CACHE_NAME)
             .then(cache => {
-                console.log('Service Worker: Cacheando recursos críticos');
                 return cache.addAll(CRITICAL_RESOURCES);
             })
             .then(() => {
-                console.log('Service Worker: Instalación completa');
                 return self.skipWaiting();
             })
             .catch(error => {
@@ -39,7 +20,6 @@ self.addEventListener('install', event => {
 
 // Activación del Service Worker
 self.addEventListener('activate', event => {
-    console.log('Service Worker: Activando...');
     
     event.waitUntil(
         caches.keys()
@@ -51,13 +31,11 @@ self.addEventListener('activate', event => {
                             return cacheName !== CACHE_NAME && cacheName !== DYNAMIC_CACHE;
                         })
                         .map(cacheName => {
-                            console.log('Service Worker: Eliminando cache antiguo', cacheName);
                             return caches.delete(cacheName);
                         })
                 );
             })
             .then(() => {
-                console.log('Service Worker: Activación completa');
                 return self.clients.claim();
             })
     );
@@ -129,7 +107,6 @@ async function networkFirst(request) {
         
         return networkResponse;
     } catch (error) {
-        console.log('Network First: Sin conexión, buscando en cache');
         
         const cache = await caches.open(DYNAMIC_CACHE);
         const cachedResponse = await cache.match(request);
@@ -231,7 +208,6 @@ async function handleOfflineSale(request) {
 // Placeholder para guardar venta offline (implementaremos IndexedDB después)
 async function saveOfflineSale(saleData) {
     // Esta función se implementará con IndexedDB
-    console.log('Guardando venta offline:', saleData);
     
     // Por ahora usar localStorage como fallback
     const offlineSales = JSON.parse(localStorage.getItem('offline_sales') || '[]');
@@ -264,7 +240,6 @@ self.addEventListener('message', event => {
 // Actualizar cache de productos
 async function updateProductsCache() {
     try {
-        console.log('SW: Actualizando cache de productos...');
         
         const timestamp = Date.now();
         const response = await fetch(`/productos/api/cache/?timestamp=${timestamp}`);
@@ -282,7 +257,6 @@ async function updateProductsCache() {
                 });
             });
             
-            console.log(`SW: Cache de productos actualizado - ${data.productos?.length || 0} productos`);
         }
         
     } catch (error) {
@@ -303,7 +277,6 @@ async function invalidateProductsCache() {
         
         await Promise.all(productsCacheKeys.map(key => cache.delete(key)));
         
-        console.log('SW: Cache de productos invalidado');
         
         // Notificar al cliente
         const clients = await self.clients.matchAll();
@@ -340,7 +313,6 @@ async function syncOfflineSales() {
                     // Marcar como sincronizada
                     sale.status = 'synced';
                     sale.synced_at = Date.now();
-                    console.log('Venta sincronizada:', sale.id);
                 } else {
                     sale.attempts = (sale.attempts || 0) + 1;
                     console.error('Error sincronizando venta:', sale.id);
@@ -373,7 +345,6 @@ async function syncOfflineSales() {
 // Background Sync (si el navegador lo soporta)
 self.addEventListener('sync', event => {
     if (event.tag === 'offline-sales-sync') {
-        console.log('Background Sync: Sincronizando ventas offline');
         event.waitUntil(syncOfflineSales());
     }
 });

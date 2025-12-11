@@ -230,7 +230,6 @@ class DetectorDuplicados {
             const data = await response.json();
             
             if (data.success) {
-                console.log('✓ Código alternativo vinculado:', data.mensaje);
                 return true;
             } else {
                 console.warn('⚠ No se pudo vincular:', data.error);
