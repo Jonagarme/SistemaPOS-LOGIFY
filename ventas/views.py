@@ -1059,9 +1059,12 @@ def nueva_venta(request):
                 from django.db import connection
                 with connection.cursor() as cursor:
                     cursor.execute("""
-                        SELECT p.id, p.codigoPrincipal, p.nombre, p.precioVenta, p.stock,
+                        SELECT p.id, p.codigoPrincipal, p.nombre, 
+                               CAST(p.precioVenta AS DECIMAL(10,2)) as precioVenta, 
+                               CAST(p.stock AS DECIMAL(10,2)) as stock,
                                p.idCategoria, p.activo,
-                               u.fila, u.columna, pr.nombre as percha_nombre, s.nombre as seccion_nombre, s.color as seccion_color
+                               u.fila, u.columna, pr.nombre as percha_nombre, 
+                               s.nombre as seccion_nombre, s.color as seccion_color
                         FROM productos p
                         LEFT JOIN productos_ubicacionproducto u ON p.id = u.producto_id AND u.activo = 1
                         LEFT JOIN productos_percha pr ON u.percha_id = pr.id
@@ -1071,7 +1074,15 @@ def nueva_venta(request):
                     """)
                     
                     columns = [col[0] for col in cursor.description]
-                    todos_productos = [dict(zip(columns, row)) for row in cursor.fetchall()]
+                    todos_productos = []
+                    for row in cursor.fetchall():
+                        producto_dict = dict(zip(columns, row))
+                        # Convertir Decimal a float para JSON serialization
+                        if producto_dict.get('precioVenta'):
+                            producto_dict['precioVenta'] = float(producto_dict['precioVenta'])
+                        if producto_dict.get('stock'):
+                            producto_dict['stock'] = float(producto_dict['stock'])
+                        todos_productos.append(producto_dict)
                     
                     # Formatear ubicación legible
                     for producto in todos_productos:
@@ -1085,7 +1096,8 @@ def nueva_venta(request):
                 # Solo mostrar primeros 20 productos en la página inicial
                 productos_list = todos_productos[:20]
                 
-                categorias_list = list(Categoria.objects.all().values())
+                # Cargar categorías con solo campos necesarios (sin binarios)
+                categorias_list = list(Categoria.objects.all().values('id', 'nombre'))
                 
                 # Guardar TODOS en cache para uso offline
                 from django.core.cache import cache
