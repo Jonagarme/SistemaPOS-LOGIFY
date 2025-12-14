@@ -904,7 +904,6 @@ def productos_cache_api(request):
     Retorna información completa para IndexedDB
     """
     try:
-        print("=== INICIANDO API CACHE DE PRODUCTOS ===")
         
         # Obtener TODOS los productos activos (sin límite)
         productos = Producto.objects.filter(
@@ -916,7 +915,7 @@ def productos_cache_api(request):
         )
         
         total_productos_disponibles = productos.count()
-        print(f"Total de productos activos encontrados: {total_productos_disponibles}")
+        #print(f"Total de productos activos encontrados: {total_productos_disponibles}")
         
         # Preparar datos para cache
         productos_cache = []

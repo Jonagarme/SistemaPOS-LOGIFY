@@ -233,8 +233,6 @@ def clientes_cache_api(request):
     Retorna información completa para IndexedDB
     """
     try:
-        print("=== INICIANDO API CACHE DE CLIENTES ===")
-        
         # Obtener TODOS los clientes activos
         clientes = Cliente.objects.filter(
             estado=True, 
@@ -242,7 +240,7 @@ def clientes_cache_api(request):
         )
         
         total_clientes = clientes.count()
-        print(f"Total de clientes activos encontrados: {total_clientes}")
+        #print(f"Total de clientes activos encontrados: {total_clientes}")
         
         # Preparar datos para cache
         clientes_cache = []
