@@ -10,7 +10,7 @@ from decimal import Decimal
 from .models import (
     Compra, DetalleCompra, Kardex, AjusteInventario, OrdenCompra, DetalleOrdenCompra,
     TransferenciaStock, DetalleTransferencia, Ubicacion, ConfiguracionStock, KardexMovimiento,
-    StockUbicacion
+    StockUbicacion, DetalleAjuste
 )
 from productos.models import Producto
 from proveedores.models import Proveedor
@@ -344,10 +344,20 @@ def lista_ajustes(request):
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
     
+    # Calcular estadísticas
+    total_ajustes = ajustes.count()
+    ajustes_entrada = ajustes.filter(tipo_ajuste='ENTRADA').count()
+    ajustes_salida = ajustes.filter(tipo_ajuste='SALIDA').count()
+    ajustes_correccion = ajustes.filter(tipo_ajuste='CORRECCION').count()
+
     context = {
         'page_obj': page_obj,
         'productos': Producto.objects.filter(activo=True).order_by('nombre'),
-        'titulo': 'Ajustes de Inventario'
+        'titulo': 'Ajustes de Inventario',
+        'total_ajustes': total_ajustes,
+        'ajustes_entrada': ajustes_entrada,
+        'ajustes_salida': ajustes_salida,
+        'ajustes_correccion': ajustes_correccion,
     }
     return render(request, 'inventario/ajustes.html', context)
 
@@ -356,9 +366,99 @@ def lista_ajustes(request):
 def nuevo_ajuste(request):
     """Crear nuevo ajuste de inventario"""
     if request.method == 'POST':
-        # Lógica para crear ajuste
-        messages.success(request, 'Ajuste creado exitosamente')
-        return redirect('inventario:ajustes')
+        try:
+            import json
+            # Verificar si es JSON
+            if request.content_type == 'application/json':
+                data = json.loads(request.body)
+                
+                with transaction.atomic():
+                    # Crear encabezado
+                    ajuste = AjusteInventario.objects.create(
+                        numero_ajuste=f"AJ-{timezone.now().strftime('%Y%m%d')}-{uuid.uuid4().hex[:6].upper()}",
+                        tipo_ajuste=data.get('tipo'),
+                        motivo=data.get('motivo'),
+                        observaciones=data.get('observaciones', ''),
+                        usuario=request.user
+                    )
+                    
+                    # Procesar detalles
+                    detalles = data.get('detalles', [])
+                    for item in detalles:
+                        producto_id = int(item['producto_id'])
+                        producto = Producto.objects.get(id=producto_id)
+                        cantidad_anterior = Decimal(str(item['stock_actual']))
+                        cantidad_nueva = Decimal(str(item['cantidad_nueva']))
+                        
+                        # Obtener el precio nuevo del payload (viene del campo precio_input)
+                        precio_nuevo = None
+                        if 'precio' in item and item['precio'] is not None:
+                            precio_nuevo = Decimal(str(item['precio']))
+                            # Actualizar precio de venta en la tabla productos si cambió
+                            if precio_nuevo != producto.precio_venta:
+                                producto.precio_venta = precio_nuevo
+                        
+                        # Crear detalle de ajuste con el precio_nuevo
+                        DetalleAjuste.objects.create(
+                            ajuste=ajuste,
+                            producto_id=producto_id,
+                            cantidad_anterior=cantidad_anterior,
+                            cantidad_nueva=cantidad_nueva,
+                            precio_nuevo=precio_nuevo,  # Se guarda en inventario_detalleajuste
+                            observaciones=item.get('observaciones', '')
+                        )
+                        
+                        # Actualizar Stock
+                        producto.stock = cantidad_nueva
+                        producto.save()
+                        
+                        # Kardex
+                        diferencia = cantidad_nueva - cantidad_anterior
+                        
+                        # Determinar tipos de movimiento
+                        if diferencia > 0:
+                            tipo_mov_legacy = 'ajuste_entrada'
+                            tipo_mov_new = 'AJUSTE INGRESO'
+                        elif diferencia < 0:
+                            tipo_mov_legacy = 'ajuste_salida'
+                            tipo_mov_new = 'AJUSTE EGRESO'
+                        else:
+                            # Diferencia 0 (Corrección de costo u otros)
+                            tipo_mov_legacy = 'ajuste_entrada' # Default para legacy
+                            tipo_mov_new = 'AJUSTE CORRECCION'
+
+                        # Siempre registrar en Kardex (Legacy)
+                        Kardex.objects.create(
+                            producto=producto,
+                            tipo_movimiento=tipo_mov_legacy,
+                            concepto='ajuste_inventario',
+                            cantidad=abs(diferencia),
+                            precio_unitario=producto.costo_unidad,
+                            numero_documento=ajuste.numero_ajuste,
+                            observaciones=f"Ajuste {ajuste.numero_ajuste}: {ajuste.get_motivo_display()}",
+                            usuario=request.user,
+                            saldo_cantidad=producto.stock,
+                            saldo_valor=producto.stock * producto.costo_unidad
+                        )
+                        
+                        # Siempre registrar en KardexMovimiento (Vista General)
+                        KardexMovimiento.objects.create(
+                            idProducto=producto.id,
+                            idUbicacion=1,
+                            tipoMovimiento=tipo_mov_new,
+                            detalle=f"Ajuste {ajuste.numero_ajuste}: {ajuste.get_motivo_display()}",
+                            ingreso=abs(diferencia) if diferencia > 0 else 0,
+                            egreso=abs(diferencia) if diferencia < 0 else 0,
+                            saldo=producto.stock
+                        )
+                    
+                return JsonResponse({'status': 'success', 'message': 'Ajuste guardado correctamente'})
+            else:
+                # Soporte legacy para form data si es necesario, o error
+                return JsonResponse({'status': 'error', 'message': 'Formato no soportado'}, status=400)
+                
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
     
     context = {
         'productos': Producto.objects.filter(activo=True),

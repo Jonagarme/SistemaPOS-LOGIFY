@@ -724,6 +724,7 @@ class AjusteInventario(models.Model):
         ('vencido', 'Producto Vencido'),
         ('error_sistema', 'Error del Sistema'),
         ('inventario_fisico', 'Inventario Físico'),
+        ('correccion_costo', 'Corrección de Costo'),
     )
     
     numero_ajuste = models.CharField(max_length=50, unique=True)
@@ -747,6 +748,7 @@ class DetalleAjuste(models.Model):
     producto = models.ForeignKey(Producto, on_delete=models.PROTECT)
     cantidad_anterior = models.PositiveIntegerField()
     cantidad_nueva = models.PositiveIntegerField()
+    precio_nuevo = models.DecimalField(max_digits=12, decimal_places=4, default=0, null=True, blank=True)
     observaciones = models.TextField(blank=True)
     
     class Meta:

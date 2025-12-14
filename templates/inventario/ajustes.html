@@ -1,4 +1,5 @@
 {% extends 'base.html' %}
+{% load l10n %}
 
 {% block title %}Ajustes de Inventario - Sistema POS{% endblock %}
 
@@ -133,7 +134,7 @@
                             </tr>
                         </thead>
                         <tbody>
-                            {% for ajuste in ajustes %}
+                            {% for ajuste in page_obj %}
                             <tr>
                                 <td>
                                     {{ ajuste.fecha|date:"d/m/Y" }}
@@ -141,43 +142,56 @@
                                     <small class="text-muted">{{ ajuste.fecha|date:"H:i" }}</small>
                                 </td>
                                 <td>
-                                    <strong>{{ ajuste.producto.nombre }}</strong>
-                                    <br>
-                                    <small class="text-muted">{{ ajuste.producto.codigo }}</small>
+                                    {% for detalle in ajuste.detalles.all %}
+                                        <div>
+                                            <strong>{{ detalle.producto.nombre }}</strong>
+                                            <small class="text-muted">({{ detalle.producto.codigo_principal }})</small>
+                                        </div>
+                                    {% empty %}
+                                        <span class="text-muted">Sin productos</span>
+                                    {% endfor %}
                                 </td>
                                 <td>
-                                    {% if ajuste.tipo == 'ENTRADA' %}
+                                    {% if ajuste.tipo_ajuste == 'ENTRADA' %}
                                     <span class="badge bg-success">
                                         <i class="fas fa-arrow-up"></i> Entrada
                                     </span>
-                                    {% elif ajuste.tipo == 'SALIDA' %}
+                                    {% elif ajuste.tipo_ajuste == 'SALIDA' %}
                                     <span class="badge bg-danger">
                                         <i class="fas fa-arrow-down"></i> Salida
                                     </span>
-                                    {% elif ajuste.tipo == 'CORRECCION' %}
+                                    {% elif ajuste.tipo_ajuste == 'CORRECCION' %}
                                     <span class="badge bg-warning">
                                         <i class="fas fa-edit"></i> Corrección
                                     </span>
                                     {% endif %}
                                 </td>
                                 <td>
-                                    <span class="badge bg-secondary">{{ ajuste.cantidad_anterior }}</span>
+                                    {% for detalle in ajuste.detalles.all %}
+                                        <div><span class="badge bg-secondary">{{ detalle.cantidad_anterior }}</span></div>
+                                    {% endfor %}
                                 </td>
                                 <td>
-                                    <span class="badge bg-info">{{ ajuste.cantidad_nueva }}</span>
+                                    {% for detalle in ajuste.detalles.all %}
+                                        <div><span class="badge bg-info">{{ detalle.cantidad_nueva }}</span></div>
+                                    {% endfor %}
                                 </td>
                                 <td>
-                                    {% if ajuste.cantidad_nueva > ajuste.cantidad_anterior %}
-                                    <span class="text-success">
-                                        <i class="fas fa-plus"></i> Aumento
-                                    </span>
-                                    {% elif ajuste.cantidad_nueva < ajuste.cantidad_anterior %} <span
-                                        class="text-danger">
-                                        <i class="fas fa-minus"></i> Reducción
-                                        </span>
-                                        {% else %}
-                                        <span class="text-muted">Sin cambio</span>
-                                        {% endif %}
+                                    {% for detalle in ajuste.detalles.all %}
+                                        <div>
+                                            {% if detalle.diferencia > 0 %}
+                                            <span class="text-success">
+                                                <i class="fas fa-plus"></i> {{ detalle.diferencia }}
+                                            </span>
+                                            {% elif detalle.diferencia < 0 %} 
+                                            <span class="text-danger">
+                                                {{ detalle.diferencia }}
+                                            </span>
+                                            {% else %}
+                                            <span class="text-muted">0</span>
+                                            {% endif %}
+                                        </div>
+                                    {% endfor %}
                                 </td>
                                 <td>
                                     {% if ajuste.motivo %}
@@ -263,92 +277,149 @@
 </div>
 
 <!-- Modal para nuevo ajuste -->
-<div class="modal fade" id="modalNuevoAjuste" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
+<div class="modal fade" id="modalNuevoAjuste" tabindex="-1" data-bs-backdrop="static">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title">
-                    <i class="fas fa-balance-scale"></i> Nuevo Ajuste de Inventario
+                    <i class="fas fa-balance-scale me-2"></i>Nuevo Ajuste de Inventario
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body bg-light">
                 <form id="formNuevoAjuste">
                     {% csrf_token %}
-                    <div class="row">
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label for="producto_ajuste" class="form-label">
-                                    Producto <span class="text-danger">*</span>
-                                </label>
-                                <select class="form-select" id="producto_ajuste" name="producto" required>
-                                    <option value="">Seleccionar producto...</option>
-                                    {% for producto in productos %}
-                                    <option value="{{ producto.id }}" data-stock="{{ producto.stock }}" data-unidad="U">
-                                        {{ producto.nombre }} ({{ producto.codigo_principal }})
-                                    </option>
-                                    {% endfor %}
-                                </select>
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="tipo_ajuste" class="form-label">
-                                    Tipo de Ajuste <span class="text-danger">*</span>
-                                </label>
-                                <select class="form-select" id="tipo_ajuste" name="tipo" required>
-                                    <option value="">Seleccionar tipo...</option>
-                                    <option value="ENTRADA">Entrada (+)</option>
-                                    <option value="SALIDA">Salida (-)</option>
-                                    <option value="CORRECCION">Corrección</option>
-                                </select>
-                            </div>
-
-                            <div class="mb-3" id="info_stock" style="display: none;">
-                                <div class="alert alert-info">
-                                    <strong>Stock actual:</strong> <span id="stock_actual">0</span> <span
-                                        id="unidad_medida"></span>
+                    
+                    <!-- Encabezado del Ajuste -->
+                    <div class="card mb-4 border-0 shadow-sm">
+                        <div class="card-header bg-white fw-bold text-primary">
+                            <i class="fas fa-info-circle me-1"></i> Información General
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3">
+                                <div class="col-md-3">
+                                    <label class="form-label fw-bold">Fecha</label>
+                                    <input type="text" class="form-control bg-light" value="{% now 'd/m/Y' %}" readonly>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="tipo_ajuste" class="form-label fw-bold">Tipo de Ajuste <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="tipo_ajuste" name="tipo" required>
+                                        <option value="">Seleccionar...</option>
+                                        <option value="ENTRADA">Entrada (+)</option>
+                                        <option value="SALIDA">Salida (-)</option>
+                                        <option value="CORRECCION">Corrección (Físico)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="motivo_ajuste" class="form-label fw-bold">Motivo <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="motivo_ajuste" name="motivo" required>
+                                        <option value="">Seleccionar...</option>
+                                        <option value="faltante">Faltante</option>
+                                        <option value="sobrante">Sobrante</option>
+                                        <option value="dañado">Producto Dañado</option>
+                                        <option value="vencido">Producto Vencido</option>
+                                        <option value="error_sistema">Error del Sistema</option>
+                                        <option value="inventario_fisico">Inventario Físico</option>
+                                        <option value="correccion_costo">Corrección de Costo</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label for="observaciones_ajuste" class="form-label fw-bold">Observaciones</label>
+                                    <textarea class="form-control" id="observaciones_ajuste" rows="1" placeholder="Nota opcional..."></textarea>
                                 </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div class="col-md-6">
-                            <div class="mb-3" id="grupo_cantidad_entrada" style="display: none;">
-                                <label for="cantidad_entrada" class="form-label">
-                                    Cantidad a Agregar <span class="text-danger">*</span>
-                                </label>
-                                <input type="number" class="form-control" id="cantidad_entrada" name="cantidad" min="1"
-                                    step="0.01">
+                    <!-- Selección de Productos -->
+                    <div class="card mb-4 border-0 shadow-sm">
+                        <div class="card-header bg-white fw-bold text-primary">
+                            <i class="fas fa-box-open me-1"></i> Agregar Productos
+                        </div>
+                        <div class="card-body">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-3">
+                                    <label class="form-label">Buscar Producto (Código o Nombre)</label>
+                                    <select class="form-select" id="producto_ajuste">
+                                        <option value="">Buscar producto...</option>
+                                        {% for producto in productos %}
+                                        <option value="{{ producto.id }}" 
+                                                data-codigo="{{ producto.codigo_principal }}"
+                                                data-stock="{{ producto.stock|unlocalize }}" 
+                                                data-precio="{{ producto.precio_venta|unlocalize }}"
+                                                data-nombre="{{ producto.nombre }}">
+                                            {{ producto.codigo_principal }} - {{ producto.nombre }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Stock Actual</label>
+                                    <input type="text" class="form-control bg-light" id="stock_actual_display" readonly>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Precio Actual</label>
+                                    <input type="text" class="form-control bg-light" id="precio_actual_display" readonly>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Nuevo Precio</label>
+                                    <input type="number" class="form-control" id="precio_input" min="0" step="0.01">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label" id="label_cantidad">Nueva Cantidad</label>
+                                    <input type="number" class="form-control" id="cantidad_input" min="0" step="0.01">
+                                </div>
+                                <div class="col-md-1">
+                                    <button type="button" class="btn btn-success w-100" id="btn_agregar_producto" title="Agregar">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
                             </div>
+                            <div class="row mt-2">
+                                <div class="col-md-12 text-end">
+                                    <small class="text-muted">Diferencia de Stock: <span id="diferencia_display" class="fw-bold">0</span></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
-                            <div class="mb-3" id="grupo_cantidad_salida" style="display: none;">
-                                <label for="cantidad_salida" class="form-label">
-                                    Cantidad a Reducir <span class="text-danger">*</span>
-                                </label>
-                                <input type="number" class="form-control" id="cantidad_salida" name="cantidad" min="1"
-                                    step="0.01">
-                            </div>
-
-                            <div class="mb-3" id="grupo_cantidad_nueva" style="display: none;">
-                                <label for="cantidad_nueva" class="form-label">
-                                    Nueva Cantidad <span class="text-danger">*</span>
-                                </label>
-                                <input type="number" class="form-control" id="cantidad_nueva" name="cantidad" min="0"
-                                    step="0.01">
-                            </div>
-
-                            <div class="mb-3">
-                                <label for="motivo_ajuste" class="form-label">Motivo del Ajuste</label>
-                                <textarea class="form-control" id="motivo_ajuste" name="motivo" rows="3"
-                                    placeholder="Describe el motivo del ajuste..."></textarea>
-                            </div>
+                    <!-- Tabla de Detalles -->
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-white fw-bold text-primary d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-list me-1"></i> Detalle del Ajuste</span>
+                            <span class="badge bg-primary" id="contador_items">0 items</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0" id="tabla_detalles">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Producto</th>
+                                        <th class="text-end">Precio Actual</th>
+                                        <th class="text-end">Nuevo Precio</th>
+                                        <th class="text-center">Stock Sistema</th>
+                                        <th class="text-center">Cant. Nueva</th>
+                                        <th class="text-center">Diferencia</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr id="row_empty">
+                                        <td colspan="8" class="text-center text-muted py-4">
+                                            <i class="fas fa-arrow-up mb-2"></i><br>
+                                            Agregue productos para realizar el ajuste
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer bg-light">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="guardarAjuste()">
-                    <i class="fas fa-save"></i> Guardar Ajuste
+                <button type="button" class="btn btn-primary px-4" onclick="guardarAjuste()">
+                    <i class="fas fa-save me-2"></i> Guardar Ajuste
                 </button>
             </div>
         </div>
@@ -356,91 +427,288 @@
 </div>
 
 <script>
+    let detallesAjuste = [];
+
     document.addEventListener('DOMContentLoaded', function () {
         // Inicializar Select2
         $('#producto_ajuste').select2({
             theme: 'bootstrap-5',
             dropdownParent: $('#modalNuevoAjuste'),
-            placeholder: 'Buscar producto por nombre o código...',
+            placeholder: 'Escriba código o nombre...',
             allowClear: true,
             width: '100%',
             language: {
-                noResults: function () {
-                    return "No se encontraron productos";
-                },
-                searching: function () {
-                    return "Buscando...";
-                }
+                noResults: function () { return "No encontrado"; },
+                searching: function () { return "Buscando..."; }
             }
         });
 
-        // Manejar cambio de producto (usando jQuery para compatibilidad con Select2)
-        $('#producto_ajuste').on('change', function () {
-            const selectedOption = $(this).find(':selected');
-            const infoStock = document.getElementById('info_stock');
-
-            if ($(this).val()) {
-                const stock = selectedOption.data('stock');
-                const unidad = selectedOption.data('unidad');
-
-                document.getElementById('stock_actual').textContent = stock;
-                document.getElementById('unidad_medida').textContent = unidad;
-                infoStock.style.display = 'block';
-            } else {
-                infoStock.style.display = 'none';
-            }
+        // Evento al seleccionar producto
+        $('#producto_ajuste').on('select2:select', function (e) {
+            const data = e.params.data;
+            const element = $(data.element);
+            const stock = parseFloat(element.data('stock')) || 0;
+            const precio = parseFloat(element.data('precio')) || 0;
+            
+            $('#stock_actual_display').val(stock);
+            $('#precio_actual_display').val(precio.toFixed(2));
+            $('#precio_input').val(precio);
+            $('#cantidad_input').val('').focus();
+            calcularDiferencia();
         });
 
-        // Manejar cambio de tipo de ajuste
-        document.getElementById('tipo_ajuste').addEventListener('change', function () {
-            const tipo = this.value;
-            const grupoEntrada = document.getElementById('grupo_cantidad_entrada');
-            const grupoSalida = document.getElementById('grupo_cantidad_salida');
-            const grupoNueva = document.getElementById('grupo_cantidad_nueva');
+        // Evento al cambiar cantidad
+        $('#cantidad_input').on('input', calcularDiferencia);
+        
+        // Evento al cambiar tipo de ajuste (para cambiar etiqueta)
+        $('#tipo_ajuste').on('change', function() {
+            const tipo = $(this).val();
+            const label = $('#label_cantidad');
+            if (tipo === 'ENTRADA') label.text('Cantidad a Agregar');
+            else if (tipo === 'SALIDA') label.text('Cantidad a Restar');
+            else label.text('Nueva Cantidad (Físico)');
+            
+            calcularDiferencia();
+        });
 
-            // Ocultar todos
-            grupoEntrada.style.display = 'none';
-            grupoSalida.style.display = 'none';
-            grupoNueva.style.display = 'none';
-
-            // Mostrar el correspondiente
-            if (tipo === 'ENTRADA') {
-                grupoEntrada.style.display = 'block';
-            } else if (tipo === 'SALIDA') {
-                grupoSalida.style.display = 'block';
-            } else if (tipo === 'CORRECCION') {
-                grupoNueva.style.display = 'block';
+        // Botón Agregar
+        $('#btn_agregar_producto').on('click', agregarProducto);
+        
+        // Enter en input cantidad
+        $('#cantidad_input').on('keypress', function(e) {
+            if(e.which === 13) {
+                e.preventDefault();
+                agregarProducto();
             }
         });
     });
 
-    function guardarAjuste() {
-        const form = document.getElementById('formNuevoAjuste');
-        // const formData = new FormData(form); // No usado actualmente
-
-        // Validar campos requeridos
-        const producto = $('#producto_ajuste').val(); // Usar jQuery para obtener valor de Select2
-        const tipo = document.getElementById('tipo_ajuste').value;
-
-        if (!producto || !tipo) {
-            alert('Por favor complete todos los campos requeridos');
+    function calcularDiferencia() {
+        const stock = parseFloat($('#stock_actual_display').val()) || 0;
+        const inputVal = parseFloat($('#cantidad_input').val());
+        const tipo = $('#tipo_ajuste').val();
+        
+        if (isNaN(inputVal)) {
+            $('#diferencia_display').text('0');
             return;
         }
 
-        // Aquí iría la lógica para enviar el ajuste
-        console.log('Guardando ajuste...');
-        // location.reload();
+        let diferencia = 0;
+
+        if (tipo === 'ENTRADA') {
+            diferencia = inputVal;
+        } else if (tipo === 'SALIDA') {
+            diferencia = -inputVal;
+        } else { // CORRECCION
+            diferencia = inputVal - stock;
+        }
+
+        const signo = diferencia > 0 ? '+' : '';
+        $('#diferencia_display').text(`${signo}${diferencia.toFixed(2)}`);
+        
+        // Cambiar color
+        const display = $('#diferencia_display');
+        display.removeClass('text-success text-danger text-muted');
+        if(diferencia > 0) display.addClass('text-success');
+        else if(diferencia < 0) display.addClass('text-danger');
+        else display.addClass('text-muted');
+    }
+
+    function agregarProducto() {
+        const productoId = $('#producto_ajuste').val();
+        if (!productoId) {
+            alert('Seleccione un producto');
+            return;
+        }
+        
+        const tipo = $('#tipo_ajuste').val();
+        if (!tipo) {
+            alert('Seleccione el tipo de ajuste primero');
+            return;
+        }
+
+        const option = $('#producto_ajuste').find(':selected');
+        const codigo = option.data('codigo');
+        const nombre = option.data('nombre');
+        const stock = parseFloat(option.data('stock')) || 0;
+        const precioActual = parseFloat(option.data('precio')) || 0;
+        const precioNuevo = parseFloat($('#precio_input').val()) || 0;
+        const inputVal = parseFloat($('#cantidad_input').val());
+
+        if (isNaN(inputVal) || inputVal < 0) {
+            alert('Ingrese una cantidad válida');
+            return;
+        }
+
+        // Calcular valores finales
+        let nuevaCantidad = 0;
+        let diferencia = 0;
+        
+        if (tipo === 'ENTRADA') {
+            nuevaCantidad = stock + inputVal;
+            diferencia = inputVal;
+        } else if (tipo === 'SALIDA') {
+            nuevaCantidad = stock - inputVal;
+            diferencia = -inputVal;
+        } else {
+            nuevaCantidad = inputVal;
+            diferencia = nuevaCantidad - stock;
+        }
+
+        // Verificar si ya existe en la lista
+        const existe = detallesAjuste.find(d => d.producto_id === productoId);
+        if (existe) {
+            alert('Este producto ya está en la lista. Elimínelo para modificarlo.');
+            return;
+        }
+
+        // Agregar al array
+        detallesAjuste.push({
+            producto_id: productoId,
+            codigo: codigo,
+            nombre: nombre,
+            stock_actual: stock,
+            precio_actual: precioActual,
+            precio: precioNuevo,
+            cantidad_nueva: nuevaCantidad,
+            diferencia: diferencia
+        });
+
+        renderizarTabla();
+        limpiarInputProducto();
+    }
+
+    function limpiarInputProducto() {
+        $('#producto_ajuste').val('').trigger('change');
+        $('#stock_actual_display').val('');
+        $('#precio_actual_display').val('');
+        $('#precio_input').val('');
+        $('#cantidad_input').val('');
+        $('#diferencia_display').text('0');
+    }
+
+    function renderizarTabla() {
+        const tbody = $('#tabla_detalles tbody');
+        tbody.empty();
+
+        if (detallesAjuste.length === 0) {
+            tbody.html(`
+                <tr id="row_empty">
+                    <td colspan="8" class="text-center text-muted py-4">
+                        <i class="fas fa-arrow-up mb-2"></i><br>
+                        Agregue productos para realizar el ajuste
+                    </td>
+                </tr>
+            `);
+            $('#contador_items').text('0 items');
+            return;
+        }
+
+        detallesAjuste.forEach((item, index) => {
+            const colorDif = item.diferencia > 0 ? 'text-success' : (item.diferencia < 0 ? 'text-danger' : 'text-muted');
+            const signo = item.diferencia > 0 ? '+' : '';
+            const precioClass = item.precio !== item.precio_actual ? 'text-primary fw-bold' : '';
+            
+            const row = `
+                <tr>
+                    <td><span class="badge bg-light text-dark border">${item.codigo}</span></td>
+                    <td>${item.nombre}</td>
+                    <td class="text-end text-muted">$${item.precio_actual.toFixed(2)}</td>
+                    <td class="text-end ${precioClass}">$${item.precio.toFixed(2)}</td>
+                    <td class="text-center">${item.stock_actual}</td>
+                    <td class="text-center fw-bold">${item.cantidad_nueva}</td>
+                    <td class="text-center ${colorDif} fw-bold">${signo}${item.diferencia.toFixed(2)}</td>
+                    <td class="text-center">
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="eliminarProducto(${index})">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+            tbody.append(row);
+        });
+        
+        $('#contador_items').text(`${detallesAjuste.length} items`);
+    }
+
+    function eliminarProducto(index) {
+        detallesAjuste.splice(index, 1);
+        renderizarTabla();
+    }
+
+    function guardarAjuste() {
+        if (detallesAjuste.length === 0) {
+            alert('Debe agregar al menos un producto');
+            return;
+        }
+
+        const tipo = $('#tipo_ajuste').val();
+        const motivo = $('#motivo_ajuste').val();
+        const observaciones = $('#observaciones_ajuste').val();
+
+        if (!tipo || !motivo) {
+            alert('Complete los campos obligatorios del encabezado');
+            return;
+        }
+
+        const data = {
+            tipo: tipo,
+            motivo: motivo,
+            observaciones: observaciones,
+            detalles: detallesAjuste
+        };
+
+        // Enviar al servidor
+        fetch('{% url "inventario:nuevo_ajuste" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                Swal.fire({
+                    title: '¡Éxito!',
+                    text: 'Ajuste guardado correctamente',
+                    icon: 'success',
+                    confirmButtonColor: '#3085d6',
+                    confirmButtonText: 'Aceptar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        location.reload();
+                    }
+                });
+            } else {
+                Swal.fire({
+                    title: 'Error',
+                    text: data.message,
+                    icon: 'error',
+                    confirmButtonText: 'Cerrar'
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            Swal.fire({
+                title: 'Error',
+                text: 'Error al procesar la solicitud',
+                icon: 'error',
+                confirmButtonText: 'Cerrar'
+            });
+        });
     }
 
     function verDetalleAjuste(ajusteId) {
-        // Mostrar modal con detalles del ajuste
-        console.log('Ver detalle del ajuste:', ajusteId);
+        // Redirigir a la vista de detalle o abrir modal
+        window.location.href = `/inventario/ajustes/${ajusteId}/detalle/`;
     }
 
     function revertirAjuste(ajusteId) {
-        if (confirm('¿Está seguro de revertir este ajuste? Esta acción creará un ajuste contrario.')) {
-            // Lógica para revertir ajuste
-            console.log('Revertir ajuste:', ajusteId);
+        if (confirm('¿Está seguro de revertir este ajuste?')) {
+            // Implementar reversión
         }
     }
 </script>
@@ -451,9 +719,11 @@
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <link href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css"
     rel="stylesheet" />
+<link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
 {% endblock %}
 
 {% block extra_js %}
 <!-- Select2 JS -->
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 {% endblock %}
