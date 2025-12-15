@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.11.5/css/dataTables.bootstrap5.min.css">
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h1 class="h3 mb-0 text-gray-800">
+                        <i class="fas fa-sync-alt text-info"></i>
+                        {{ titulo }}
+                    </h1>
+                    <p class="text-muted">Análisis de movimiento de productos (Últimos 30 días)</p>
+                </div>
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item"><a href="{% url 'usuarios:dashboard' %}">Dashboard</a></li>
+                        <li class="breadcrumb-item"><a href="{% url 'reportes:dashboard' %}">Reportes</a></li>
+                        <li class="breadcrumb-item active">Rotación</li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Rotación Rápida -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3 bg-success text-white d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold"><i class="fas fa-rocket me-2"></i>Rotación Rápida (Más Vendidos)</h6>
+                    <span class="badge bg-white text-success">{{ productos_rapida|length }} Productos</span>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover" id="tableRapida">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th class="text-center">Vendidos</th>
+                                    <th class="text-center">Stock Actual</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for producto in productos_rapida %}
+                                <tr>
+                                    <td>{{ producto.nombre }}</td>
+                                    <td class="text-center font-weight-bold text-success">{{ producto.total_vendido|floatformat:0 }}</td>
+                                    <td class="text-center">{{ producto.stock }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center">No hay datos de ventas recientes.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rotación Lenta -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-header py-3 bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold"><i class="fas fa-hourglass-half me-2"></i>Rotación Lenta (Sin Ventas)</h6>
+                    <span class="badge bg-dark text-warning">{{ productos_lenta|length }} Productos</span>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info py-2">
+                        <small><i class="fas fa-info-circle"></i> Mostrando productos activos sin ventas en los últimos 30 días.</small>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover" id="tableLenta">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Categoría</th>
+                                    <th class="text-center">Stock</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for producto in productos_lenta %}
+                                <tr>
+                                    <td>{{ producto.nombre }}</td>
+                                    <td>{{ producto.id_categoria.nombre|default:"-" }}</td>
+                                    <td class="text-center">{{ producto.stock }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="3" class="text-center">No hay productos sin ventas.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.datatables.net/1.11.5/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.11.5/js/dataTables.bootstrap5.min.js"></script>
+<script>
+    $(document).ready(function() {
+        $('#tableRapida').DataTable({
+            language: { url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json' },
+            pageLength: 10,
+            order: [[1, 'desc']]
+        });
+        $('#tableLenta').DataTable({
+            language: { url: '//cdn.datatables.net/plug-ins/1.11.5/i18n/es-ES.json' },
+            pageLength: 10
+        });
+    });
+</script>
+{% endblock %}

@@ -14,4 +14,6 @@ urlpatterns = [
     
     # Estadísticas
     path('estadisticas/', views.reporte_estadisticas, name='estadisticas'),
+    path('stock-bajo/', views.reporte_stock_bajo, name='stock_bajo'),
+    path('rotacion-inventario/', views.reporte_rotacion_inventario, name='rotacion_inventario'),
 ]

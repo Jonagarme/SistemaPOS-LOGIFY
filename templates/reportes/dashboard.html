@@ -134,6 +134,71 @@
         </div>
     </div>
 
+    </div>
+
+    <!-- Nuevos Reportes -->
+    <div class="row mb-4">
+        <!-- Stock Bajo -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <div class="icon-circle bg-warning text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                            <i class="fas fa-exclamation-triangle fa-2x"></i>
+                        </div>
+                    </div>
+                    <h5 class="card-title font-weight-bold">Stock Bajo</h5>
+                    <p class="text-muted">Productos con stock por debajo del mínimo establecido</p>
+                    
+                    <div class="row mt-4 mb-4">
+                        <div class="col-6 border-end">
+                            <div class="h4 font-weight-bold text-warning mb-0">{{ productos_stock_bajo|default:0 }}</div>
+                            <small class="text-muted">Productos</small>
+                        </div>
+                        <div class="col-6">
+                            <div class="h4 font-weight-bold text-danger mb-0">{{ productos_criticos|default:0 }}</div>
+                            <small class="text-muted">Críticos</small>
+                        </div>
+                    </div>
+                    
+                    <a href="{% url 'reportes:stock_bajo' %}" class="btn btn-warning text-dark">
+                        <i class="fas fa-eye me-2"></i> Ver Reporte
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Rotación de Inventario -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow h-100">
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <div class="icon-circle bg-info text-white rounded-circle d-inline-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                            <i class="fas fa-sync-alt fa-2x"></i>
+                        </div>
+                    </div>
+                    <h5 class="card-title font-weight-bold">Rotación de Inventario</h5>
+                    <p class="text-muted">Análisis de movimiento y rotación de productos</p>
+                    
+                    <div class="row mt-4 mb-4">
+                        <div class="col-6 border-end">
+                            <div class="h4 font-weight-bold text-success mb-0">{{ rotacion_rapida|default:0 }}</div>
+                            <small class="text-muted">Rápida</small>
+                        </div>
+                        <div class="col-6">
+                            <div class="h4 font-weight-bold text-warning mb-0">{{ rotacion_lenta|default:0 }}</div>
+                            <small class="text-muted">Lenta</small>
+                        </div>
+                    </div>
+                    
+                    <a href="{% url 'reportes:rotacion_inventario' %}" class="btn btn-info text-white">
+                        <i class="fas fa-eye me-2"></i> Ver Reporte
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Sección de Descargas -->
     <div class="row">
         <!-- Productos -->

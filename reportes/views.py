@@ -35,10 +35,12 @@ except ImportError:
     Proveedor = None
 
 try:
-    from ventas.models import Venta, DetalleVenta
+    from ventas.models import Venta, DetalleVenta, FacturaVenta, FacturaVentaDetalle
 except ImportError:
     Venta = None
     DetalleVenta = None
+    FacturaVenta = None
+    FacturaVentaDetalle = None
 
 try:
     from inventario.models import MovimientoInventario
@@ -81,12 +83,53 @@ def dashboard_reportes(request):
                 total_proveedores = Proveedor.objects.all().count()
         except Exception:
             total_proveedores = 0
+            
+    # Variables para nuevas tarjetas
+    productos_stock_bajo = 0
+    productos_criticos = 0
+    rotacion_rapida = 0
+    rotacion_lenta = 0
+    
+    # Calcular datos para las tarjetas nuevas
+    if Producto:
+        try:
+            from django.db.models import F
+            # Stock Bajo
+            stock_bajo_qs = Producto.objects.filter(activo=True, stock__lte=F('stock_minimo'))
+            productos_stock_bajo = stock_bajo_qs.count()
+            productos_criticos = stock_bajo_qs.filter(stock__lte=0).count()
+            
+            # Rotación (Simulada o calculada si hay ventas)
+            if FacturaVentaDetalle:
+                try:
+                    fecha_inicio = timezone.now() - timezone.timedelta(days=30)
+                    # Productos vendidos en los últimos 30 días
+                    ventas_recientes = FacturaVentaDetalle.objects.filter(
+                        factura_venta__fechaEmision__gte=fecha_inicio,
+                        factura_venta__estado='EMITIDA'
+                    ).values('idProducto').annotate(total_vendido=Sum('cantidad'))
+                    
+                    ids_vendidos = [v['idProducto'] for v in ventas_recientes]
+                    
+                    # Rápida: Vendidos recientemente
+                    rotacion_rapida = len(ids_vendidos)
+                    
+                    # Lenta: Activos pero NO vendidos recientemente
+                    rotacion_lenta = Producto.objects.filter(activo=True).exclude(id__in=ids_vendidos).count()
+                except Exception as e:
+                    print(f"Error calculando rotación: {e}")
+        except Exception as e:
+            print(f"Error calculando stock bajo: {e}")
     
     context = {
         'titulo': 'Reportes del Sistema',
         'total_productos': total_productos,
         'total_clientes': total_clientes,
         'total_proveedores': total_proveedores,
+        'productos_stock_bajo': productos_stock_bajo,
+        'productos_criticos': productos_criticos,
+        'rotacion_rapida': rotacion_rapida,
+        'rotacion_lenta': rotacion_lenta,
     }
     return render(request, 'reportes/dashboard.html', context)
 
@@ -622,3 +665,69 @@ def reporte_estadisticas(request):
         return render(request, 'reportes/error.html', {
             'error': f'Error al generar estadísticas: {str(e)}'
         })
+
+
+@login_required
+def reporte_stock_bajo(request):
+    """Reporte de productos con stock bajo"""
+    productos = []
+    if Producto:
+        try:
+            from django.db.models import F
+            productos = Producto.objects.filter(
+                activo=True,
+                stock__lte=F('stock_minimo')
+            ).order_by('stock')
+        except Exception as e:
+            print(f"Error en reporte stock bajo: {e}")
+    
+    context = {
+        'titulo': 'Reporte de Stock Bajo',
+        'productos': productos,
+        'fecha_reporte': datetime.now()
+    }
+    return render(request, 'reportes/stock_bajo.html', context)
+
+
+@login_required
+def reporte_rotacion_inventario(request):
+    """Reporte de rotación de inventario"""
+    productos_rapida = []
+    productos_lenta = []
+    
+    if Producto and FacturaVentaDetalle:
+        try:
+            fecha_inicio = timezone.now() - timezone.timedelta(days=30)
+            
+            # Obtener ventas de los últimos 30 días agrupadas por producto
+            ventas_recientes = FacturaVentaDetalle.objects.filter(
+                factura_venta__fechaEmision__gte=fecha_inicio,
+                factura_venta__estado='EMITIDA'
+            ).values('idProducto').annotate(total_vendido=Sum('cantidad')).order_by('-total_vendido')
+            
+            # IDs de productos con ventas
+            ids_vendidos = [v['idProducto'] for v in ventas_recientes]
+            
+            # Productos de rotación rápida (los que tienen ventas)
+            # Enriquecer con datos del producto
+            for venta in ventas_recientes:
+                try:
+                    prod = Producto.objects.get(id=venta['idProducto'])
+                    prod.total_vendido = venta['total_vendido']
+                    productos_rapida.append(prod)
+                except Producto.DoesNotExist:
+                    continue
+            
+            # Productos de rotación lenta (sin ventas en el periodo)
+            productos_lenta = Producto.objects.filter(activo=True).exclude(id__in=ids_vendidos).order_by('nombre')[:100] # Limitado a 100 para no saturar
+            
+        except Exception as e:
+            print(f"Error en reporte rotación: {e}")
+            
+    context = {
+        'titulo': 'Rotación de Inventario',
+        'productos_rapida': productos_rapida,
+        'productos_lenta': productos_lenta,
+        'fecha_reporte': datetime.now()
+    }
+    return render(request, 'reportes/rotacion_inventario.html', context)
