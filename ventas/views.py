@@ -1537,6 +1537,23 @@ def crear_ajax(request):
             # Generar JSON para facturación electrónica
             json_facturacion = generar_json_facturacion_electronica_real(factura_venta)
             
+            # Registrar en auditoría
+            try:
+                from usuarios.models import Auditoria
+                Auditoria.registrar(
+                    usuario_id=request.user.id,
+                    usuario_nombre=request.user.username if hasattr(request.user, 'username') else 'Sistema',
+                    modulo='ventas',
+                    accion='CREAR',
+                    entidad='venta',
+                    id_entidad=id_factura_venta,
+                    descripcion=f'Creó venta {numero_factura} por ${float(total_final)}',
+                    request=request,
+                    extra={'total': float(total_final), 'items': len(productos_procesados)}
+                )
+            except Exception as e:
+                print(f"Error registrando auditoría de venta: {e}")
+
             return JsonResponse({
                 'success': True, 
                 'numero_venta': numero_factura,

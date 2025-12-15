@@ -10,6 +10,7 @@ from .models import (
     Producto, Categoria, Marca, Laboratorio, TipoProducto, 
     ClaseProducto, Subcategoria, SubnivelProducto
 )
+from usuarios.decorators import registrar_auditoria
 
 
 def lista_productos_simple(request):
@@ -399,6 +400,26 @@ def crear_producto(request):
                         es_divisible, es_psicotropico, requiere_cadena_frio, requiere_seguimiento,
                         calculo_abc_manual, activo, request.user.id
                     ])
+                    
+                    # Obtener ID del producto creado
+                    producto_id = cursor.lastrowid
+                    
+                    # Registrar en auditoría
+                    try:
+                        from usuarios.models import Auditoria
+                        Auditoria.registrar(
+                            usuario_id=request.user.id,
+                            usuario_nombre=request.user.username if hasattr(request.user, 'username') else 'Sistema',
+                            modulo='productos',
+                            accion='CREAR',
+                            entidad='producto',
+                            id_entidad=producto_id,
+                            descripcion=f'Creó el producto {nombre} ({codigo_principal})',
+                            request=request,
+                            extra={'codigo': codigo_principal, 'precio': precio_venta, 'stock': stock}
+                        )
+                    except Exception as e:
+                        print(f"Error registrando auditoría de producto: {e}")
                 
                 messages.success(request, f'Producto "{nombre}" creado exitosamente con código {codigo_principal}')
                 return redirect('productos:lista')
@@ -471,6 +492,7 @@ def crear_producto(request):
 
 
 @login_required
+@registrar_auditoria('productos', 'EDITAR', 'producto', obtener_id_entidad='producto_id')
 def editar_producto(request, producto_id):
     """Editar producto existente"""
     producto = get_object_or_404(Producto, pk=producto_id)
@@ -561,6 +583,7 @@ def editar_producto(request, producto_id):
 
 
 @login_required
+@registrar_auditoria('productos', 'ELIMINAR', 'producto', obtener_id_entidad='pk')
 def eliminar_producto(request, pk):
     """Eliminar producto (marcar como inactivo)"""
     producto = get_object_or_404(Producto, pk=pk)

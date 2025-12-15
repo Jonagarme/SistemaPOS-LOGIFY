@@ -8,6 +8,7 @@ from django.utils import timezone
 from django.db import OperationalError
 from .models import Cliente
 from .forms import ClienteForm
+from usuarios.decorators import registrar_auditoria
 
 
 @login_required
@@ -77,6 +78,24 @@ def crear_cliente(request):
             cliente.creado_por = request.user.id if hasattr(request.user, 'id') else None
             cliente.creado_date = timezone.now()
             cliente.save()
+            
+            # Registrar en auditoría
+            try:
+                from usuarios.models import Auditoria
+                Auditoria.registrar(
+                    usuario_id=request.user.id,
+                    usuario_nombre=request.user.username if hasattr(request.user, 'username') else 'Sistema',
+                    modulo='clientes',
+                    accion='CREAR',
+                    entidad='cliente',
+                    id_entidad=cliente.id,
+                    descripcion=f'Creó el cliente {cliente.nombre_completo}',
+                    request=request,
+                    extra={'cedula': cliente.cedula_ruc, 'email': cliente.email}
+                )
+            except Exception as e:
+                print(f"Error registrando auditoría de cliente: {e}")
+
             messages.success(request, 'Cliente creado exitosamente')
             return redirect('clientes:lista')
         else:
@@ -92,6 +111,7 @@ def crear_cliente(request):
 
 
 @login_required
+@registrar_auditoria('clientes', 'EDITAR', 'cliente', obtener_id_entidad='pk')
 def editar_cliente(request, pk):
     """Editar cliente existente"""
     cliente = get_object_or_404(Cliente, pk=pk)
@@ -135,6 +155,7 @@ def detalle_cliente(request, pk):
 
 
 @login_required
+@registrar_auditoria('clientes', 'ELIMINAR', 'cliente', obtener_id_entidad='pk')
 def eliminar_cliente(request, pk):
     """Eliminar cliente (marcar como inactivo)"""
     cliente = get_object_or_404(Cliente, pk=pk)

@@ -452,6 +452,23 @@ def nuevo_ajuste(request):
                             saldo=producto.stock
                         )
                     
+                    # Registrar en auditoría
+                    try:
+                        from usuarios.models import Auditoria
+                        Auditoria.registrar(
+                            usuario_id=request.user.id,
+                            usuario_nombre=request.user.username if hasattr(request.user, 'username') else 'Sistema',
+                            modulo='inventario',
+                            accion='CREAR',
+                            entidad='ajuste_inventario',
+                            id_entidad=ajuste.id,
+                            descripcion=f'Realizó ajuste de inventario {ajuste.numero_ajuste}: {ajuste.get_motivo_display()}',
+                            request=request,
+                            extra={'motivo': ajuste.motivo, 'items': len(detalles)}
+                        )
+                    except Exception as e:
+                        print(f"Error registrando auditoría de ajuste: {e}")
+
                 return JsonResponse({'status': 'success', 'message': 'Ajuste guardado correctamente'})
             else:
                 # Soporte legacy para form data si es necesario, o error

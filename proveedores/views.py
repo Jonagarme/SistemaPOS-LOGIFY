@@ -7,6 +7,7 @@ from django.http import JsonResponse
 from django.utils import timezone
 from .models import Proveedor
 from .forms import ProveedorForm
+from usuarios.decorators import registrar_auditoria
 
 
 @login_required
@@ -40,17 +41,46 @@ def lista_proveedores(request):
 def crear_proveedor(request):
     """Crear nuevo proveedor"""
     if request.method == 'POST':
-        # Lógica para crear proveedor
-        messages.success(request, 'Proveedor creado exitosamente')
-        return redirect('proveedores:lista')
+        form = ProveedorForm(request.POST)
+        if form.is_valid():
+            proveedor = form.save(commit=False)
+            proveedor.creado_por = request.user.id if hasattr(request.user, 'id') else None
+            proveedor.creado_date = timezone.now()
+            proveedor.save()
+            
+            # Registrar en auditoría
+            try:
+                from usuarios.models import Auditoria
+                Auditoria.registrar(
+                    usuario_id=request.user.id,
+                    usuario_nombre=request.user.username if hasattr(request.user, 'username') else 'Sistema',
+                    modulo='proveedores',
+                    accion='CREAR',
+                    entidad='proveedor',
+                    id_entidad=proveedor.id,
+                    descripcion=f'Creó el proveedor {proveedor.razon_social}',
+                    request=request,
+                    extra={'ruc': proveedor.ruc, 'email': proveedor.email}
+                )
+            except Exception as e:
+                print(f"Error registrando auditoría de proveedor: {e}")
+
+            messages.success(request, 'Proveedor creado exitosamente')
+            return redirect('proveedores:lista')
+        else:
+            messages.error(request, 'Por favor corrige los errores en el formulario')
+    else:
+        form = ProveedorForm()
     
     context = {
+        'form': form,
         'titulo': 'Crear Proveedor'
     }
     return render(request, 'proveedores/crear.html', context)
 
 
 @login_required
+@registrar_auditoria('proveedores', 'EDITAR', 'proveedor', obtener_id_entidad='pk')
 def editar_proveedor(request, pk):
     """Editar proveedor existente"""
     proveedor = get_object_or_404(Proveedor, pk=pk)
@@ -94,6 +124,7 @@ def detalle_proveedor(request, pk):
 
 
 @login_required
+@registrar_auditoria('proveedores', 'ELIMINAR', 'proveedor', obtener_id_entidad='pk')
 def eliminar_proveedor(request, pk):
     """Eliminar proveedor (marcar como inactivo)"""
     proveedor = get_object_or_404(Proveedor, pk=pk)
