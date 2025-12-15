@@ -121,11 +121,11 @@ def dashboard(request):
         try:
             with connection.cursor() as cursor:
                 cursor.execute("""
-                    SELECT cc.id, c.nombre, cc.montoInicial, cc.fechaApertura
+                    SELECT cc.id, c.nombre, cc.saldoInicial, cc.fechaApertura
                     FROM cierres_caja cc
                     JOIN cajas c ON cc.idCaja = c.id
                     WHERE cc.estado = 'ABIERTA'
-                    AND cc.idUsuario = %s
+                    -- AND cc.idUsuarioApertura = %s
                     ORDER BY cc.fechaApertura DESC
                     LIMIT 1
                 """, [request.user.id])

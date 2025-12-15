@@ -169,7 +169,7 @@ class ConfiguracionEmpresa(models.Model):
     """Configuración general de la empresa usando tabla empresas existente"""
     id = models.AutoField(primary_key=True)
     ruc = models.CharField(max_length=13, unique=True, help_text='RUC de la empresa emisora')
-    razon_social = models.CharField(max_length=300)
+    razon_social = models.CharField(max_length=300, default='Empresa')
     nombre_comercial = models.CharField(max_length=300, blank=True, null=True)
     direccion_matriz = models.CharField(max_length=300, default='', blank=True)
     telefono = models.CharField(max_length=50, blank=True, null=True)
