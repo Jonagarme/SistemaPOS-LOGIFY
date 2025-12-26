@@ -56,7 +56,7 @@ class ConfiguracionEmpresaForm(forms.ModelForm):
         fields = [
             'ruc', 'razon_social', 'nombre_comercial', 'direccion_matriz',
             'telefono', 'email', 'contribuyente_especial', 'obligado_contabilidad',
-            'tipo_menu',
+            'tipo_menu', 'sri_ambiente',
             'certificado_p12_path', 'certificado_password', 'certificado_fecha_expiracion'
             # logo se maneja por separado como logo_file
         ]
@@ -97,6 +97,9 @@ class ConfiguracionEmpresaForm(forms.ModelForm):
             'tipo_menu': forms.Select(attrs={
                 'class': 'form-select'
             }),
+            'sri_ambiente': forms.Select(attrs={
+                'class': 'form-select'
+            }),
             'certificado_p12_path': forms.TextInput(attrs={
                 'class': 'form-control',
                 'placeholder': 'Ruta del certificado P12 (opcional)'
@@ -120,6 +123,7 @@ class ConfiguracionEmpresaForm(forms.ModelForm):
             'contribuyente_especial': 'Contribuyente Especial',
             'obligado_contabilidad': 'Obligado a llevar contabilidad',
             'tipo_menu': 'Tipo de Menú',
+            'sri_ambiente': 'Ambiente SRI',
             'certificado_p12_path': 'Ruta Certificado P12',
             'certificado_password': 'Password Certificado',
             'certificado_fecha_expiracion': 'Fecha Expiración Certificado'

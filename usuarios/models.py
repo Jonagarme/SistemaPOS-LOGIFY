@@ -189,6 +189,12 @@ class ConfiguracionEmpresa(models.Model):
         null=True
     )
     activo = models.BooleanField(default=True)
+    sri_ambiente = models.IntegerField(
+        choices=[(1, 'Pruebas'), (2, 'Producción')], 
+        default=1,
+        help_text='Ambiente SRI: 1 para Pruebas, 2 para Producción',
+        db_column='sri_ambiente'
+    )
     creado_en = models.DateTimeField(blank=True, null=True)
     actualizado_en = models.DateTimeField(blank=True, null=True)
     
