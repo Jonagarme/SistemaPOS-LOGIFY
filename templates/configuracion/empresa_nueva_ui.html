@@ -457,6 +457,26 @@
                                             </div>
                                         {% endif %}
                                     </div>
+
+                                    <div class="col-md-6 mb-3">
+                                        <label for="{{ form.sri_ambiente.id_for_label }}" class="form-label-modern">
+                                            <i class="fas fa-server"></i>
+                                            {{ form.sri_ambiente.label }}
+                                        </label>
+                                        {{ form.sri_ambiente }}
+                                        <div class="mt-2">
+                                            <span class="badge {% if config.sri_ambiente == 1 %}bg-warning{% else %}bg-success{% endif %} badge-custom">
+                                                <i class="fas {% if config.sri_ambiente == 1 %}fa-vial{% else %}fa-check-circle{% endif %}"></i>
+                                                {% if config.sri_ambiente == 1 %}Ambiente de Pruebas{% else %}Ambiente de Producción{% endif %}
+                                            </span>
+                                        </div>
+                                        <small class="form-text text-muted d-block mt-1">Selecciona el ambiente para la emisión de comprobantes electrónicos ante el SRI</small>
+                                        {% if form.sri_ambiente.errors %}
+                                            <div class="text-danger small mt-1">
+                                                {% for error in form.sri_ambiente.errors %}<div>{{ error }}</div>{% endfor %}
+                                            </div>
+                                        {% endif %}
+                                    </div>
                                 </div>
                             </div>
                         </div>
