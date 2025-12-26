@@ -247,7 +247,7 @@ def obtener_factura_detalle(request, factura_id):
     with connection.cursor() as cursor:
         sql_header = """
             SELECT 
-                fv.id,
+                fv.id                             AS Id,
                 fv.numeroFactura                  AS NumeroDocumento,
                 fv.fechaEmision                  AS FechaEmision,
                 fv.estado                        AS EstadoVenta,
@@ -369,33 +369,147 @@ def detalle_factura_electronica(request, pk):
     return render(request, 'ventas/detalle_factura_electronica.html', context)
 
 
+def generar_json_nota_credito(factura_venta, motivo="ANULACION DE FACTURA"):
+    """Generar JSON para Nota de Crédito del SRI"""
+    EMPRESA_CONFIG = obtener_configuracion_empresa()
+    cliente = factura_venta.cliente
+    
+    # Mapeo de tipo de identificación
+    tipo_identificacion = "05" # Cédula por defecto
+    if cliente:
+        if cliente.tipo_identificacion == 'RUC':
+            tipo_identificacion = "04"
+        elif cliente.tipo_identificacion == 'PASAPORTE':
+            tipo_identificacion = "06"
+            
+    # Secuencial de la nota de crédito (usamos el ID de la factura por ahora)
+    secuencial = str(factura_venta.idFactura).zfill(9)
+    
+    json_nc = {
+        "empresaRuc": EMPRESA_CONFIG['ruc'],
+        "ambiente": EMPRESA_CONFIG.get('sri_ambiente', 1),
+        "tipoComprobante": "04", # 04 = Nota de Crédito
+        "infoTributaria": {
+            "estab": EMPRESA_CONFIG['codigo_establecimiento'],
+            "ptoEmi": EMPRESA_CONFIG['codigo_punto_emision'],
+            "secuencial": secuencial,
+            "dirMatriz": EMPRESA_CONFIG['direccion_matriz'],
+            "contribuyenteRimpe": "CONTRIBUYENTE RÉGIMEN RIMPE"
+        },
+        "infoNotaCredito": {
+            "fechaEmision": datetime.now().strftime("%d/%m/%Y"),
+            "dirEstablecimiento": EMPRESA_CONFIG['direccion_establecimiento'],
+            "tipoIdentificacionComprador": tipo_identificacion,
+            "razonSocialComprador": cliente.nombre_completo if cliente else "CONSUMIDOR FINAL",
+            "identificacionComprador": cliente.cedula_ruc if cliente and cliente.cedula_ruc else "9999999999999",
+            "obligadoContabilidad": EMPRESA_CONFIG['obligado_contabilidad'],
+            "codDocModificado": "01", # 01 = Factura
+            "numDocModificado": factura_venta.numeroFactura,
+            "fechaEmisionDocSustento": factura_venta.fechaEmision.strftime("%d/%m/%Y"),
+            "totalSinImpuestos": float(factura_venta.subtotal),
+            "valorModificacion": float(factura_venta.total),
+            "moneda": "DOLAR",
+            "totalConImpuestos": [
+                {
+                    "codigo": "2",
+                    "codigoPorcentaje": "4", # 15% IVA según ejemplo del usuario
+                    "baseImponible": float(factura_venta.subtotal),
+                    "valor": float(factura_venta.iva)
+                }
+            ] if factura_venta.iva > 0 else [],
+            "motivo": motivo
+        },
+        "detalles": []
+    }
+    
+    # Detalles
+    detalles = FacturaVentaDetalle.objects.filter(idFacturaVenta=factura_venta.idFactura)
+    for detalle in detalles:
+        cantidad = float(detalle.cantidad)
+        precio_unitario = float(detalle.precioUnitario)
+        descuento = float(detalle.descuentoValor) if detalle.descuentoValor else 0.00
+        precio_total_sin_impuesto = float(detalle.total) - float(detalle.ivaValor)
+        
+        try:
+            producto = Producto.objects.get(id=detalle.idProducto)
+            codigo_principal = producto.codigo_principal
+        except Producto.DoesNotExist:
+            codigo_principal = f"PROD-{detalle.idProducto}"
+            
+        detalle_json = {
+            "codigoPrincipal": codigo_principal,
+            "descripcion": detalle.productoNombre,
+            "cantidad": cantidad,
+            "precioUnitario": precio_unitario,
+            "descuento": descuento,
+            "precioTotalSinImpuesto": precio_total_sin_impuesto,
+            "impuestos": [
+                {
+                    "codigo": "2",
+                    "codigoPorcentaje": "4",
+                    "tarifa": 15.00,
+                    "baseImponible": precio_total_sin_impuesto,
+                    "valor": float(detalle.ivaValor)
+                }
+            ] if detalle.ivaValor > 0 else []
+        }
+        json_nc["detalles"].append(detalle_json)
+        
+    return json_nc
+
 @login_required
 def anular_factura_electronica(request, pk):
-    """Anular una factura electrónica"""
-    factura = get_object_or_404(Venta, pk=pk)
+    """Anular una factura electrónica y generar Nota de Crédito"""
+    factura = get_object_or_404(FacturaVenta, pk=pk)
     
     if request.method == 'POST':
-        # Verificar si se puede anular
-        if factura.estado == 'anulada':
+        if factura.estado == 'ANULADA':
             messages.error(request, 'Esta factura ya está anulada')
             return redirect('ventas:facturas_electronicas')
+            
+        motivo = request.POST.get('motivo', 'ANULACION DE FACTURA POR PRUEBAS')
         
-        # Restaurar stock de productos
-        for detalle in factura.detalles.all():
-            producto = detalle.producto
-            producto.stock += detalle.cantidad
-            producto.save()
+        # 1. Generar JSON de Nota de Crédito
+        json_nc = generar_json_nota_credito(factura, motivo)
         
-        # Anular factura
-        factura.estado = 'anulada'
-        factura.save()
-        
-        messages.success(request, f'Factura {factura.numero_factura} anulada exitosamente')
+        # 2. Enviar a la API
+        api_url = "http://127.0.0.1:5001/api/nota_credito"
+        try:
+            response = requests.post(api_url, json=json_nc, timeout=15)
+            
+            if response.status_code in [200, 201]:
+                # Éxito en la API
+                # 3. Actualizar estado en la base de datos
+                with connection.cursor() as cursor:
+                    cursor.execute("UPDATE facturas_venta SET estado = 'ANULADA', anulado = 1 WHERE id = %s", [pk])
+                
+                # 4. Restaurar stock
+                detalles = FacturaVentaDetalle.objects.filter(idFacturaVenta=pk)
+                for d in detalles:
+                    try:
+                        producto = Producto.objects.get(id=d.idProducto)
+                        producto.stock += d.cantidad
+                        producto.save()
+                    except Producto.DoesNotExist:
+                        pass
+                
+                messages.success(request, f'Factura {factura.numeroFactura} anulada exitosamente. Nota de Crédito generada.')
+            else:
+                try:
+                    response_data = response.json()
+                    error_msg = response_data.get('mensaje', response_data.get('error', 'Error desconocido en la API'))
+                except:
+                    error_msg = f"Error HTTP {response.status_code}"
+                messages.error(request, f'Error al anular en el SRI: {error_msg}')
+                
+        except requests.exceptions.RequestException as e:
+            messages.error(request, f'Error de conexión con la API de facturación: {str(e)}')
+            
         return redirect('ventas:facturas_electronicas')
     
     context = {
         'factura': factura,
-        'titulo': 'Anular Factura',
+        'titulo': 'Anular Factura Electrónica',
     }
     return render(request, 'ventas/anular_factura.html', context)
 
@@ -1783,9 +1897,20 @@ def anular_venta(request, pk):
     venta = get_object_or_404(Venta, pk=pk)
     
     if request.method == 'POST':
+        # 1. Restaurar stock
+        for detalle in venta.detalles.all():
+            try:
+                producto = detalle.producto
+                producto.stock += detalle.cantidad
+                producto.save()
+            except Exception as e:
+                print(f"Error al restaurar stock del producto {detalle.producto.id}: {e}")
+        
+        # 2. Actualizar estado
         venta.estado = 'anulada'
         venta.save()
-        messages.success(request, 'Venta anulada exitosamente')
+        
+        messages.success(request, 'Venta anulada exitosamente y stock restaurado')
         return redirect('ventas:lista')
     
     context = {

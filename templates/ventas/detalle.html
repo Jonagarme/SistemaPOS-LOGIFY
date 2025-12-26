@@ -280,10 +280,21 @@
 
 <script>
 function confirmarAnulacion() {
-    if (confirm('¿Está seguro de que desea anular esta factura? Esta acción no se puede deshacer.')) {
-        // Aquí se implementaría la lógica de anulación
-        window.location.href = "{% url 'ventas:anular' venta.idFactura %}";
-    }
+    Swal.fire({
+        title: '¿Está seguro de anular esta factura?',
+        text: "Esta acción generará una Nota de Crédito electrónica y no se puede deshacer.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="fas fa-check"></i> Sí, continuar',
+        cancelButtonText: '<i class="fas fa-times"></i> Cancelar',
+        reverseButtons: true
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = "{% url 'ventas:anular_factura_electronica' venta.idFactura %}";
+        }
+    });
 }
 </script>
 {% endblock %}

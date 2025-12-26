@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-danger text-white d-flex align-items-center">
+                    <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                    <h4 class="mb-0">Confirmar Anulación de Factura</h4>
+                </div>
+                <div class="card-body p-4">
+                    <div class="alert alert-warning border-start border-warning border-4">
+                        <p class="mb-0">
+                            <strong>Atención:</strong> Esta acción generará una <strong>Nota de Crédito</strong> electrónica y la enviará al SRI. 
+                            Esta operación no se puede deshacer y el stock de los productos será restaurado.
+                        </p>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-1">Factura N°:</h6>
+                            <p class="h5">{{ factura.numeroFactura }}</p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <h6 class="text-muted mb-1">Total:</h6>
+                            <p class="h5 text-danger">${{ factura.total|floatformat:2 }}</p>
+                        </div>
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-4">
+                            <label for="motivo" class="form-label fw-bold">Motivo de la Anulación:</label>
+                            <textarea class="form-control" id="motivo" name="motivo" rows="3" required 
+                                placeholder="Ej: Error en digitación, Devolución de mercadería, etc.">ANULACION DE FACTURA POR PRUEBAS</textarea>
+                            <div class="form-text text-muted">
+                                Este motivo aparecerá en la Nota de Crédito electrónica.
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{% url 'ventas:facturas_electronicas' %}" class="btn btn-outline-secondary px-4">
+                                <i class="fas fa-arrow-left me-2"></i> Volver
+                            </a>
+                            <button type="submit" class="btn btn-danger btn-lg px-5 shadow-sm">
+                                <i class="fas fa-check-circle me-2"></i> Confirmar y Anular
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        border-radius: 15px;
+        overflow: hidden;
+    }
+    .btn-lg {
+        border-radius: 10px;
+    }
+</style>
+{% endblock %}
