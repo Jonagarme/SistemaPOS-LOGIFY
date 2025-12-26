@@ -76,7 +76,8 @@ def obtener_configuracion_empresa():
                 # Campos adicionales que se pueden configurar en el futuro
                 'codigo_establecimiento': '001',  # Por defecto
                 'codigo_punto_emision': '001',   # Por defecto
-                'ambiente': 'PRODUCCIÓN',        # Por defecto
+                'ambiente': 'PRUEBAS' if empresa_config.sri_ambiente == 1 else 'PRODUCCIÓN',
+                'sri_ambiente': empresa_config.sri_ambiente,
                 'emision': 'NORMAL',            # Por defecto
                 'eslogan': 'Tu Bienestar, Nuestra Prioridad',  # Configurable en el futuro
                 'verificacion_url': 'https://srienlinea.sri.gob.ec/sri-en-linea/consulta/55',
@@ -98,7 +99,8 @@ def obtener_configuracion_empresa():
                 'activo': True,
                 'codigo_establecimiento': '001',
                 'codigo_punto_emision': '001',
-                'ambiente': 'PRODUCCIÓN',
+                'ambiente': 'PRUEBAS',
+                'sri_ambiente': 1,
                 'emision': 'NORMAL',
                 'eslogan': 'Configure su empresa en el sistema',
                 'verificacion_url': 'https://srienlinea.sri.gob.ec/sri-en-linea/consulta/55',
@@ -122,7 +124,8 @@ def obtener_configuracion_empresa():
             'activo': True,
             'codigo_establecimiento': '001',
             'codigo_punto_emision': '001',
-            'ambiente': 'PRODUCCIÓN',
+            'ambiente': 'PRUEBAS',
+            'sri_ambiente': 1,
             'emision': 'NORMAL',
             'eslogan': 'Tu Bienestar, Nuestra Prioridad',
             'verificacion_url': 'https://srienlinea.sri.gob.ec/sri-en-linea/consulta/55',
@@ -253,6 +256,8 @@ def obtener_factura_detalle(request, factura_id):
                 fv.descuento                     AS DescuentoFactura,
                 fv.iva                           AS IvaFactura,
                 fv.total                         AS TotalFactura,
+                fv.tipoPago                      AS MetodoPago,
+                fv.numComprobante                AS NumComprobante,
                 
                 c.cedula_ruc                         AS Identificacion,
                 COALESCE(NULLIF(c.razonSocial,''), TRIM(CONCAT(IFNULL(c.nombres,''),' ',IFNULL(c.apellidos,'')))) AS RazonSocial,
@@ -359,7 +364,7 @@ def detalle_factura_electronica(request, pk):
         'fecha': factura.fecha,
         'estado': factura.get_estado_display(),
         'autorizacion': '20023456372440',  # Número de autorización ficticio
-        'ambiente': 'PRODUCCIÓN',
+        'ambiente': obtener_configuracion_empresa()['ambiente'],
     }
     return render(request, 'ventas/detalle_factura_electronica.html', context)
 
@@ -896,7 +901,7 @@ def lista_ventas(request):
                     fv.total AS Total,
                     fv.estado AS Estado,
                     fv.fechaEmision AS FechaVenta,
-                    'ELECTRONICO' AS MetodoPago,
+                    COALESCE(fv.tipoPago, 'ELECTRONICO') AS MetodoPago,
                     CONCAT(IFNULL(u.first_name,''),' ',IFNULL(u.last_name,'')) AS Vendedor,
                     'FACTURA' AS TipoDocumento
                 FROM facturas_venta fv
@@ -947,7 +952,7 @@ def lista_ventas(request):
                     fv.total AS Total,
                     fv.estado AS Estado,
                     fv.fechaEmision AS FechaVenta,
-                    'ELECTRONICO' AS MetodoPago,
+                    COALESCE(fv.tipoPago, 'ELECTRONICO') AS MetodoPago,
                     CONCAT(IFNULL(u.first_name,''),' ',IFNULL(u.last_name,'')) AS Vendedor,
                     'FACTURA' AS TipoDocumento
                 FROM facturas_venta fv
@@ -1185,7 +1190,7 @@ def generar_json_facturacion_electronica_real(factura_venta):
     # Construir JSON según especificación SRI
     json_factura = {
         "empresaRuc": EMPRESA_CONFIG['ruc'],
-        "ambiente": 1,  # 1 = Pruebas, 2 = Producción
+        "ambiente": EMPRESA_CONFIG.get('sri_ambiente', 1),  # 1 = Pruebas, 2 = Producción
         "tipoComprobante": "01",  # 01 = Factura
         "infoTributaria": {
             "estab": EMPRESA_CONFIG['codigo_establecimiento'],
@@ -1273,7 +1278,7 @@ def generar_json_facturacion_electronica(venta):
     # Construir JSON según especificación SRI
     json_factura = {
         "empresaRuc": EMPRESA_CONFIG['ruc'],
-        "ambiente": 1,  # 1 = Pruebas, 2 = Producción
+        "ambiente": EMPRESA_CONFIG.get('sri_ambiente', 1),  # 1 = Pruebas, 2 = Producción
         "tipoComprobante": "01",  # 01 = Factura
         "infoTributaria": {
             "estab": EMPRESA_CONFIG['codigo_establecimiento'],
@@ -1450,15 +1455,23 @@ def crear_ajax(request):
             
             numero_factura = f"001-001-{str(siguiente_numero).zfill(9)}"
             
+            # Obtener tipo de pago y comprobante
+            pagos = data.get('pagos', [])
+            tipo_pago = 'EFECTIVO' # Default
+            if pagos:
+                tipo_pago = pagos[0].get('forma_pago', 'efectivo').upper()
+            
+            num_comprobante = data.get('num_comprobante', '')
+            
             # --- 2. Insertar el encabezado de la factura (facturas_venta) ---
             with connection.cursor() as cursor:
                 sql_factura = """
                     INSERT INTO facturas_venta 
                     (idCliente, idUsuario, idCierreCaja, numeroFactura, numeroAutorizacion, fechaEmision, 
-                     subtotal, descuento, iva, total, estado, creadoPor, creadoDate, anulado)
+                     subtotal, descuento, iva, total, estado, creadoPor, creadoDate, anulado, tipoPago, numComprobante)
                     VALUES
                     (%s, %s, %s, %s, %s, NOW(),
-                     %s, %s, %s, %s, 'PAGADA', %s, NOW(), 0)
+                     %s, %s, %s, %s, 'PAGADA', %s, NOW(), 0, %s, %s)
                 """
                 
                 cursor.execute(sql_factura, [
@@ -1471,7 +1484,9 @@ def crear_ajax(request):
                     float(descuento),               # descuento
                     float(iva_total),               # iva
                     float(total_final),             # total
-                    request.user.id                 # creadoPor
+                    request.user.id,                # creadoPor
+                    tipo_pago,                      # tipoPago
+                    num_comprobante                 # numComprobante
                 ])
                 
                 # Obtener ID de la factura insertada
@@ -2110,16 +2125,32 @@ def debug_ventas(request):
 
 @login_required
 def buscar_ventas_por_numero(request):
-    """Buscar ventas por número completo o dígitos parciales"""
+    """Buscar ventas por número completo o dígitos parciales en ambos tipos de documentos"""
     termino = request.GET.get('termino', '').strip()
     
     if not termino:
         return JsonResponse({'ventas': []})
     
     with connection.cursor() as cursor:
-        # Buscar por número completo o por dígitos parciales
+        # Buscar por número completo o por dígitos parciales en facturas y ventas manuales
         sql = """
-            SELECT 
+            (SELECT 
+                fv.id AS Id,
+                fv.numeroFactura AS NumeroVenta,
+                COALESCE(NULLIF(c.razonSocial,''), TRIM(CONCAT(IFNULL(c.nombres,''),' ',IFNULL(c.apellidos,'')))) AS Cliente,
+                fv.total AS Total,
+                fv.estado AS Estado,
+                fv.fechaEmision AS FechaVenta,
+                COALESCE(fv.tipoPago, 'ELECTRONICO') AS MetodoPago
+            FROM facturas_venta fv
+            LEFT JOIN clientes c ON fv.idCliente = c.id
+            WHERE fv.numeroFactura LIKE %s 
+               OR fv.numeroFactura = %s
+               OR REPLACE(fv.numeroFactura, '-', '') LIKE %s)
+            
+            UNION ALL
+            
+            (SELECT 
                 v.id AS Id,
                 v.numero_factura AS NumeroVenta,
                 COALESCE(NULLIF(c.razonSocial,''), TRIM(CONCAT(IFNULL(c.nombres,''),' ',IFNULL(c.apellidos,'')))) AS Cliente,
@@ -2131,8 +2162,9 @@ def buscar_ventas_por_numero(request):
             LEFT JOIN clientes c ON v.cliente_id = c.id
             WHERE v.numero_factura LIKE %s 
                OR v.numero_factura = %s
-               OR REPLACE(v.numero_factura, '-', '') LIKE %s
-            ORDER BY v.fecha DESC
+               OR REPLACE(v.numero_factura, '-', '') LIKE %s)
+            
+            ORDER BY FechaVenta DESC
             LIMIT 20
         """
         
@@ -2140,7 +2172,13 @@ def buscar_ventas_por_numero(request):
         busqueda_completa = f'%{termino}%'
         busqueda_sin_guiones = f'%{termino.replace("-", "")}%'
         
-        cursor.execute(sql, [busqueda_completa, termino, busqueda_sin_guiones])
+        # Parámetros para ambas partes del UNION
+        params = [
+            busqueda_completa, termino, busqueda_sin_guiones, # Para facturas_venta
+            busqueda_completa, termino, busqueda_sin_guiones  # Para ventas_venta
+        ]
+        
+        cursor.execute(sql, params)
         ventas = cursor.fetchall()
         
         # Convertir a lista de diccionarios
@@ -2161,65 +2199,99 @@ def buscar_ventas_por_numero(request):
 
 @login_required
 def obtener_venta_detalle(request, venta_id):
-    """Obtener detalle completo de una venta específica"""
+    """Obtener detalle completo de una venta específica (soporta facturas y ventas manuales)"""
     try:
-        # Buscar en la tabla facturas_venta usando el modelo FacturaVenta
-        from .models import FacturaVenta, FacturaVentaDetalle
+        from .models import FacturaVenta, FacturaVentaDetalle, Venta, DetalleVenta
         
-        try:
-            factura = FacturaVenta.objects.get(idFactura=venta_id)
-        except FacturaVenta.DoesNotExist:
-            return JsonResponse({'error': 'Venta no encontrada'}, status=404)
+        # 1. Intentar buscar en facturas_venta (Electrónicas)
+        factura = FacturaVenta.objects.filter(idFactura=venta_id).first()
         
-        # Obtener cliente
-        cliente = factura.cliente
-        cliente_nombre = cliente.nombre_completo if cliente else 'Cliente Genérico'
-        cliente_documento = cliente.cedula_ruc if cliente else ''
-        cliente_direccion = cliente.direccion if cliente else ''
-        cliente_telefono = cliente.telefono if cliente else ''
-        
-        # Obtener detalles de la factura
-        detalles_factura = FacturaVentaDetalle.objects.filter(idFacturaVenta=factura.idFactura)
-        
-        # Formatear datos del encabezado
-        encabezado_dict = {
-            'Id': factura.idFactura,
-            'NumeroVenta': factura.numeroFactura,
-            'FechaVenta': factura.fechaEmision.strftime('%Y-%m-%d %H:%M:%S') if factura.fechaEmision else '',
-            'TotalVenta': float(factura.total) if factura.total else 0,
-            'SubtotalVenta': float(factura.subtotal) if factura.subtotal else 0,
-            'DescuentoVenta': float(factura.descuento) if factura.descuento else 0,
-            'IvaVenta': float(factura.iva) if factura.iva else 0,
-            'EstadoVenta': factura.estado or 'Sin estado',
-            'MetodoPago': 'ELECTRONICO',  # Valor por defecto ya que no está en el modelo
-            'RazonSocial': cliente_nombre,
-            'Identificacion': cliente_documento,
-            'Direccion': cliente_direccion,
-            'Telefono': cliente_telefono,
-            'Vendedor': 'Sistema POS'
-        }
-        
-        # Formatear datos del detalle
-        detalle_list = []
-        for detalle in detalles_factura:
-            # Obtener producto
-            producto = detalle.producto
-            detalle_list.append({
-                'Codigo': producto.codigo_principal if producto else str(detalle.idProducto),
-                'Descripcion': detalle.productoNombre or (producto.nombre if producto else 'Producto desconocido'),
-                'Cantidad': float(detalle.cantidad) if detalle.cantidad else 0,
-                'PrecioUnitario': float(detalle.precioUnitario) if detalle.precioUnitario else 0,
-                'Descuento': float(detalle.descuentoValor) if detalle.descuentoValor else 0,
-                'Subtotal': float(detalle.total) if detalle.total else 0,
-                'Iva': float(detalle.ivaValor) if detalle.ivaValor else 0
-            })
+        if factura:
+            # Obtener cliente
+            cliente = factura.cliente
+            cliente_nombre = cliente.nombre_completo if cliente else 'Cliente Genérico'
+            cliente_documento = cliente.cedula_ruc if cliente else ''
+            cliente_direccion = cliente.direccion if cliente else ''
+            cliente_telefono = cliente.telefono if cliente else ''
+            
+            # Obtener detalles de la factura
+            detalles_factura = FacturaVentaDetalle.objects.filter(idFacturaVenta=factura.idFactura)
+            
+            # Formatear datos del encabezado
+            encabezado_dict = {
+                'Id': factura.idFactura,
+                'NumeroVenta': factura.numeroFactura,
+                'FechaVenta': factura.fechaEmision.strftime('%Y-%m-%d %H:%M:%S') if factura.fechaEmision else '',
+                'TotalVenta': float(factura.total) if factura.total else 0,
+                'SubtotalVenta': float(factura.subtotal) if factura.subtotal else 0,
+                'DescuentoVenta': float(factura.descuento) if factura.descuento else 0,
+                'IvaVenta': float(factura.iva) if factura.iva else 0,
+                'EstadoVenta': factura.estado or 'EMITIDA',
+                'MetodoPago': factura.tipoPago or 'EFECTIVO',
+                'NumComprobante': factura.numComprobante or '',
+                'RazonSocial': cliente_nombre,
+                'Identificacion': cliente_documento,
+                'Direccion': cliente_direccion,
+                'Telefono': cliente_telefono,
+                'Vendedor': 'Sistema POS'
+            }
+            
+            # Formatear datos del detalle
+            detalle_list = []
+            for detalle in detalles_factura:
+                producto = detalle.producto
+                detalle_list.append({
+                    'Codigo': producto.codigo_principal if producto else str(detalle.idProducto),
+                    'Descripcion': detalle.productoNombre or (producto.nombre if producto else 'Producto desconocido'),
+                    'Cantidad': float(detalle.cantidad) if detalle.cantidad else 0,
+                    'PrecioUnitario': float(detalle.precioUnitario) if detalle.precioUnitario else 0,
+                    'Descuento': float(detalle.descuentoValor) if detalle.descuentoValor else 0,
+                    'Subtotal': float(detalle.total) if detalle.total else 0,
+                    'Iva': float(detalle.ivaValor) if detalle.ivaValor else 0
+                })
+        else:
+            # 2. Intentar buscar en ventas_venta (Manuales)
+            venta_manual = Venta.objects.filter(id=venta_id).first()
+            
+            if not venta_manual:
+                return JsonResponse({'error': 'Venta no encontrada en ningún registro'}, status=404)
+            
+            cliente = venta_manual.cliente
+            
+            encabezado_dict = {
+                'Id': venta_manual.id,
+                'NumeroVenta': venta_manual.numero_factura,
+                'FechaVenta': venta_manual.fecha.strftime('%Y-%m-%d %H:%M:%S') if venta_manual.fecha else '',
+                'TotalVenta': float(venta_manual.total),
+                'SubtotalVenta': float(venta_manual.subtotal),
+                'DescuentoVenta': float(venta_manual.descuento),
+                'IvaVenta': float(venta_manual.impuesto),
+                'EstadoVenta': venta_manual.get_estado_display(),
+                'MetodoPago': venta_manual.get_tipo_pago_display(),
+                'RazonSocial': cliente.nombre_completo if cliente else 'Consumidor Final',
+                'Identificacion': cliente.numero_documento if cliente else '',
+                'Direccion': cliente.direccion if cliente else '',
+                'Telefono': cliente.telefono if cliente else '',
+                'Vendedor': f"{venta_manual.vendedor.first_name} {venta_manual.vendedor.last_name}" if venta_manual.vendedor else 'N/A'
+            }
+            
+            detalle_list = []
+            for detalle in venta_manual.detalles.all():
+                detalle_list.append({
+                    'Codigo': detalle.producto.codigo_principal if detalle.producto else 'N/A',
+                    'Descripcion': detalle.producto.nombre if detalle.producto else 'Producto desconocido',
+                    'Cantidad': float(detalle.cantidad),
+                    'PrecioUnitario': float(detalle.precio_unitario),
+                    'Descuento': float(detalle.descuento_linea),
+                    'Subtotal': float(detalle.subtotal),
+                    'Iva': float(detalle.impuesto)
+                })
         
         return JsonResponse({
             'encabezado': encabezado_dict,
             'detalle': detalle_list
         })
             
-        
     except Exception as e:
         print(f"Error en obtener_venta_detalle: {e}")
         return JsonResponse({'error': f'Error interno: {str(e)}'}, status=500)

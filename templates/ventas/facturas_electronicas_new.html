@@ -251,6 +251,13 @@
 <script>
 // Función para ver detalle de factura
 function verDetalle(facturaId) {
+    // Cerrar modal de búsqueda si está abierto
+    const modalBusquedaElement = document.getElementById('modalBusquedaRapida');
+    const modalBusquedaInstance = bootstrap.Modal.getInstance(modalBusquedaElement);
+    if (modalBusquedaInstance) {
+        modalBusquedaInstance.hide();
+    }
+
     const modal = new bootstrap.Modal(document.getElementById('modalDetalleFactura'));
     const contenido = document.getElementById('contenidoDetalleFactura');
     
@@ -291,6 +298,8 @@ function generarHtmlDetalle(data) {
     html += '<tr><td><strong>Fecha:</strong></td><td>' + encabezado.FechaEmision + '</td></tr>';
     html += '<tr><td><strong>Estado:</strong></td><td><span class="status-badge status-' + encabezado.EstadoVenta + '">' + encabezado.EstadoVenta + '</span></td></tr>';
     html += '<tr><td><strong>Autorización:</strong></td><td>' + (encabezado.Autorizacion || 'Sin autorización') + '</td></tr>';
+    html += '<tr><td><strong>Método Pago:</strong></td><td>' + (encabezado.MetodoPago || 'N/A') + '</td></tr>';
+    if (encabezado.NumComprobante) { html += '<tr><td><strong>N° Comprobante:</strong></td><td><span class="badge bg-info text-dark">' + encabezado.NumComprobante + '</span></td></tr>'; }
     html += '</table></div>';
     
     html += '<div class="col-md-6">';

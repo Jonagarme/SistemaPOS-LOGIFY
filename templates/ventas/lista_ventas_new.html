@@ -297,6 +297,13 @@
 <script>
 // Función para ver detalle de venta
 function verDetalle(ventaId) {
+    // Cerrar modal de búsqueda si está abierto
+    const modalBusquedaElement = document.getElementById('modalBusquedaRapida');
+    const modalBusquedaInstance = bootstrap.Modal.getInstance(modalBusquedaElement);
+    if (modalBusquedaInstance) {
+        modalBusquedaInstance.hide();
+    }
+
     const modal = new bootstrap.Modal(document.getElementById('modalDetalleVenta'));
     const contenido = document.getElementById('contenidoDetalleVenta');
     
@@ -344,6 +351,7 @@ function generarHtmlDetalle(data) {
                     <tr><td><strong>Fecha:</strong></td><td>${encabezado.FechaVenta}</td></tr>
                     <tr><td><strong>Estado:</strong></td><td><span class="status-badge status-${encabezado.EstadoVenta}">${encabezado.EstadoVenta}</span></td></tr>
                     <tr><td><strong>Método Pago:</strong></td><td><span class="metodo-badge metodo-${encabezado.MetodoPago.toLowerCase()}">${encabezado.MetodoPago}</span></td></tr>
+                    ${encabezado.NumComprobante ? `<tr><td><strong>N° Comprobante:</strong></td><td><span class="badge bg-info text-dark">${encabezado.NumComprobante}</span></td></tr>` : ""}
                     <tr><td><strong>Vendedor:</strong></td><td>${encabezado.Vendedor}</td></tr>
                 </table>
             </div>

@@ -1535,8 +1535,9 @@
         <div class="info-group">
             <div class="info-label">Ambiente SRI</div>
             <div class="info-value">
-                <i class="fas fa-shield-alt me-2"></i>
-                PRODUCCIÓN
+                <i class="fas {% if empresa.sri_ambiente == 1 %}fa-vial{% else %}fa-shield-alt{% endif %} me-2" 
+                   style="color: {% if empresa.sri_ambiente == 1 %}#ffc107{% else %}#28a745{% endif %};"></i>
+                {{ empresa.ambiente }}
             </div>
         </div>
 
@@ -1878,6 +1879,13 @@
                             </label>
                             <input type="number" id="monto-recibido" class="form-control" step="0.01" placeholder="0.00"
                                 oninput="calculateChange()" onkeyup="calculateChange()">
+                        </div>
+                        <div class="amount-input-group" id="comprobante-group" style="display: none;">
+                            <label>
+                                <i class="fas fa-file-invoice me-2"></i>
+                                N° Comprobante:
+                            </label>
+                            <input type="text" id="num-comprobante" class="form-control" placeholder="Ej: 123456">
                         </div>
                         <div class="change-display">
                             <div class="label">Cambio:</div>
@@ -2841,6 +2849,20 @@ async function clearCart() {
     function selectPaymentMethod(method) {
         selectedPaymentMethod = method;
 
+        // Mostrar/ocultar campo de comprobante
+        const comprobanteGroup = document.getElementById('comprobante-group');
+        if (comprobanteGroup) {
+            if (method === 'tarjeta' || method === 'transferencia') {
+                comprobanteGroup.style.display = 'block';
+                const inputComp = document.getElementById('num-comprobante');
+                if (inputComp) inputComp.focus();
+            } else {
+                comprobanteGroup.style.display = 'none';
+                const inputComp = document.getElementById('num-comprobante');
+                if (inputComp) inputComp.value = '';
+            }
+        }
+
         // Actualizar botones de método de pago
         document.querySelectorAll('.payment-method').forEach(btn => {
             btn.classList.remove('active');
@@ -3045,8 +3067,11 @@ async function procesarVenta() {
     showLoading();
     
     // Preparar datos de la venta
+    const numComprobante = document.getElementById('num-comprobante') ? document.getElementById('num-comprobante').value : '';
+    
     const ventaData = {
         cliente_id: currentCart.cliente_id || null,
+        num_comprobante: numComprobante,
         items: currentCart.items.map(item => ({
             producto_id: item.id,
             cantidad: parseInt(item.quantity),
