@@ -32,6 +32,8 @@ urlpatterns = [
     path('facturas/<int:pk>/detalle/', views.detalle_factura_electronica, name='detalle_factura_electronica'),
     path('facturas/<int:pk>/anular/', views.anular_factura_electronica, name='anular_factura_electronica'),
     path('facturas/<int:pk>/reenviar-sri/', views.reenviar_al_sri, name='reenviar_sri'),
+    path('facturas/<int:pk>/enviar-sri/', views.enviar_factura_sri, name='enviar_factura_sri'),
+    path('reenviar/<str:clave_acceso>/', views.reenviar_factura_clave, name='reenviar_factura_clave'),
     path('facturas/exportar/', views.exportar_facturas, name='exportar_facturas'),
     path('facturas/imprimir/', views.imprimir_facturas, name='imprimir_facturas'),
     

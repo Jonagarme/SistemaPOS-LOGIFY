@@ -16,6 +16,14 @@ class FacturaVenta(models.Model):
         ('ANULADA', 'Anulada'),
     ]
     
+    ESTADO_FACTURA_CHOICES = [
+        ('PENDIENTE', 'Pendiente Autorización'),
+        ('AUTORIZADA', 'Autorizada'),
+        ('RECHAZADA', 'Rechazada'),
+        ('ERROR', 'Error en Envío'),
+        ('ANULADA', 'Anulada'),
+    ]
+    
     idFactura = models.AutoField(primary_key=True, db_column='id')  # Campo ID principal
     idCliente = models.IntegerField(db_column='idCliente')
     idUsuario = models.IntegerField(db_column='idUsuario')  
@@ -26,13 +34,14 @@ class FacturaVenta(models.Model):
     descuento = models.DecimalField(max_digits=12, decimal_places=4, default=0, db_column='descuento')
     iva = models.DecimalField(max_digits=12, decimal_places=4, default=0, db_column='iva')
     total = models.DecimalField(max_digits=12, decimal_places=4, db_column='total')
-    tipoPago = models.CharField(max_length=50, null=True, blank=True, db_column='tipoPago')
+    # tipoPago = models.CharField(max_length=50, null=True, blank=True, db_column='tipoPago')  # Campo no existe en BD
     numComprobante = models.CharField(max_length=50, null=True, blank=True, db_column='numComprobante')
     estado = models.CharField(max_length=10, choices=ESTADO_CHOICES, default='EMITIDA', db_column='estado')
     creadoPor = models.IntegerField(db_column='creadoPor')
     creadoDate = models.DateTimeField(db_column='creadoDate')
     anulado = models.BooleanField(default=False, db_column='anulado')
     numeroAutorizacion = models.CharField(max_length=50, null=True, blank=True, db_column='numeroAutorizacion')
+    estadoFactura = models.CharField(max_length=15, choices=ESTADO_FACTURA_CHOICES, default='PENDIENTE', db_column='estadoFactura')
     
     class Meta:
         db_table = 'facturas_venta'

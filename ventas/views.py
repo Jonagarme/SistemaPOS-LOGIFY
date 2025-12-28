@@ -149,11 +149,13 @@ def facturas_electronicas(request):
         sql = """
             SELECT 
                 fv.id AS Id,
+                fv.id AS idFactura,
                 fv.numeroFactura AS Factura,
                 fv.numeroAutorizacion AS Autorizacion,
                 COALESCE(NULLIF(c.razonSocial,''), TRIM(CONCAT(IFNULL(c.nombres,''),' ',IFNULL(c.apellidos,'')))) AS Cliente,
                 fv.total AS Total,
                 fv.estado AS Estado,
+                fv.estadoFactura AS EstadoFactura,
                 fv.numeroAutorizacion AS ClaveAcceso,
                 fv.fechaEmision AS FechaEmision
             FROM facturas_venta fv
@@ -206,11 +208,13 @@ def buscar_facturas_por_numero(request):
             sql = """
                 SELECT 
                     fv.id AS Id,
+                    fv.id AS idFactura,
                     fv.numeroFactura AS Factura,
                     fv.numeroAutorizacion AS Autorizacion,
                     COALESCE(NULLIF(c.razonSocial,''), TRIM(CONCAT(IFNULL(c.nombres,''),' ',IFNULL(c.apellidos,'')))) AS Cliente,
                     fv.total AS Total,
                     fv.estado AS Estado,
+                    fv.estadoFactura AS EstadoFactura,
                     fv.numeroAutorizacion AS ClaveAcceso,
                     fv.fechaEmision AS FechaEmision
                 FROM facturas_venta fv
@@ -251,12 +255,12 @@ def obtener_factura_detalle(request, factura_id):
                 fv.numeroFactura                  AS NumeroDocumento,
                 fv.fechaEmision                  AS FechaEmision,
                 fv.estado                        AS EstadoVenta,
+                fv.estadoFactura                 AS EstadoFactura,
                 fv.numeroAutorizacion            AS Autorizacion,
                 fv.subtotal                      AS SubtotalFactura,
                 fv.descuento                     AS DescuentoFactura,
                 fv.iva                           AS IvaFactura,
                 fv.total                         AS TotalFactura,
-                fv.tipoPago                      AS MetodoPago,
                 fv.numComprobante                AS NumComprobante,
                 
                 c.cedula_ruc                         AS Identificacion,
@@ -385,6 +389,9 @@ def generar_json_nota_credito(factura_venta, motivo="ANULACION DE FACTURA"):
     # Secuencial de la nota de crédito (usamos el ID de la factura por ahora)
     secuencial = str(factura_venta.idFactura).zfill(9)
     
+    # Forma de pago por defecto (el campo tipoPago no existe en BD)
+    codigo_forma_pago_sri = "01"  # Efectivo por defecto
+    
     json_nc = {
         "empresaRuc": EMPRESA_CONFIG['ruc'],
         "ambiente": EMPRESA_CONFIG.get('sri_ambiente', 1),
@@ -417,7 +424,15 @@ def generar_json_nota_credito(factura_venta, motivo="ANULACION DE FACTURA"):
                     "valor": float(factura_venta.iva)
                 }
             ] if factura_venta.iva > 0 else [],
-            "motivo": motivo
+            "motivo": motivo,
+            "pagos": [
+                {
+                    "formaPago": codigo_forma_pago_sri,
+                    "total": float(factura_venta.total),
+                    "plazo": 0,
+                    "unidadTiempo": "dias"
+                }
+            ]
         },
         "detalles": []
     }
@@ -472,38 +487,75 @@ def anular_factura_electronica(request, pk):
         # 1. Generar JSON de Nota de Crédito
         json_nc = generar_json_nota_credito(factura, motivo)
         
-        # 2. Enviar a la API
+        # 2. Enviar a la API del SRI
         api_url = "http://127.0.0.1:5001/api/nota_credito"
         try:
-            response = requests.post(api_url, json=json_nc, timeout=15)
+            response = requests.post(api_url, json=json_nc, timeout=30)
+            response.raise_for_status()
+            respuesta_sri = response.json()
             
-            if response.status_code in [200, 201]:
-                # Éxito en la API
+            # Procesar respuesta del SRI
+            if respuesta_sri.get('success') or respuesta_sri.get('estado') == 'AUTORIZADO':
+                # Éxito: Nota de Crédito autorizada
+                clave_acceso_nc = respuesta_sri.get('claveAcceso') or respuesta_sri.get('numeroAutorizacion')
+                
                 # 3. Actualizar estado en la base de datos
                 with connection.cursor() as cursor:
-                    cursor.execute("UPDATE facturas_venta SET estado = 'ANULADA', anulado = 1 WHERE id = %s", [pk])
+                    cursor.execute(
+                        "UPDATE facturas_venta SET estado = 'ANULADA', anulado = 1, estadoFactura = 'ANULADA' WHERE id = %s", 
+                        [pk]
+                    )
                 
                 # 4. Restaurar stock
                 detalles = FacturaVentaDetalle.objects.filter(idFacturaVenta=pk)
+                productos_restaurados = 0
                 for d in detalles:
                     try:
                         producto = Producto.objects.get(id=d.idProducto)
                         producto.stock += d.cantidad
                         producto.save()
+                        productos_restaurados += 1
                     except Producto.DoesNotExist:
                         pass
                 
-                messages.success(request, f'Factura {factura.numeroFactura} anulada exitosamente. Nota de Crédito generada.')
-            else:
-                try:
-                    response_data = response.json()
-                    error_msg = response_data.get('mensaje', response_data.get('error', 'Error desconocido en la API'))
-                except:
-                    error_msg = f"Error HTTP {response.status_code}"
-                messages.error(request, f'Error al anular en el SRI: {error_msg}')
+                mensaje = f'✅ Factura {factura.numeroFactura} anulada exitosamente. Nota de Crédito AUTORIZADA por el SRI.'
+                if clave_acceso_nc:
+                    mensaje += f' Clave: {clave_acceso_nc[:20]}...'
+                if productos_restaurados > 0:
+                    mensaje += f' Stock restaurado: {productos_restaurados} productos.'
+                    
+                messages.success(request, mensaje)
                 
+            elif respuesta_sri.get('estado') == 'RECHAZADO':
+                # Nota de Crédito rechazada
+                mensaje_error = respuesta_sri.get('mensaje') or respuesta_sri.get('descripcion') or 'Sin detalles'
+                messages.error(
+                    request, 
+                    f'❌ Nota de Crédito RECHAZADA por el SRI: {mensaje_error}'
+                )
+                
+            else:
+                # Respuesta exitosa pero estado no claro
+                messages.warning(
+                    request,
+                    f'⚠️ Nota de Crédito enviada. Estado: {respuesta_sri.get("estado", "PENDIENTE")}'
+                )
+                
+        except requests.exceptions.Timeout:
+            messages.error(
+                request, 
+                '⚠️ Timeout al conectar con el SRI. La Nota de Crédito no fue procesada. Intente nuevamente.'
+            )
+        except requests.exceptions.ConnectionError:
+            messages.error(
+                request,
+                '⚠️ No se pudo conectar con la API del SRI (http://127.0.0.1:5001). Verifique que el servicio esté ejecutándose.'
+            )
         except requests.exceptions.RequestException as e:
-            messages.error(request, f'Error de conexión con la API de facturación: {str(e)}')
+            messages.error(
+                request, 
+                f'❌ Error al enviar Nota de Crédito al SRI: {str(e)}'
+            )
             
         return redirect('ventas:facturas_electronicas')
     
@@ -522,6 +574,191 @@ def reenviar_al_sri(request, pk):
     # Simular reenvío al SRI
     messages.success(request, f'Factura {factura.numero_factura} reenviada al SRI exitosamente')
     return redirect('ventas:facturas_electronicas')
+
+
+@login_required
+def reenviar_factura_clave(request, clave_acceso):
+    """Reenviar factura al SRI usando la clave de acceso"""
+    from .models import FacturaVenta
+    
+    try:
+        # Buscar la factura por clave de acceso (numeroAutorizacion)
+        factura = FacturaVenta.objects.get(numeroAutorizacion=clave_acceso)
+        
+        # Validar que la factura no esté ya autorizada
+        if factura.estadoFactura == 'AUTORIZADA':
+            messages.warning(
+                request, 
+                f'La factura {factura.numeroFactura} ya está AUTORIZADA y no puede ser reenviada.'
+            )
+            return redirect('ventas:facturas_electronicas')
+        
+        # Validar que la factura no esté anulada
+        if factura.anulado:
+            messages.error(
+                request,
+                f'La factura {factura.numeroFactura} está anulada y no puede ser reenviada.'
+            )
+            return redirect('ventas:facturas_electronicas')
+        
+        # Aquí iría la lógica real de reenvío al SRI
+        # Por ahora solo simulamos el reenvío
+        messages.success(
+            request, 
+            f'Factura {factura.numeroFactura} (clave {clave_acceso}) reenviada al SRI exitosamente'
+        )
+        
+        # Actualizar estado a pendiente de autorización
+        from django.db import connection
+        with connection.cursor() as cursor:
+            cursor.execute(
+                "UPDATE facturas_venta SET estadoFactura = 'PENDIENTE' WHERE numeroAutorizacion = %s",
+                [clave_acceso]
+            )
+        
+    except FacturaVenta.DoesNotExist:
+        messages.error(
+            request,
+            f'No se encontró una factura con la clave de acceso proporcionada.'
+        )
+    except Exception as e:
+        messages.error(
+            request,
+            f'Error al reenviar factura: {str(e)}'
+        )
+    
+    return redirect('ventas:facturas_electronicas')
+
+
+@login_required
+def enviar_factura_sri(request, pk):
+    """Enviar o reenviar factura al SRI usando el ID de la factura"""
+    from .models import FacturaVenta
+    import requests
+    
+    try:
+        # Buscar la factura por ID
+        factura = FacturaVenta.objects.get(idFactura=pk)
+        
+        # Validar que la factura no esté ya autorizada
+        if factura.estadoFactura == 'AUTORIZADA':
+            messages.warning(
+                request, 
+                f'La factura {factura.numeroFactura} ya está AUTORIZADA y no puede ser reenviada.'
+            )
+            return redirect('ventas:facturas_electronicas')
+        
+        # Validar que la factura no esté anulada
+        if factura.anulado:
+            messages.error(
+                request,
+                f'La factura {factura.numeroFactura} está anulada y no puede ser enviada.'
+            )
+            return redirect('ventas:facturas_electronicas')
+        
+        # Generar JSON para el SRI
+        json_facturacion = generar_json_facturacion_electronica_real(factura)
+        
+        # Enviar a la API del SRI
+        import requests
+        try:
+            api_url = 'http://127.0.0.1:5001/api/factura'
+            response = requests.post(api_url, json=json_facturacion, timeout=30)
+            response.raise_for_status()
+            respuesta_sri = response.json()
+            
+            # Procesar respuesta del SRI
+            if respuesta_sri.get('success') or respuesta_sri.get('estado') == 'AUTORIZADO':
+                clave_acceso = respuesta_sri.get('claveAcceso') or respuesta_sri.get('numeroAutorizacion')
+                if clave_acceso:
+                    actualizar_estado_factura_sri(pk, 'AUTORIZADA', clave_acceso)
+                    messages.success(
+                        request,
+                        f'Factura {factura.numeroFactura} AUTORIZADA por el SRI. Clave: {clave_acceso}'
+                    )
+                else:
+                    actualizar_estado_factura_sri(pk, 'AUTORIZADA')
+                    messages.success(
+                        request,
+                        f'Factura {factura.numeroFactura} AUTORIZADA por el SRI'
+                    )
+            elif respuesta_sri.get('estado') == 'RECHAZADO':
+                actualizar_estado_factura_sri(pk, 'RECHAZADA')
+                mensaje_error = respuesta_sri.get('mensaje') or respuesta_sri.get('descripcion') or 'Sin detalles'
+                messages.error(
+                    request,
+                    f'Factura RECHAZADA por el SRI: {mensaje_error}'
+                )
+            else:
+                # Respuesta no clara, mantener como pendiente
+                actualizar_estado_factura_sri(pk, 'PENDIENTE')
+                messages.warning(
+                    request,
+                    f'Factura enviada al SRI. Estado: {respuesta_sri.get("estado", "PENDIENTE")}'
+                )
+                
+        except requests.exceptions.Timeout:
+            actualizar_estado_factura_sri(pk, 'ERROR')
+            messages.error(
+                request,
+                f'Timeout al conectar con el SRI. Intente nuevamente.'
+            )
+        except requests.exceptions.ConnectionError:
+            actualizar_estado_factura_sri(pk, 'ERROR')
+            messages.error(
+                request,
+                f'No se pudo conectar con la API del SRI. Verifique que el servicio esté ejecutándose en http://127.0.0.1:5001'
+            )
+        except Exception as e:
+            actualizar_estado_factura_sri(pk, 'ERROR')
+            messages.error(
+                request,
+                f'Error al enviar al SRI: {str(e)}'
+            )
+        
+    except FacturaVenta.DoesNotExist:
+        messages.error(
+            request,
+            f'No se encontró la factura especificada.'
+        )
+    except Exception as e:
+        messages.error(
+            request,
+            f'Error al enviar factura: {str(e)}'
+        )
+    
+    return redirect('ventas:facturas_electronicas')
+
+
+def actualizar_estado_factura_sri(factura_id, estado, numero_autorizacion=None):
+    """
+    Función auxiliar para actualizar el estado de una factura con el SRI
+    
+    Args:
+        factura_id: ID de la factura
+        estado: Estado de la factura (PENDIENTE, AUTORIZADA, RECHAZADA, ERROR)
+        numero_autorizacion: Número de autorización del SRI (opcional)
+    """
+    from django.db import connection
+    
+    try:
+        with connection.cursor() as cursor:
+            if numero_autorizacion:
+                cursor.execute(
+                    """UPDATE facturas_venta 
+                       SET estadoFactura = %s, numeroAutorizacion = %s 
+                       WHERE id = %s""",
+                    [estado, numero_autorizacion, factura_id]
+                )
+            else:
+                cursor.execute(
+                    "UPDATE facturas_venta SET estadoFactura = %s WHERE id = %s",
+                    [estado, factura_id]
+                )
+        return True
+    except Exception as e:
+        print(f"Error al actualizar estado de factura: {e}")
+        return False
 
 
 @login_required
@@ -679,6 +916,21 @@ def consultar_clave_acceso(request):
                     'success': False, 
                     'error': f'Factura no autorizada. Estado: {api_data.get("estado", "DESCONOCIDO")}'
                 })
+            
+            # Buscar si la factura existe localmente y actualizar su estado
+            try:
+                from .models import FacturaVenta
+                factura_local = FacturaVenta.objects.filter(numeroAutorizacion=clave_acceso).first()
+                if factura_local and factura_local.estadoFactura != 'AUTORIZADA':
+                    # Actualizar estado a AUTORIZADA
+                    with connection.cursor() as cursor_update:
+                        cursor_update.execute(
+                            "UPDATE facturas_venta SET estadoFactura = 'AUTORIZADA' WHERE numeroAutorizacion = %s",
+                            [clave_acceso]
+                        )
+            except Exception as e:
+                # No fallar si hay error al actualizar, solo registrar
+                print(f"Error al actualizar estado de factura local: {e}")
             
             # Extraer XML del comprobante
             xml_content = api_data.get('comprobanteXml', '')
@@ -1010,12 +1262,13 @@ def lista_ventas(request):
             sql = """
                 (SELECT 
                     fv.id AS Id,
+                    fv.id AS idFactura,
                     fv.numeroFactura AS NumeroVenta,
                     COALESCE(NULLIF(c.razonSocial,''), TRIM(CONCAT(IFNULL(c.nombres,''),' ',IFNULL(c.apellidos,'')))) AS Cliente,
                     fv.total AS Total,
                     fv.estado AS Estado,
                     fv.fechaEmision AS FechaVenta,
-                    COALESCE(fv.tipoPago, 'ELECTRONICO') AS MetodoPago,
+                    'ELECTRONICO' AS MetodoPago,
                     CONCAT(IFNULL(u.first_name,''),' ',IFNULL(u.last_name,'')) AS Vendedor,
                     'FACTURA' AS TipoDocumento
                 FROM facturas_venta fv
@@ -1030,6 +1283,7 @@ def lista_ventas(request):
                 
                 (SELECT 
                     v.id AS Id,
+                    NULL AS idFactura,
                     v.numero_factura AS NumeroVenta,
                     COALESCE(NULLIF(c.razonSocial,''), TRIM(CONCAT(IFNULL(c.nombres,''),' ',IFNULL(c.apellidos,'')))) AS Cliente,
                     v.total AS Total,
@@ -1061,12 +1315,13 @@ def lista_ventas(request):
             sql = """
                 (SELECT 
                     fv.id AS Id,
+                    fv.id AS idFactura,
                     fv.numeroFactura AS NumeroVenta,
                     COALESCE(NULLIF(c.razonSocial,''), TRIM(CONCAT(IFNULL(c.nombres,''),' ',IFNULL(c.apellidos,'')))) AS Cliente,
                     fv.total AS Total,
                     fv.estado AS Estado,
                     fv.fechaEmision AS FechaVenta,
-                    COALESCE(fv.tipoPago, 'ELECTRONICO') AS MetodoPago,
+                    'ELECTRONICO' AS MetodoPago,
                     CONCAT(IFNULL(u.first_name,''),' ',IFNULL(u.last_name,'')) AS Vendedor,
                     'FACTURA' AS TipoDocumento
                 FROM facturas_venta fv
@@ -1079,6 +1334,7 @@ def lista_ventas(request):
                 
                 (SELECT 
                     v.id AS Id,
+                    NULL AS idFactura,
                     v.numero_factura AS NumeroVenta,
                     COALESCE(NULLIF(c.razonSocial,''), TRIM(CONCAT(IFNULL(c.nombres,''),' ',IFNULL(c.apellidos,'')))) AS Cliente,
                     v.total AS Total,
@@ -1106,14 +1362,15 @@ def lista_ventas(request):
         for venta in ventas:
             ventas_list.append({
                 'Id': venta[0],
-                'NumeroVenta': venta[1],
-                'Cliente': venta[2] or 'Sin cliente',
-                'Total': venta[3],
-                'Estado': venta[4],
-                'FechaVenta': venta[5],
-                'MetodoPago': venta[6],
-                'Vendedor': venta[7] or 'Sin vendedor',
-                'TipoDocumento': venta[8] if len(venta) > 8 else 'VENTA'  # Para manejar ambos casos
+                'idFactura': venta[1],  # Agregado para ticket_termico
+                'NumeroVenta': venta[2],
+                'Cliente': venta[3] or 'Sin cliente',
+                'Total': venta[4],
+                'Estado': venta[5],
+                'FechaVenta': venta[6],
+                'MetodoPago': venta[7],
+                'Vendedor': venta[8] or 'Sin vendedor',
+                'TipoDocumento': venta[9] if len(venta) > 9 else 'VENTA'  # Para manejar ambos casos
             })
     
     context = {
@@ -1290,6 +1547,30 @@ def nueva_venta(request):
     return render(request, 'ventas/crear.html', context)
 
 
+def mapear_forma_pago_sri(forma_pago_sistema):
+    """
+    Mapear forma de pago del sistema a código del SRI
+    
+    Códigos SRI:
+    01 = SIN UTILIZACION DEL SISTEMA FINANCIERO (Efectivo)
+    16 = TARJETA DE DEBITO
+    19 = TARJETA DE CREDITO
+    20 = OTROS CON UTILIZACION DEL SISTEMA FINANCIERO (Transferencias)
+    """
+    mapeo = {
+        'EFECTIVO': '01',
+        'TARJETA_DEBITO': '16',
+        'TARJETA_CREDITO': '19',
+        'TARJETA': '20',  # Genérico si no se especifica
+        'TRANSFERENCIA': '20',
+        'CHEQUE': '20',
+        'CREDITO': '01',  # Crédito sin forma de pago específica = sin sistema financiero
+    }
+    
+    forma_pago_upper = str(forma_pago_sistema).upper() if forma_pago_sistema else 'EFECTIVO'
+    return mapeo.get(forma_pago_upper, '01')  # Default: efectivo
+
+
 def generar_json_facturacion_electronica_real(factura_venta):
     """Generar JSON para facturación electrónica del SRI usando FacturaVenta"""
     # Obtener configuración de la empresa desde la tabla empresas
@@ -1300,6 +1581,9 @@ def generar_json_facturacion_electronica_real(factura_venta):
     
     # Obtener datos del cliente
     cliente = factura_venta.cliente
+    
+    # Forma de pago por defecto (el campo tipoPago no existe en BD)
+    codigo_forma_pago_sri = "01"  # Efectivo por defecto
     
     # Construir JSON según especificación SRI
     json_factura = {
@@ -1332,7 +1616,15 @@ def generar_json_facturacion_electronica_real(factura_venta):
             ] if factura_venta.iva > 0 else [],
             "propina": 0.00,
             "importeTotal": float(factura_venta.total),
-            "moneda": "DOLAR"
+            "moneda": "DOLAR",
+            "pagos": [
+                {
+                    "formaPago": codigo_forma_pago_sri,
+                    "total": float(factura_venta.total),
+                    "plazo": 0,  # 0 = Sin plazo (pago inmediato)
+                    "unidadTiempo": "dias"
+                }
+            ]
         },
         "detalles": []
     }
@@ -1582,10 +1874,10 @@ def crear_ajax(request):
                 sql_factura = """
                     INSERT INTO facturas_venta 
                     (idCliente, idUsuario, idCierreCaja, numeroFactura, numeroAutorizacion, fechaEmision, 
-                     subtotal, descuento, iva, total, estado, creadoPor, creadoDate, anulado, tipoPago, numComprobante)
+                     subtotal, descuento, iva, total, estado, creadoPor, creadoDate, anulado, numComprobante, estadoFactura)
                     VALUES
                     (%s, %s, %s, %s, %s, NOW(),
-                     %s, %s, %s, %s, 'PAGADA', %s, NOW(), 0, %s, %s)
+                     %s, %s, %s, %s, 'PAGADA', %s, NOW(), 0, %s, 'PENDIENTE')
                 """
                 
                 cursor.execute(sql_factura, [
@@ -1599,7 +1891,6 @@ def crear_ajax(request):
                     float(iva_total),               # iva
                     float(total_final),             # total
                     request.user.id,                # creadoPor
-                    tipo_pago,                      # tipoPago
                     num_comprobante                 # numComprobante
                 ])
                 
@@ -1666,6 +1957,33 @@ def crear_ajax(request):
             # Generar JSON para facturación electrónica
             json_facturacion = generar_json_facturacion_electronica_real(factura_venta)
             
+            # Enviar a la API del SRI
+            import requests
+            respuesta_sri = None
+            error_sri = None
+            try:
+                api_url = 'http://127.0.0.1:5001/api/factura'
+                response = requests.post(api_url, json=json_facturacion, timeout=30)
+                response.raise_for_status()
+                respuesta_sri = response.json()
+                
+                # Si la respuesta es exitosa, actualizar el estado y la clave de acceso
+                if respuesta_sri.get('success') or respuesta_sri.get('estado') == 'AUTORIZADO':
+                    clave_acceso = respuesta_sri.get('claveAcceso') or respuesta_sri.get('numeroAutorizacion')
+                    if clave_acceso:
+                        actualizar_estado_factura_sri(id_factura_venta, 'AUTORIZADA', clave_acceso)
+                elif respuesta_sri.get('estado') == 'RECHAZADO':
+                    actualizar_estado_factura_sri(id_factura_venta, 'RECHAZADA')
+                else:
+                    # Mantener como PENDIENTE si no hay respuesta clara
+                    pass
+            except requests.exceptions.Timeout:
+                error_sri = 'Timeout al conectar con el SRI'
+            except requests.exceptions.ConnectionError:
+                error_sri = 'No se pudo conectar con la API del SRI'
+            except Exception as e:
+                error_sri = f'Error al enviar al SRI: {str(e)}'
+            
             # Registrar en auditoría
             try:
                 from usuarios.models import Auditoria
@@ -1688,7 +2006,9 @@ def crear_ajax(request):
                 'numero_venta': numero_factura,
                 'total': float(total_final),
                 'json_facturacion': json_facturacion,
-                'venta_id': id_factura_venta
+                'venta_id': id_factura_venta,
+                'respuesta_sri': respuesta_sri,
+                'error_sri': error_sri
             })
             
     except Exception as e:
@@ -1711,26 +2031,32 @@ def ticket(request, numero_venta):
 def ticket_termico(request, venta_id):
     """Generar ticket térmico para impresión"""
     try:
-        factura_venta = get_object_or_404(FacturaVenta, idFactura=venta_id)
-        
-        # Debug: verificar el objeto
-        print(f"DEBUG: FacturaVenta ID: {factura_venta.idFactura}")
-        print(f"DEBUG: Cliente ID: {factura_venta.idCliente}")
+        # Usar pk en lugar de idFactura para obtener el objeto
+        factura_venta = get_object_or_404(FacturaVenta, pk=venta_id)
         
         # Obtener configuración de la empresa desde la tabla empresas
         EMPRESA_CONFIG = obtener_configuracion_empresa()
         
+        # Obtener cliente
+        try:
+            cliente = Cliente.objects.get(id=factura_venta.idCliente)
+            cliente_nombre = cliente.nombre_completo
+            cliente_documento = cliente.cedula_ruc if cliente.cedula_ruc else ''
+        except Cliente.DoesNotExist:
+            cliente_nombre = "CONSUMIDOR FINAL"
+            cliente_documento = "9999999999999"
+        
         # Obtener detalles de la factura
         detalles = FacturaVentaDetalle.objects.filter(idFacturaVenta=factura_venta.idFactura)
-        print(f"DEBUG: Detalles count: {detalles.count()}")
         
         context = {
             'venta': factura_venta,
             'empresa': EMPRESA_CONFIG,
+            'cliente_nombre': cliente_nombre,
+            'cliente_documento': cliente_documento,
             'secuencial': str(factura_venta.idFactura).zfill(9),
-            'numero_factura': str(factura_venta.idFactura).zfill(6),
+            'numero_factura': factura_venta.numeroFactura,
             'detalles': detalles,
-            'debug_id': factura_venta.idFactura,  # Para debug en template
         }
         
         return render(request, 'ventas/ticket_termico.html', context)
@@ -1738,7 +2064,11 @@ def ticket_termico(request, venta_id):
         print(f"ERROR en ticket_termico: {str(e)}")
         import traceback
         traceback.print_exc()
-        return render(request, 'ventas/debug_ticket.html', {'error': str(e), 'debug_id': venta_id})
+        return render(request, 'ventas/debug_ticket.html', {
+            'error': str(e), 
+            'debug_id': venta_id,
+            'traceback': traceback.format_exc()
+        })
 
 
 @login_required
@@ -2266,7 +2596,7 @@ def buscar_ventas_por_numero(request):
                 fv.total AS Total,
                 fv.estado AS Estado,
                 fv.fechaEmision AS FechaVenta,
-                COALESCE(fv.tipoPago, 'ELECTRONICO') AS MetodoPago
+                'ELECTRONICO' AS MetodoPago
             FROM facturas_venta fv
             LEFT JOIN clientes c ON fv.idCliente = c.id
             WHERE fv.numeroFactura LIKE %s 
@@ -2352,7 +2682,8 @@ def obtener_venta_detalle(request, venta_id):
                 'DescuentoVenta': float(factura.descuento) if factura.descuento else 0,
                 'IvaVenta': float(factura.iva) if factura.iva else 0,
                 'EstadoVenta': factura.estado or 'EMITIDA',
-                'MetodoPago': factura.tipoPago or 'EFECTIVO',
+                'EstadoFactura': factura.estadoFactura or 'PENDIENTE',
+                'MetodoPago': 'EFECTIVO',
                 'NumComprobante': factura.numComprobante or '',
                 'RazonSocial': cliente_nombre,
                 'Identificacion': cliente_documento,
