@@ -204,11 +204,8 @@
 
     <!-- Información del cliente -->
     <div class="cliente-info">
-        <div>Cliente: {{ venta.cliente.nombre_completo|default:"CONSUMIDOR FINAL" }}</div>
-        <div>CI/RUC: {{ venta.cliente.cedula_ruc|default:"9999999999999" }}</div>
-        {% if venta.cliente.direccion %}
-        <div>Dirección: {{ venta.cliente.direccion|truncatechars:35 }}</div>
-        {% endif %}
+        <div>Cliente: {{ cliente_nombre }}</div>
+        <div>CI/RUC: {{ cliente_documento }}</div>
         <div>Fecha: {{ venta.fechaEmision|date:"d/m/Y H:i" }}</div>
     </div>
 

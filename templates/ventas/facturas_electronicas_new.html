@@ -60,6 +60,15 @@
     .factura-row:hover {
         background-color: #f8f9fa;
     }
+    
+    .dropdown-toggle-no-caret::after {
+        display: none;
+    }
+    
+    .dropdown-item {
+        font-size: 0.85rem;
+        padding: 0.5rem 1rem;
+    }
 </style>
 {% endblock %}
 
@@ -175,20 +184,40 @@
                                             onclick="verDetalle('{{ factura.Id }}')" title="Ver Detalle">
                                         <i class="fas fa-eye"></i>
                                     </button>
-                                    <a href="{% url 'ventas:ticket_termico' factura.Id %}" 
+                                    {% if factura.idFactura %}
+                                    <a href="{% url 'ventas:ticket_termico' factura.idFactura %}" 
                                        class="btn btn-secondary btn-sm-custom" target="_blank" title="Ticket Térmico">
                                         <i class="fas fa-print"></i>
                                     </a>
-                                    <a href="{% url 'ventas:json_facturacion' factura.Id %}" 
-                                       class="btn btn-success btn-sm-custom" target="_blank" title="JSON SRI">
-                                        <i class="fas fa-file-code"></i>
-                                    </a>
-                                    {% if factura.Estado != 'ANULADA' %}
-                                    <button type="button" class="btn btn-danger btn-sm-custom" 
-                                            onclick="confirmarAnulacion('{{ factura.Id }}')" title="Anular Factura">
-                                        <i class="fas fa-times-circle"></i>
-                                    </button>
                                     {% endif %}
+                                    
+                                    <div class="dropdown d-inline-block">
+                                        <button class="btn btn-light btn-sm-custom dropdown-toggle-no-caret" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="fas fa-ellipsis-v"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                            <li>
+                                                {% if factura.EstadoFactura == 'AUTORIZADA' %}
+                                                <button class="dropdown-item text-muted" disabled title="Factura ya autorizada">
+                                                    <i class="fas fa-check-circle me-2"></i> Ya autorizada
+                                                </button>
+                                                {% else %}
+                                                <a class="dropdown-item" href="{% url 'ventas:enviar_factura_sri' factura.Id %}">
+                                                    <i class="fas fa-paper-plane me-2 text-primary"></i> 
+                                                    {% if factura.ClaveAcceso %}Reenvío{% else %}Enviar{% endif %} al SRI
+                                                </a>
+                                                {% endif %}
+                                            </li>
+                                            {% if factura.Estado != 'ANULADA' %}
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <button class="dropdown-item text-danger" onclick="confirmarAnulacion('{{ factura.Id }}')">
+                                                    <i class="fas fa-times-circle me-2"></i> Anular Factura
+                                                </button>
+                                            </li>
+                                            {% endif %}
+                                        </ul>
+                                    </div>
                                 </div>
                             </td>
                         </tr>
