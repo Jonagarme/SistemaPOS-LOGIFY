@@ -174,7 +174,7 @@
     <div class="header">
         <div class="logo">
             <span class="logo-icon"></span>
-            <span class="empresa-nombre">{{ empresa.nombre }}</span>
+            <span class="empresa-nombre">{{ empresa.nombre_comercial }}</span>
         </div>
         <div class="eslogan">{{ empresa.eslogan }}</div>
         
@@ -183,28 +183,29 @@
         <div class="empresa-info">Emisión: {{ empresa.emision }}</div>
         <div class="empresa-info">Matriz: {{ empresa.direccion_matriz }}</div>
         <div class="empresa-info">Telf: {{ empresa.telefono }}</div>
-        <div class="empresa-info">Sucursal: {{ empresa.direccion_sucursal }}</div>
     </div>
 
     <!-- Información SRI -->
     <div class="sri-info">
-        <div>{{ empresa.autorizacion_sri }}</div>
-        <div>{{ empresa.clave_acceso }}</div>
+        {% if venta.numeroAutorizacion %}
+        <div style="font-weight: bold; margin-top: 5px;">CLAVE DE ACCESO / AUTORIZACIÓN:</div>
+        <div style="word-break: break-all; font-size: 7px;">{{ venta.numeroAutorizacion }}</div>
+        {% else %}
+        <div style="font-style: italic;">Documento sin autorización electrónica</div>
+        {% endif %}
     </div>
 
     <div class="separador"></div>
 
     <!-- Información de la factura -->
     <div class="factura-header">
-        FACTURA No. {{ secuencial|slice:":3" }}-{{ secuencial|slice:"3:6" }}-{{ numero_factura }}
+        FACTURA No. {{ venta.numeroFactura }}
     </div>
 
     <!-- Información del cliente -->
     <div class="cliente-info">
-        <div>Cliente: {{ venta.cliente.get_nombre_completo|default:"CONSUMIDOR FINAL" }}</div>
-        {% if venta.cliente.cedula %}
-        <div>CI/RUC: {{ venta.cliente.cedula }}</div>
-        {% endif %}
+        <div>Cliente: {{ venta.cliente.nombre_completo|default:"CONSUMIDOR FINAL" }}</div>
+        <div>CI/RUC: {{ venta.cliente.cedula_ruc|default:"9999999999999" }}</div>
         {% if venta.cliente.direccion %}
         <div>Dirección: {{ venta.cliente.direccion|truncatechars:35 }}</div>
         {% endif %}
@@ -215,17 +216,15 @@
 
     <!-- Productos -->
     <div class="productos-header">
-        CANT. DESCRIPCIÓN&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;DESC&nbsp;&nbsp;&nbsp;P.UNI&nbsp;&nbsp;&nbsp;VALOR
+        DETALLE DE PRODUCTOS
     </div>
 
     <div class="productos-table">
         {% for detalle in detalles %}
         <div class="producto-item">
-            <div class="producto-desc">{{ detalle.productoNombre|upper|truncatechars:25 }}</div>
+            <div class="producto-desc">{{ detalle.productoNombre|upper|truncatechars:30 }}</div>
             <div class="producto-linea">
-                <span>{{ detalle.cantidad|floatformat:0 }}</span>
-                <span>&nbsp;</span>
-                <span>${{ detalle.precioUnitario|floatformat:2 }}</span>
+                <span>{{ detalle.cantidad|floatformat:0 }} x ${{ detalle.precioUnitario|floatformat:2 }}</span>
                 <span>${{ detalle.total|floatformat:2 }}</span>
             </div>
         </div>
@@ -242,63 +241,39 @@
             <span>IVA 15%:</span>
             <span>${{ venta.iva|floatformat:2 }}</span>
         </div>
-        <div class="total-linea">
-            <span>A pagar:</span>
-            <span>${{ venta.total|floatformat:2 }}</span>
-        </div>
         
         <div class="total-final">
             <div class="total-linea">
-                <span>EFECTIVO</span>
-                <span></span>
+                <span>TOTAL A PAGAR:</span>
+                <span>${{ venta.total|floatformat:2 }}</span>
             </div>
         </div>
-    </div>
-
-    <!-- Información de pago -->
-    <div class="pago-info">
-        <div>Su ahorro fue: $</div>
     </div>
 
     <div class="separador"></div>
 
     <!-- Información adicional -->
     <div class="footer">
-        <div>GRACIAS POR SU COMPRA</div>
-        <div>PUEDE VERIFICAR SU FACTURA ELECTRÓNICA EN:</div>
-        <div>{{ empresa.verificacion_url }}</div>
-        <div>Cualquier cotización a este número: {{ empresa.telefono_atencion }}</div>
-        <div class="mensaje-final">{{ empresa.mensaje_final }}</div>
+        <div class="mensaje-final">¡GRACIAS POR SU COMPRA!</div>
+        <div>Consulte su factura en:</div>
+        <div style="font-size: 7px;">{{ empresa.verificacion_url }}</div>
+        <div style="margin-top: 5px;">{{ empresa.mensaje_final }}</div>
     </div>
 
     <!-- Botones de acción (no se imprimen) -->
-    <div class="no-print" style="text-align: center; margin-top: 20px;">
+    <div class="no-print" style="text-align: center; margin-top: 20px; padding-bottom: 20px;">
         <button onclick="window.print()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px;">
             🖨️ Imprimir Ticket
         </button>
         <button onclick="window.close()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; margin: 5px;">
             ❌ Cerrar
         </button>
-        {% if debug_id %}
-        <a href="{% url 'ventas:json_facturacion' debug_id %}" style="padding: 10px 20px; background: #28a745; color: white; text-decoration: none; border-radius: 5px; margin: 5px; display: inline-block;">
-            📄 Descargar JSON
-        </a>
-        {% else %}
-        <p style="color: red;">Error: No hay ID de factura para JSON</p>
-        {% endif %}
     </div>
 
     <script>
-        // Auto-imprimir al cargar la página (opcional)
-        // window.onload = function() {
-        //     window.print();
-        // }
-        
-        // Configurar impresora térmica
-        window.onbeforeprint = function() {
-            // Configuraciones específicas para impresoras térmicas
-            document.body.style.width = '80mm';
-            document.body.style.fontSize = '9px';
+        // Auto-imprimir al cargar la página
+        window.onload = function() {
+            // window.print();
         }
     </script>
 </body>
