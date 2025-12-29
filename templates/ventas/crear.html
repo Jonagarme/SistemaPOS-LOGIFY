@@ -2,7 +2,8 @@
 {% load static %}
 {% load l10n %}
 
-{% block title %}Punto de Venta - Sistema POS{% endblock %}
+{% block title %}Sistema POS{% endblock %}
+{% block page_title %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -171,8 +172,8 @@
 
     .action-buttons {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-        gap: 10px;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 15px;
     }
 
     .action-btn {
@@ -520,7 +521,8 @@
     }
 
     .search-controls input {
-        flex: 1 1 100%;
+        flex: 1;
+        width: 100%;
         min-width: 0;
         padding: 12px 15px;
         border: 2px solid #dee2e6;
@@ -528,17 +530,7 @@
         font-size: 1rem;
     }
 
-    .search-controls select {
-        flex: 1 1 calc(50% - 5px);
-        min-width: 0;
-        max-width: 100%;
-        padding: 12px 15px;
-        border: 2px solid #dee2e6;
-        border-radius: 8px;
-    }
-
-    .search-controls input:focus,
-    .search-controls select:focus {
+    .search-controls input:focus {
         border-color: var(--primary-blue);
         outline: none;
     }
@@ -548,7 +540,7 @@
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 15px;
-        max-height: 400px;
+        max-height: 650px;
         overflow-y: auto;
         padding: 10px;
     }
@@ -1665,30 +1657,10 @@
                             Pagos
                             <span class="shortcut">F4</span>
                         </button>
-                        <button class="action-btn" onclick="showDiscounts()">
-                            <i class="fas fa-percent"></i>
-                            Descuentos
-                            <span class="shortcut">F5</span>
-                        </button>
                         <button class="action-btn" onclick="showKardex()">
                             <i class="fas fa-clipboard-list"></i>
                             Kardex
                             <span class="shortcut">F6</span>
-                        </button>
-                        <button class="action-btn" onclick="focusProductSearch()">
-                            <i class="fas fa-search"></i>
-                            Buscar
-                            <span class="shortcut">F7</span>
-                        </button>
-                        <button class="action-btn" onclick="showRecharges()">
-                            <i class="fas fa-mobile-alt"></i>
-                            Recargas
-                            <span class="shortcut">F8</span>
-                        </button>
-                        <button class="action-btn" onclick="showDocuments()">
-                            <i class="fas fa-folder-open"></i>
-                            Documentos
-                            <span class="shortcut">F9</span>
                         </button>
                     </div>
                 </div><!-- Búsqueda de Productos -->
@@ -1700,20 +1672,11 @@
                     <div class="search-controls" style="position: relative;">
                         <input type="text" id="search-products" placeholder="Buscar por nombre, código o categoría..."
                             autocomplete="off">
-                        <div id="search-loading" style="position: absolute; right: 320px; top: 50%; transform: translateY(-50%); display: none;">
+                        <div id="search-loading" style="position: absolute; right: 15px; top: 50%; transform: translateY(-50%); display: none;">
                             <div class="spinner-border spinner-border-sm text-primary" role="status">
                                 <span class="visually-hidden">Buscando...</span>
                             </div>
                         </div>
-                        <select id="filter-category">
-                            <option value="">Todas las categorías</option>
-                            {% for categoria in categorias %}
-                            <option value="{{ categoria.id }}">{{ categoria.nombre }}</option>
-                            {% endfor %}
-                        </select>
-                        <select id="filter-brand">
-                            <option value="">Todas las marcas</option>
-                        </select>
                     </div>
                     <div class="products-grid" id="products-grid">
                         {% for producto in productos %}
@@ -2122,7 +2085,7 @@
     let currentDiscount = 0;
     let selectedPaymentMethod = 'efectivo';
 
-    // Inicializar el primer carrito
+    // Inicializar el primer carrito con CONSUMIDOR FINAL por defecto
     carts[currentTabId] = {
         items: [],
         total: 0,
@@ -2131,8 +2094,8 @@
         tax: 0,
         cliente: null,
         cliente_id: null,
-        cliente_nombre: null,
-        cliente_documento: null
+        cliente_nombre: 'CONSUMIDOR FINAL',
+        cliente_documento: '9999999999999'
     };
 
     // ============================================
@@ -2147,7 +2110,10 @@
                 subtotal: 0,
                 discount: 0,
                 tax: 0,
-                cliente: null
+                cliente: null,
+                cliente_id: null,
+                cliente_nombre: 'CONSUMIDOR FINAL',
+                cliente_documento: '9999999999999'
             };
         }
         return carts[currentTabId];
@@ -2215,7 +2181,7 @@
         // Agregar el nuevo contenido al contenedor de tabs
         tabContent.appendChild(newTabContent);
 
-        // Inicializar carrito para el nuevo tab
+        // Inicializar carrito para el nuevo tab con CONSUMIDOR FINAL por defecto
         carts[newTabId] = {
             items: [],
             total: 0,
@@ -2224,8 +2190,8 @@
             tax: 0,
             cliente: null,
             cliente_id: null,
-            cliente_nombre: null,
-            cliente_documento: null
+            cliente_nombre: 'CONSUMIDOR FINAL',
+            cliente_documento: '9999999999999'
         };
 
         // Mostrar botones de cierre
@@ -2414,7 +2380,15 @@ function updateTotalsForTab(tabId) {
 
         // Eliminar el tab de la navegación
         const tabElement = document.querySelector(`a[href="#${tabId}"]`).closest('.nav-item');
-        tabElement.remove();
+        if (tabElement) {
+            tabElement.remove();
+        }
+
+        // Eliminar el contenido del tab del DOM
+        const tabContentElement = document.getElementById(tabId);
+        if (tabContentElement) {
+            tabContentElement.remove();
+        }
 
         // Eliminar el carrito
         delete carts[tabId];
@@ -3026,14 +3000,21 @@ function showClientNotFound(query) {
 function updateClientDisplay() {
     const currentCart = getCurrentCart();
     
-    if (currentCart.cliente_id && currentCart.cliente_nombre) {
+    if (currentCart.cliente_nombre) {
         displayClientInfo({
             id: currentCart.cliente_id,
             nombre: currentCart.cliente_nombre,
             documento: currentCart.cliente_documento
         });
     } else {
-        clearClientInfo();
+        // Si no hay cliente, poner CONSUMIDOR FINAL por defecto
+        currentCart.cliente_nombre = 'CONSUMIDOR FINAL';
+        currentCart.cliente_documento = '9999999999999';
+        displayClientInfo({
+            id: null,
+            nombre: 'CONSUMIDOR FINAL',
+            documento: '9999999999999'
+        });
     }
 }
 
@@ -3631,8 +3612,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 function setupProductSearch() {
     const searchInput = document.getElementById('search-products');
-    const categoryFilter = document.getElementById('filter-category');
-    const brandFilter = document.getElementById('filter-brand');
     
     if (searchInput) {
         let searchTimeout;
@@ -3652,25 +3631,13 @@ function setupProductSearch() {
     } else {
         console.warn('⚠ No se encontró el input de búsqueda');
     }
-    
-    if (categoryFilter) {
-        categoryFilter.addEventListener('change', function() {
-            filterProducts();
-        });
-    }
-    
-    if (brandFilter) {
-        brandFilter.addEventListener('change', filterProducts);
-    }
 }
 
 function filterProducts() {
     const searchInput = document.getElementById('search-products');
-    const categorySelect = document.getElementById('filter-category');
     const loadingIndicator = document.getElementById('search-loading');
     
     const searchTerm = searchInput ? searchInput.value.trim() : '';
-    const categoryFilter = categorySelect ? categorySelect.value : '';
     
     
     // Si no hay término de búsqueda, recargar productos iniciales
@@ -3684,9 +3651,7 @@ function filterProducts() {
             // Si no hay productos en memoria, mostrar los del DOM
             const productCards = document.querySelectorAll('.product-card-enhanced');
             productCards.forEach(card => {
-                const categoryId = card.getAttribute('data-category-id');
-                const matchesCategory = !categoryFilter || categoryId === categoryFilter;
-                card.style.display = matchesCategory ? 'block' : 'none';
+                card.style.display = 'block';
             });
         }
         return;
@@ -3702,7 +3667,6 @@ function filterProducts() {
             const nameEl = card.querySelector('.name');
             const codeEl = card.querySelector('.code');
             const priceEl = card.querySelector('.price');
-            const categoryId = card.getAttribute('data-category-id');
             
             if (!nameEl || !codeEl) return;
             
@@ -3713,9 +3677,8 @@ function filterProducts() {
             const matchesSearch = name.includes(searchLower) || 
                                 code.includes(searchLower) || 
                                 price.includes(searchLower);
-            const matchesCategory = !categoryFilter || categoryId === categoryFilter;
             
-            if (matchesSearch && matchesCategory) {
+            if (matchesSearch) {
                 card.style.display = 'block';
                 visibleCount++;
             } else {
@@ -4023,39 +3986,62 @@ document.addEventListener('DOMContentLoaded', function() {
             const parsedCarts = JSON.parse(savedCarts);
             // Solo restaurar si tiene sentido (al menos un carrito)
             if (Object.keys(parsedCarts).length > 0) {
-                // Usar showConfirm personalizado de forma async
-                (async () => {
-                    const shouldRestore = await showConfirm({
-                        title: '¿Restaurar Sesión Anterior?',
-                        message: '¿Desea restaurar las ventas pendientes de la sesión anterior?',
-                        type: 'info',
-                        confirmText: 'Sí, restaurar',
-                        cancelTextLabel: 'No, nueva sesión'
-                    });
-                    
-                    if (shouldRestore) {
-                        carts = parsedCarts;
-                        if (savedTabId) currentTabId = savedTabId;
-                        if (savedCounter) tabCounter = parseInt(savedCounter);
-                        
-                        updateCartDisplay();
-                        updateTotals();
-                        updateClientDisplay();
-                        
-                        showToast('Sesión anterior restaurada correctamente', 'success');
-                    } else {
-                        localStorage.removeItem('pos_carts');
-                        localStorage.removeItem('pos_currentTabId');
-                        localStorage.removeItem('pos_tabCounter');
-                        console.log('Estado anterior descartado');
-                        showToast('Nueva sesión iniciada', 'info');
+                // Verificar que haya al menos un carrito con productos
+                let tieneCarritoConProductos = false;
+                for (const tabId in parsedCarts) {
+                    const cart = parsedCarts[tabId];
+                    if (cart.items && cart.items.length > 0) {
+                        tieneCarritoConProductos = true;
+                        break;
                     }
-                })();
+                }
+                
+                // Solo mostrar el modal si hay un carrito con productos
+                if (tieneCarritoConProductos) {
+                    // Usar showConfirm personalizado de forma async
+                    (async () => {
+                        const shouldRestore = await showConfirm({
+                            title: '¿Restaurar Sesión Anterior?',
+                            message: '¿Desea restaurar las ventas pendientes de la sesión anterior?',
+                            type: 'info',
+                            confirmText: 'Sí, restaurar',
+                            cancelTextLabel: 'No, nueva sesión'
+                        });
+                        
+                        if (shouldRestore) {
+                            carts = parsedCarts;
+                            if (savedTabId) currentTabId = savedTabId;
+                            if (savedCounter) tabCounter = parseInt(savedCounter);
+                            
+                            updateCartDisplay();
+                            updateTotals();
+                            updateClientDisplay();
+                            
+                            showToast('Sesión anterior restaurada correctamente', 'success');
+                        } else {
+                            localStorage.removeItem('pos_carts');
+                            localStorage.removeItem('pos_currentTabId');
+                            localStorage.removeItem('pos_tabCounter');
+                            console.log('Estado anterior descartado');
+                            showToast('Nueva sesión iniciada', 'info');
+                        }
+                    })();
+                } else {
+                    // Si no hay carritos con productos, simplemente limpiar el almacenamiento
+                    localStorage.removeItem('pos_carts');
+                    localStorage.removeItem('pos_currentTabId');
+                    localStorage.removeItem('pos_tabCounter');
+                    console.log('No hay carritos con productos para restaurar');
+                }
             }
         }
     } catch (e) {
         console.error('Error restaurando estado:', e);
     }
+    
+    // Mostrar cliente por defecto (CONSUMIDOR FINAL)
+    updateClientDisplay();
+    
     showToast('Sistema POS listo para usar', 'success');
 });
 
