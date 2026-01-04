@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-calendar-check"></i> {{ titulo }}
+        </h1>
+        <a href="{% url 'caja:crear_cierre_periodo' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Generar Cierre
+        </a>
+    </div>
+
+    <!-- Lista de Cierres -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-list"></i> Historial de Cierres
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if cierres %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Periodo</th>
+                                <th>Tipo</th>
+                                <th>Fecha Cierre</th>
+                                <th>Usuario</th>
+                                <th>Ventas</th>
+                                <th>Compras</th>
+                                <th>Balance</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for cierre in cierres %}
+                                <tr>
+                                    <td>
+                                        {% if cierre.tipo == 'MENSUAL' %}
+                                            <span class="badge bg-info text-white">{{ cierre.mes }}/{{ cierre.anio }}</span>
+                                        {% else %}
+                                            <span class="badge bg-success text-white">{{ cierre.anio }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ cierre.get_tipo_display }}</td>
+                                    <td>{{ cierre.fecha_cierre|date:"d/m/Y H:i" }}</td>
+                                    <td>{{ cierre.usuario.username }}</td>
+                                    <td class="text-right">${{ cierre.total_ventas|floatformat:2 }}</td>
+                                    <td class="text-right">${{ cierre.total_compras|floatformat:2 }}</td>
+                                    <td class="text-right font-weight-bold {% if cierre.total_ventas > cierre.total_compras %}text-success{% else %}text-danger{% endif %}">
+                                        ${{ cierre.total_ventas|add:cierre.total_ingresos_extra|add:"-"|add:cierre.total_compras|add:"-"|add:cierre.total_gastos|floatformat:2 }}
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'caja:detalle_cierre_periodo' cierre.id %}" 
+                                           class="btn btn-sm btn-info" title="Ver Detalle">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-calendar-times fa-3x text-gray-300 mb-3"></i>
+                    <h5 class="text-gray-500">No hay cierres de periodo registrados</h5>
+                    <p class="text-gray-400">Genere un cierre mensual o anual para ver el historial.</p>
+                    <a href="{% url 'caja:crear_cierre_periodo' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Generar Primer Cierre
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

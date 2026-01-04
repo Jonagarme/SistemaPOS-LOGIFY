@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-file-invoice-dollar"></i> {{ titulo }}
+                    </h6>
+                    <a href="{% url 'caja:lista_cierres_periodo' %}" class="btn btn-sm btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i> 
+                        Este proceso calculará los totales de ventas, compras y gastos para el periodo seleccionado y guardará un registro histórico.
+                    </div>
+
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="form-group">
+                            <label for="tipo">Tipo de Cierre</label>
+                            <select class="form-control" id="tipo" name="tipo" required onchange="toggleMes()">
+                                <option value="MENSUAL">Cierre Mensual</option>
+                                <option value="ANUAL">Cierre Anual</option>
+                            </select>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="anio">Año</label>
+                                    <select class="form-control" id="anio" name="anio" required>
+                                        {% for y in anios %}
+                                            <option value="{{ y }}">{{ y }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6" id="div_mes">
+                                <div class="form-group">
+                                    <label for="mes">Mes</label>
+                                    <select class="form-control" id="mes" name="mes">
+                                        {% for m_num, m_nom in meses %}
+                                            <option value="{{ m_num }}">{{ m_nom }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="observaciones">Observaciones</label>
+                            <textarea class="form-control" id="observaciones" name="observaciones" rows="3" placeholder="Notas adicionales sobre este cierre..."></textarea>
+                        </div>
+
+                        <hr>
+
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary btn-lg" onclick="return confirm('¿Está seguro de generar el cierre? Esta acción registrará los totales actuales.')">
+                                <i class="fas fa-save"></i> Generar Cierre
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function toggleMes() {
+    var tipo = document.getElementById('tipo').value;
+    var divMes = document.getElementById('div_mes');
+    var selectMes = document.getElementById('mes');
+    
+    if (tipo === 'ANUAL') {
+        divMes.style.display = 'none';
+        selectMes.required = false;
+    } else {
+        divMes.style.display = 'block';
+        selectMes.required = true;
+    }
+}
+</script>
+{% endblock %}

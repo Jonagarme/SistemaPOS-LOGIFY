@@ -192,3 +192,47 @@ class AperturaCaja(models.Model):
     
     def __str__(self):
         return f"Apertura {self.AperturaID} - {self.Caja} - {self.FechaApertura.strftime('%d/%m/%Y %H:%M')}"
+
+
+class CierrePeriodo(models.Model):
+    """Modelo para cierres mensuales y anuales"""
+    TIPO_CIERRE = [
+        ('MENSUAL', 'Cierre Mensual'),
+        ('ANUAL', 'Cierre Anual'),
+    ]
+    
+    tipo = models.CharField(max_length=10, choices=TIPO_CIERRE)
+    mes = models.IntegerField(null=True, blank=True, help_text="1-12 para cierre mensual")
+    anio = models.IntegerField(help_text="Año del cierre")
+    
+    fecha_inicio = models.DateField()
+    fecha_fin = models.DateField()
+    fecha_cierre = models.DateTimeField(auto_now_add=True)
+    
+    # Totales Financieros
+    total_ventas = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    total_compras = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    total_gastos = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    total_ingresos_extra = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    
+    # Totales Inventario (Snapshot)
+    valor_inventario_costo = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    valor_inventario_venta = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    
+    usuario = models.ForeignKey(User, on_delete=models.PROTECT, null=True, blank=True)
+    observaciones = models.TextField(blank=True)
+    
+    # Archivo adjunto (opcional, para guardar PDF generado)
+    archivo_reporte = models.FileField(upload_to='cierres_periodos/', null=True, blank=True)
+    
+    class Meta:
+        db_table = 'cierres_periodo'
+        verbose_name = "Cierre de Periodo"
+        verbose_name_plural = "Cierres de Periodo"
+        unique_together = ['tipo', 'mes', 'anio']
+        ordering = ['-anio', '-mes']
+        
+    def __str__(self):
+        periodo = f"{self.mes}/{self.anio}" if self.tipo == 'MENSUAL' else f"{self.anio}"
+        return f"Cierre {self.get_tipo_display()} - {periodo}"
+

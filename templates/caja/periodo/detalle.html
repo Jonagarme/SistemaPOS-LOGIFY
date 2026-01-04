@@ -1,0 +1,110 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-file-invoice"></i> {{ titulo }}
+        </h1>
+        <div>
+            <a href="{% url 'caja:lista_cierres_periodo' %}" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+            <button onclick="window.print()" class="btn btn-info">
+                <i class="fas fa-print"></i> Imprimir
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Resumen Financiero -->
+        <div class="col-xl-8 col-lg-7">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">Resumen Financiero</h6>
+                    <div class="dropdown no-arrow">
+                        <span class="badge bg-primary text-white">{{ cierre.get_tipo_display }}</span>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">Periodo</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800">
+                                {{ cierre.fecha_inicio|date:"d/m/Y" }} - {{ cierre.fecha_fin|date:"d/m/Y" }}
+                            </div>
+                        </div>
+                        <div class="col-md-6 text-right">
+                            <div class="text-xs font-weight-bold text-gray-500 text-uppercase mb-1">Fecha de Cierre</div>
+                            <div class="h6 mb-0 text-gray-800">{{ cierre.fecha_cierre|date:"d/m/Y H:i" }}</div>
+                            <small>Por: {{ cierre.usuario.username }}</small>
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <tbody>
+                                <tr>
+                                    <td><i class="fas fa-arrow-up text-success mr-2"></i> Total Ventas</td>
+                                    <td class="text-right text-success font-weight-bold">+ ${{ cierre.total_ventas|floatformat:2 }}</td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-plus text-info mr-2"></i> Ingresos Extra</td>
+                                    <td class="text-right text-info">+ ${{ cierre.total_ingresos_extra|floatformat:2 }}</td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-arrow-down text-danger mr-2"></i> Total Compras</td>
+                                    <td class="text-right text-danger font-weight-bold">- ${{ cierre.total_compras|floatformat:2 }}</td>
+                                </tr>
+                                <tr>
+                                    <td><i class="fas fa-minus text-warning mr-2"></i> Gastos Operativos</td>
+                                    <td class="text-right text-warning">- ${{ cierre.total_gastos|floatformat:2 }}</td>
+                                </tr>
+                                <tr class="bg-gray-100">
+                                    <td class="font-weight-bold">BALANCE NETO</td>
+                                    <td class="text-right font-weight-bold {% if balance >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        ${{ balance|floatformat:2 }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventario Snapshot -->
+        <div class="col-xl-4 col-lg-5">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-info">Valoración de Inventario</h6>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Valor al Costo</div>
+                        <div class="h4 mb-0 font-weight-bold text-gray-800">${{ cierre.valor_inventario_costo|floatformat:2 }}</div>
+                        <small class="text-muted">Inversión en stock al momento del cierre</small>
+                    </div>
+                    <hr>
+                    <div class="mb-4">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">Valor a la Venta</div>
+                        <div class="h4 mb-0 font-weight-bold text-gray-800">${{ cierre.valor_inventario_venta|floatformat:2 }}</div>
+                        <small class="text-muted">Proyección de ingresos por stock actual</small>
+                    </div>
+                    
+                    {% if cierre.observaciones %}
+                        <hr>
+                        <div class="mt-4">
+                            <h6 class="font-weight-bold">Observaciones:</h6>
+                            <p class="text-gray-600 italic">"{{ cierre.observaciones }}"</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

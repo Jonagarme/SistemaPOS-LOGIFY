@@ -1,5 +1,6 @@
 from django.urls import path
 from . import views
+from . import views_periodo
 
 app_name = 'caja'
 
@@ -33,4 +34,9 @@ urlpatterns = [
     path('api/verificar-caja/', views.verificar_caja_abierta, name='verificar_caja_abierta'),
     path('api/cierre/<int:cierre_id>/', views.detalle_cierre_api, name='detalle_cierre_api'),
     path('cierres/<int:cierre_id>/imprimir/', views.imprimir_cierre_ticket, name='imprimir_cierre_ticket'),
+    
+    # Cierres de Periodo (Mensual/Anual)
+    path('periodo/', views_periodo.lista_cierres_periodo, name='lista_cierres_periodo'),
+    path('periodo/crear/', views_periodo.crear_cierre_periodo, name='crear_cierre_periodo'),
+    path('periodo/<int:id>/', views_periodo.detalle_cierre_periodo, name='detalle_cierre_periodo'),
 ]

@@ -200,6 +200,7 @@ class ConfiguracionEmpresa(models.Model):
     
     class Meta:
         db_table = 'empresas'
+        managed = False
         verbose_name = 'Configuración de Empresa'
         verbose_name_plural = 'Configuraciones de Empresa'
     
