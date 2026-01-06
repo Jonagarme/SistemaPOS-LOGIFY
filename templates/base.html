@@ -11,12 +11,10 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- SweetAlert2 -->
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
-    
     <!-- Custom CSS -->
     {% load static %}
     <link href="{% static 'css/custom.css' %}" rel="stylesheet">
     
-    <!-- Navbar Dropdown Fix -->
     <style>
         /* Asegurar que los dropdowns no se salgan del viewport */
         .navbar .dropdown-menu {
@@ -27,18 +25,6 @@
         .navbar .dropdown-menu-end {
             right: 0 !important;
             left: auto !important;
-        }
-        
-        /* Responsive dropdown positioning */
-        @media (max-width: 768px) {
-            .navbar .dropdown-menu {
-                position: static !important;
-                transform: none !important;
-                border: none;
-                box-shadow: none;
-                background-color: rgba(0, 0, 0, 0.05);
-                margin-top: 0.5rem;
-            }
         }
         
         /* Fix para evitar overflow en dropdowns largos */
@@ -102,6 +88,61 @@
         body {
             padding-top: 56px; /* Altura aproximada del navbar */
         }
+
+        /* CRITICAL FIX: Responsive Navbar Styles Inlined to prevent caching issues */
+        @media (max-width: 991.98px) {
+            .navbar-collapse {
+                background-color: #007bff;
+                padding: 1rem;
+                border-radius: 0.5rem;
+                margin-top: 0.5rem;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            }
+
+            /* Force white background on dropdown menu container */
+            .navbar-collapse .dropdown-menu {
+                background-color: #ffffff !important;
+                border: 1px solid #dee2e6 !important;
+                margin: 0.5rem 0 !important;
+                padding: 0.5rem 0 !important;
+                position: static !important;
+                display: none;
+                float: none;
+                width: 100% !important;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1) !important;
+            }
+
+            .navbar-collapse .dropdown-menu.show {
+                display: block !important;
+            }
+
+            /* Force dark text on dropdown items */
+            .navbar-collapse .dropdown-item {
+                color: #212529 !important;
+                background-color: transparent !important;
+                padding: 0.75rem 1rem !important;
+                white-space: normal !important;
+            }
+
+            .navbar-collapse .dropdown-item:hover,
+            .navbar-collapse .dropdown-item:focus {
+                background-color: #f8f9fa !important;
+                color: #007bff !important;
+            }
+
+            /* Headers styling */
+            .navbar-collapse .dropdown-header {
+                background-color: #e9ecef !important;
+                color: #495057 !important;
+                margin-top: 0.5rem !important;
+            }
+            
+            /* Ensure icons are visible */
+            .navbar-collapse .dropdown-item i {
+                color: inherit !important;
+                opacity: 1 !important;
+            }
+        }
         
         /* Ocultar menú horizontal cuando está en modo vertical */
         {% if tipo_menu == 'vertical' %}
@@ -140,7 +181,6 @@
         }
         {% endif %}
     </style>
-    
     {% block extra_css %}{% endblock %}
 </head>
 <body>
@@ -174,9 +214,6 @@
                             <li><a class="dropdown-item" href="{% url 'productos:lista' %}">
                                 <i class="fas fa-th-list"></i> Ver Productos
                             </a></li>
-                            <!-- <li><a class="dropdown-item" href="{% url 'productos:lista_simple' %}">
-                                <i class="fas fa-database"></i> Ver Productos (MySQL)
-                            </a></li> -->
                             <li><a class="dropdown-item" href="{% url 'productos:crear' %}">
                                 <i class="fas fa-plus-circle"></i> Nuevo Producto
                             </a></li>
@@ -559,6 +596,9 @@
                             <li><a class="dropdown-item" href="{% url 'usuarios:configuracion_empresa' %}">
                                 <i class="fas fa-building"></i> Configuración Empresa
                             </a></li>
+                            <li><a class="dropdown-item" href="{% url 'usuarios:lista_impuestos' %}">
+                                <i class="fas fa-percentage"></i> Gestión de Impuestos
+                            </a></li>
                             
                             <li><hr class="dropdown-divider"></li>
                             
@@ -575,32 +615,31 @@
             </div>
         </div>
     </nav>
- 
-    <!-- Main Content -->
-    <div class="container-fluid pt-3 {% if tipo_menu == 'vertical' %}content-with-sidebar{% endif %}">
-        <!-- Breadcrumb -->
-        {% block breadcrumb %}{% endblock %}
         
-        <!-- Messages -->
-        {% if messages %}
-            {% for message in messages %}
-                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
-                    {{ message }}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    <!-- Main Content Wrapper -->
+    <div class="{% if tipo_menu == 'vertical' %}content-with-sidebar{% endif %}">
+        <div class="container-fluid mt-4">
+            <!-- Messages -->
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+            
+            <!-- Page Header -->
+            {% block page_header %}
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h1 class="h3">{% block page_title %}{{ titulo }}{% endblock %}</h1>
+                    {% block page_actions %}{% endblock %}
                 </div>
-            {% endfor %}
-        {% endif %}
-        
-        <!-- Page Header -->
-        {% block page_header %}
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <h1 class="h3">{% block page_title %}{{ titulo }}{% endblock %}</h1>
-                {% block page_actions %}{% endblock %}
-            </div>
-        {% endblock %}
-        
-        <!-- Content -->
-        {% block content %}{% endblock %}
+            {% endblock %}
+            
+            <!-- Content -->
+            {% block content %}{% endblock %}
+        </div>
     </div>
  
     <!-- Modal de Logout -->
@@ -664,9 +703,6 @@
             const logoutModal = document.getElementById('logoutModal');
             if (logoutModal) {
                 logoutModal.addEventListener('show.bs.modal', function() {
-                    // Agregar efecto de sonido (opcional)
-                    // new Audio('/static/sounds/notification.mp3').play().catch(() => {});
-                    
                     // Obtener información actualizada del usuario si es necesario
                     {% if user.is_authenticated and user.usuario_sistema_id %}
                         fetch('{% url "usuarios:usuario_info" %}')
