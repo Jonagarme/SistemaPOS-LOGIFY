@@ -1,6 +1,7 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from . import views
+from . import views_impuestos
 
 app_name = 'usuarios'
 
@@ -46,4 +47,10 @@ urlpatterns = [
     # Test
     path('test/', views.test_usuarios, name='test_usuarios'),
     path('debug/', views.lista_usuarios_debug, name='lista_usuarios_debug'),
+    
+    # Gestión de Impuestos
+    path('impuestos/', views_impuestos.lista_impuestos, name='lista_impuestos'),
+    path('impuestos/crear/', views_impuestos.crear_impuesto, name='crear_impuesto'),
+    path('impuestos/<int:id>/editar/', views_impuestos.editar_impuesto, name='editar_impuesto'),
+    path('impuestos/<int:id>/eliminar/', views_impuestos.eliminar_impuesto, name='eliminar_impuesto'),
 ]

@@ -327,3 +327,21 @@ class Auditoria(models.Model):
             'RECHAZAR': 'danger',
         }
         return colores.get(self.accion, 'secondary')
+class Impuesto(models.Model):
+    codigo = models.CharField(max_length=20)
+    nombre = models.CharField(max_length=100)
+    porcentaje = models.DecimalField(max_digits=5, decimal_places=2)
+    vigenteDesde = models.DateField(null=True, blank=True, db_column='vigenteDesde')
+    vigenteHasta = models.DateField(null=True, blank=True, db_column='vigenteHasta')
+    activo = models.BooleanField(default=True)
+    descripcion = models.TextField(null=True, blank=True)
+
+    class Meta:
+        db_table = 'impuestos'
+        managed = False
+        verbose_name = 'Impuesto'
+        verbose_name_plural = 'Impuestos'
+
+    def __str__(self):
+        return f'{self.nombre} ({self.porcentaje}%)'
+

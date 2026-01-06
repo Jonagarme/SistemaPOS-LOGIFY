@@ -1,0 +1,78 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-edit"></i> {{ titulo }}
+                    </h6>
+                    <a href="{% url 'usuarios:lista_impuestos' %}" class="btn btn-sm btn-secondary">
+                        <i class="fas fa-arrow-left"></i> Volver
+                    </a>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="codigo">Código</label>
+                                    <input type="text" class="form-control" id="codigo" name="codigo" required maxlength="20" value="{{ impuesto.codigo }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="porcentaje">Porcentaje (%)</label>
+                                    <input type="number" class="form-control" id="porcentaje" name="porcentaje" required step="0.01" min="0" max="100" value="{{ impuesto.porcentaje|stringformat:'f' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="nombre">Nombre</label>
+                            <input type="text" class="form-control" id="nombre" name="nombre" required maxlength="100" value="{{ impuesto.nombre }}">
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="descripcion">Descripción</label>
+                            <textarea class="form-control" id="descripcion" name="descripcion" rows="3">{{ impuesto.descripcion|default:'' }}</textarea>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="vigenteDesde">Vigente Desde</label>
+                                    <input type="date" class="form-control" id="vigenteDesde" name="vigenteDesde" value="{{ impuesto.vigenteDesde|date:'Y-m-d'|default:'' }}">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="vigenteHasta">Vigente Hasta</label>
+                                    <input type="date" class="form-control" id="vigenteHasta" name="vigenteHasta" value="{{ impuesto.vigenteHasta|date:'Y-m-d'|default:'' }}">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-check mb-4">
+                            <input type="checkbox" class="form-check-input" id="activo" name="activo" {% if impuesto.activo %}checked{% endif %}>
+                            <label class="form-check-label" for="activo">Activo</label>
+                        </div>
+
+                        <div class="d-flex justify-content-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

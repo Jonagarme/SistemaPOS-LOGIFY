@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ titulo }} - Sistema POS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="d-sm-flex align-items-center justify-content-between mb-4">
+        <h1 class="h3 mb-0 text-gray-800">
+            <i class="fas fa-percentage"></i> {{ titulo }}
+        </h1>
+        <a href="{% url 'usuarios:crear_impuesto' %}" class="btn btn-primary">
+            <i class="fas fa-plus"></i> Nuevo Impuesto
+        </a>
+    </div>
+
+    <!-- Lista de Impuestos -->
+    <div class="card shadow mb-4">
+        <div class="card-header py-3">
+            <h6 class="m-0 font-weight-bold text-primary">
+                <i class="fas fa-list"></i> Listado de Impuestos
+            </h6>
+        </div>
+        <div class="card-body">
+            {% if impuestos %}
+                <div class="table-responsive">
+                    <table class="table table-bordered" width="100%" cellspacing="0">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nombre</th>
+                                <th>Porcentaje</th>
+                                <th>Vigencia</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for impuesto in impuestos %}
+                                <tr>
+                                    <td>{{ impuesto.codigo }}</td>
+                                    <td>{{ impuesto.nombre }}</td>
+                                    <td>{{ impuesto.porcentaje }}%</td>
+                                    <td>
+                                        {% if impuesto.vigenteDesde %}
+                                            Desde: {{ impuesto.vigenteDesde|date:"d/m/Y" }}
+                                        {% endif %}
+                                        {% if impuesto.vigenteHasta %}
+                                            <br>Hasta: {{ impuesto.vigenteHasta|date:"d/m/Y" }}
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if impuesto.activo %}
+                                            <span class="badge bg-success">Activo</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">Inactivo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group" role="group">
+                                            <a href="{% url 'usuarios:editar_impuesto' impuesto.id %}" 
+                                               class="btn btn-sm btn-outline-primary" title="Editar">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <form method="post" action="{% url 'usuarios:eliminar_impuesto' impuesto.id %}" 
+                                                  style="display: inline-block;" 
+                                                  onsubmit="return confirm('¿Está seguro de eliminar este impuesto?')">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="fas fa-percentage fa-3x text-gray-300 mb-3"></i>
+                    <h5 class="text-gray-500">No hay impuestos registrados</h5>
+                    <a href="{% url 'usuarios:crear_impuesto' %}" class="btn btn-primary">
+                        <i class="fas fa-plus"></i> Crear Primer Impuesto
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
