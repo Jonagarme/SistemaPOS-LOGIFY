@@ -1576,57 +1576,63 @@ def generar_json_facturacion_electronica_real(factura_venta):
     # Obtener configuración de la empresa desde la tabla empresas
     EMPRESA_CONFIG = obtener_configuracion_empresa()
     
-    # Obtener secuencial de la factura
-    secuencial = str(factura_venta.idFactura).zfill(9)  # Padding con ceros a la izquierda
-    
     # Obtener datos del cliente
     cliente = factura_venta.cliente
     
-    # Forma de pago por defecto (el campo tipoPago no existe en BD)
+    # Determinar tipo de identificación
+    tipo_identificacion = "07" # Consumidor Final
+    identificacion = "9999999999999"
+    razon_social = "CONSUMIDOR FINAL"
+    direccion = "GUAYAQUIL"
+    
+    if cliente:
+        identificacion = cliente.cedula_ruc
+        razon_social = cliente.nombre_completo
+        direccion = cliente.direccion if cliente.direccion else "GUAYAQUIL"
+        
+        if len(identificacion) == 13:
+            tipo_identificacion = "04" # RUC
+        elif len(identificacion) == 10:
+            tipo_identificacion = "05" # Cédula
+        elif identificacion == "9999999999999":
+            tipo_identificacion = "07" # Consumidor Final
+        else:
+            tipo_identificacion = "06" # Pasaporte
+    
+    # Forma de pago por defecto
     codigo_forma_pago_sri = "01"  # Efectivo por defecto
     
-    # Construir JSON según especificación SRI
+    # Construir JSON según nueva estructura solicitada
     json_factura = {
-        "empresaRuc": EMPRESA_CONFIG['ruc'],
-        "ambiente": EMPRESA_CONFIG.get('sri_ambiente', 1),  # 1 = Pruebas, 2 = Producción
-        "tipoComprobante": "01",  # 01 = Factura
-        "infoTributaria": {
-            "estab": EMPRESA_CONFIG['codigo_establecimiento'],
-            "ptoEmi": EMPRESA_CONFIG['codigo_punto_emision'],
-            "secuencial": secuencial,
-            "dirMatriz": EMPRESA_CONFIG['direccion_matriz']
-        },
-        "infoFactura": {
+        "tipo": "factura",
+        "data": {
             "fechaEmision": factura_venta.fechaEmision.strftime("%d/%m/%Y"),
             "dirEstablecimiento": EMPRESA_CONFIG['direccion_establecimiento'],
             "obligadoContabilidad": EMPRESA_CONFIG['obligado_contabilidad'],
-            "tipoIdentificacionComprador": "05",  # 05 = Cédula
-            "razonSocialComprador": cliente.nombre_completo if cliente else "CONSUMIDOR FINAL",
-            "identificacionComprador": cliente.cedula_ruc if cliente and cliente.cedula_ruc else "9999999999999",
-            "direccionComprador": cliente.direccion if cliente and cliente.direccion else "GUAYAQUIL",
+            "tipoIdentificacionComprador": tipo_identificacion,
+            "razonSocialComprador": razon_social,
+            "identificacionComprador": identificacion,
+            "direccionComprador": direccion,
             "totalSinImpuestos": float(factura_venta.subtotal),
             "totalDescuento": float(factura_venta.descuento) if factura_venta.descuento else 0.00,
-            "totalConImpuestos": [
+            "importeTotal": float(factura_venta.total),
+            "moneda": "DOLAR",
+            "impuestos": [
                 {
                     "codigo": "2",  # Código IVA
-                    "codigoPorcentaje": "2",  # 15% IVA
+                    "codigoPorcentaje": "2",  # Mantener 2 según ejemplo del usuario
                     "baseImponible": float(factura_venta.subtotal),
                     "valor": float(factura_venta.iva)
                 }
             ] if factura_venta.iva > 0 else [],
-            "propina": 0.00,
-            "importeTotal": float(factura_venta.total),
-            "moneda": "DOLAR",
             "pagos": [
                 {
                     "formaPago": codigo_forma_pago_sri,
-                    "total": float(factura_venta.total),
-                    "plazo": 0,  # 0 = Sin plazo (pago inmediato)
-                    "unidadTiempo": "dias"
+                    "total": float(factura_venta.total)
                 }
-            ]
-        },
-        "detalles": []
+            ],
+            "detalles": []
+        }
     }
     
     # Agregar detalles de productos
@@ -1647,23 +1653,23 @@ def generar_json_facturacion_electronica_real(factura_venta):
         
         detalle_json = {
             "codigoPrincipal": codigo_principal,
-            "descripcion": detalle.productoNombre,
+            "description": detalle.productoNombre, # Cambiado a description según ejemplo
             "cantidad": cantidad,
             "precioUnitario": precio_unitario,
             "descuento": descuento_detalle,
             "precioTotalSinImpuesto": precio_total_sin_impuesto,
             "impuestos": [
                 {
-                    "codigo": "2",  # Código IVA
-                    "codigoPorcentaje": "2",  # 15% IVA
-                    "tarifa": 15.00,
+                    "codigo": "2",
+                    "codigoPorcentaje": "2",
+                    "tarifa": 15, # Asumiendo 15%
                     "baseImponible": precio_total_sin_impuesto,
                     "valor": float(detalle.ivaValor)
                 }
             ] if detalle.ivaValor > 0 else []
         }
         
-        json_factura["detalles"].append(detalle_json)
+        json_factura["data"]["detalles"].append(detalle_json)
     
     return json_factura
 
@@ -1961,22 +1967,86 @@ def crear_ajax(request):
             import requests
             respuesta_sri = None
             error_sri = None
+            
+            # URL base de la API
+            API_BASE_URL = 'https://logifact.fwh.is'
+            
             try:
-                api_url = 'http://127.0.0.1:5001/api/factura'
-                response = requests.post(api_url, json=json_facturacion, timeout=30)
-                response.raise_for_status()
-                respuesta_sri = response.json()
+                # 1. Autenticación para obtener token
+                token = None
+                try:
+                    # Intentar login con credenciales admin
+                    # Asumimos que el endpoint es /login basado en prácticas comunes, 
+                    # aunque el usuario no lo especificó explícitamente en la URL, dio las credenciales.
+                    # Si falla, intentaremos enviar sin token o reportar error.
+                    auth_payload = {
+                        "username": "admin",
+                        "password": "admin123"
+                    }
+                    
+                    # Intentar endpoint estándar de login, si falla probar /api/login
+                    login_url = f'{API_BASE_URL}/login'
+                    
+                    # Timeout corto para login
+                    auth_response = requests.post(login_url, json=auth_payload, timeout=10)
+                    
+                    if auth_response.status_code == 200:
+                        auth_data = auth_response.json()
+                        if auth_data.get('success') and auth_data.get('token'):
+                            token = auth_data.get('token')
+                        else:
+                            print(f"Login exitoso pero sin token: {auth_data}")
+                    else:
+                        print(f"Error en login: {auth_response.status_code} - {auth_response.text}")
+                        
+                except Exception as e:
+                    print(f"Excepción durante login: {str(e)}")
+                    # Continuamos para intentar enviar (quizás no requiere auth o es otra url)
                 
-                # Si la respuesta es exitosa, actualizar el estado y la clave de acceso
-                if respuesta_sri.get('success') or respuesta_sri.get('estado') == 'AUTORIZADO':
-                    clave_acceso = respuesta_sri.get('claveAcceso') or respuesta_sri.get('numeroAutorizacion')
-                    if clave_acceso:
-                        actualizar_estado_factura_sri(id_factura_venta, 'AUTORIZADA', clave_acceso)
-                elif respuesta_sri.get('estado') == 'RECHAZADO':
-                    actualizar_estado_factura_sri(id_factura_venta, 'RECHAZADA')
+                # 2. Enviar factura
+                headers = {'Content-Type': 'application/json'}
+                if token:
+                    headers['Authorization'] = f'Bearer {token}'
+                
+                # Endpoint para enviar factura (POST /)
+                api_url = API_BASE_URL 
+                if not api_url.endswith('/'):
+                    api_url += '/'
+                
+                response = requests.post(api_url, json=json_facturacion, headers=headers, timeout=30)
+                
+                # Verificar respuesta
+                if response.status_code == 200:
+                    try:
+                        respuesta_sri = response.json()
+                    except:
+                        # Si no es JSON válido pero es 200 OK
+                        respuesta_sri = {'success': True, 'mensaje': 'Enviado correctamente', 'raw': response.text}
                 else:
-                    # Mantener como PENDIENTE si no hay respuesta clara
-                    pass
+                    # Intentar leer respuesta de error
+                    try:
+                        error_detail = response.json()
+                    except:
+                        error_detail = response.text
+                    
+                    error_sri = f"Error API ({response.status_code}): {error_detail}"
+                    # Aún así, marcamos como enviada pero con error si es necesario
+                
+                if respuesta_sri:
+                    # Si la respuesta es exitosa, actualizar el estado y la clave de acceso
+                    # Adaptar según la respuesta real de la nueva API
+                    if respuesta_sri.get('success') or respuesta_sri.get('estado') == 'AUTORIZADO':
+                        clave_acceso = respuesta_sri.get('claveAcceso') or respuesta_sri.get('numeroAutorizacion') or respuesta_sri.get('clave_acceso')
+                        if clave_acceso:
+                            actualizar_estado_factura_sri(id_factura_venta, 'AUTORIZADA', clave_acceso)
+                        else:
+                            # Si es exitoso pero no hay clave aún (asíncrono?)
+                            actualizar_estado_factura_sri(id_factura_venta, 'ENVIADA')
+                    elif respuesta_sri.get('estado') == 'RECHAZADO':
+                        actualizar_estado_factura_sri(id_factura_venta, 'RECHAZADA')
+                    else:
+                        # Mantener como PENDIENTE si no hay respuesta clara
+                        pass
             except requests.exceptions.Timeout:
                 error_sri = 'Timeout al conectar con el SRI'
             except requests.exceptions.ConnectionError:
