@@ -23,6 +23,10 @@ def crear_impuesto(request):
         activo = request.POST.get('activo') == 'on'
         
         try:
+            # Validación: Si este impuesto será activo, desactivar los demás
+            if activo:
+                Impuesto.objects.filter(activo=True).update(activo=False)
+                
             Impuesto.objects.create(
                 codigo=codigo,
                 nombre=nombre,
@@ -52,9 +56,19 @@ def editar_impuesto(request, id):
         impuesto.descripcion = request.POST.get('descripcion')
         impuesto.vigenteDesde = request.POST.get('vigenteDesde') or None
         impuesto.vigenteHasta = request.POST.get('vigenteHasta') or None
-        impuesto.activo = request.POST.get('activo') == 'on'
+        
+        # Verificar si se está activando
+        nuevo_activo = request.POST.get('activo') == 'on'
         
         try:
+            # Validación: Si se activa este impuesto, desactivar los demás
+            if nuevo_activo and not impuesto.activo:
+                Impuesto.objects.filter(activo=True).exclude(id=id).update(activo=False)
+            elif nuevo_activo:
+                # Si ya estaba activo y sigue activo, asegurar que no haya otros (por si acaso)
+                Impuesto.objects.filter(activo=True).exclude(id=id).update(activo=False)
+                
+            impuesto.activo = nuevo_activo
             impuesto.save()
             messages.success(request, 'Impuesto actualizado exitosamente.')
             return redirect('usuarios:lista_impuestos')
