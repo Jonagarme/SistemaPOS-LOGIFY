@@ -1984,8 +1984,8 @@ def crear_ajax(request):
                         "password": "admin123"
                     }
                     
-                    # Intentar endpoint estándar de login, si falla probar /api/login
-                    login_url = f'{API_BASE_URL}/login'
+                    # Endpoint de login según documentación: POST /?login=1
+                    login_url = f'{API_BASE_URL}/?login=1'
                     
                     # Timeout corto para login
                     auth_response = requests.post(login_url, json=auth_payload, timeout=10)
